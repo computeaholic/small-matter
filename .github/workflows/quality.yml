@@ -1,0 +1,27 @@
+name: Small Matter quality
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install format and lint tools
+        run: brew install swiftformat swiftlint
+      - name: Format check
+        run: swiftformat Tunix TunixTests --lint
+      - name: Lint
+        run: swiftlint lint Tunix TunixTests --reporter json
+      - name: App unit tests
+        run: ./scripts/run_tunix_app_unit_tests.sh --fresh-derived-data
+      - name: Unsigned Release build
+        run: ./scripts/build_release.sh --prepare-only
+      - name: Structural artifact verification
+        run: ./scripts/verify_release_artifact.sh --allow-unsigned --app '.deriveddata/release/Build/Products/Release/Small Matter.app'

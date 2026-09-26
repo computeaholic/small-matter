@@ -1,0 +1,43 @@
+### macOS ###
+.DS_Store
+.AppleDouble
+.LSOverride
+
+### Xcode ###
+xcuserdata/
+DerivedData/
+.deriveddata/
+.release-artifacts/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+*.xcworkspace/xcuserdata/
+
+### SwiftPM ###
+.build/
+.swiftpm/
+Package.resolved
+
+### Xcode Build ###
+build/
+
+### Archives ###
+*.xcarchive
+
+### Logs ###
+*.log
+*.o
+*.profraw
+
+### Python (tooling only) ###
+__pycache__/
+*.pyc
+venv/
+.venv/
+.mypy_cache/
+
+### Local development tooling ###
+.aider/
+.aider.*
+*.bak.*
+tree.txt
