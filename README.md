@@ -94,5 +94,6 @@ artifact has been accepted by Apple and Gatekeeper.
 
 ## License
 
-No open-source reuse license has been granted. See
-`SOURCE_LICENSE_PENDING.md`.
+Small Matter is licensed under the PolyForm Noncommercial License 1.0.0.
+This is a source-available noncommercial license, not an OSI-approved
+open-source license. See `LICENSE` for the complete terms.
