@@ -26,10 +26,13 @@ launch, is not persisted, and is released when disabled or when the app exits.
 
 ## Support and disclosure
 
-This repository does not currently publish a dedicated security-reporting
-address. Do not include credentials, private logs, or personal data in an issue
-or support snapshot. A public disclosure contact will be added if one is
-established.
+Do not report suspected vulnerabilities through public GitHub Issues. Use the
+repository's Security tab and its private vulnerability reporting flow so the
+details can be reviewed privately. If that flow is unavailable, contact the
+maintainer privately through GitHub before disclosing technical details.
+
+Do not include credentials, private logs, or personal data in a public issue
+or support snapshot.
 
 ## Compatibility identifiers
 
