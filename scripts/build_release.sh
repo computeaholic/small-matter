@@ -60,7 +60,11 @@ build_args=(
 if [[ "$mode" == "prepare" ]]; then
     build_args+=(CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO)
 else
-    build_args+=(CODE_SIGN_IDENTITY="$signing_identity" CODE_SIGN_STYLE=Manual)
+    build_args+=(
+        CODE_SIGN_IDENTITY="$signing_identity"
+        CODE_SIGN_STYLE=Manual
+        OTHER_CODE_SIGN_FLAGS=--timestamp
+    )
 fi
 
 # Remove only the generated Release product so an incremental build cannot
