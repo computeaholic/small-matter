@@ -1,7 +1,9 @@
 // Publishing-only override. The ordinary Release configuration remains
 // Developer ID / Hardened Runtime for direct distribution.
 CODE_SIGN_STYLE = Automatic
-CODE_SIGN_IDENTITY =
+// The local archive is signed with the installed Apple Development identity;
+// export re-signs the app with Cloud Managed Apple Distribution.
+CODE_SIGN_IDENTITY = Apple Development
 DEVELOPMENT_TEAM = ULSR7BJ6SD
 CODE_SIGN_ENTITLEMENTS = Tunix/Tunix-AppStore.entitlements
 ENABLE_HARDENED_RUNTIME = NO
