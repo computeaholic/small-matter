@@ -414,6 +414,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Small Matter";
 				INFOPLIST_KEY_CFBundleGetInfoString = "Read-only macOS system telemetry";
 				INFOPLIST_KEY_CFBundleName = "Small Matter";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2025 Tunix LLC";
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
@@ -451,6 +452,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Small Matter";
 				INFOPLIST_KEY_CFBundleGetInfoString = "Read-only macOS system telemetry";
 				INFOPLIST_KEY_CFBundleName = "Small Matter";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2025 Tunix LLC";
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
