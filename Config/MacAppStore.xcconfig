@@ -1,0 +1,10 @@
+// Publishing-only override. The ordinary Release configuration remains
+// Developer ID / Hardened Runtime for direct distribution.
+CODE_SIGN_STYLE = Automatic
+CODE_SIGN_IDENTITY =
+DEVELOPMENT_TEAM = ULSR7BJ6SD
+CODE_SIGN_ENTITLEMENTS = Tunix/Tunix-AppStore.entitlements
+ENABLE_HARDENED_RUNTIME = NO
+MARKETING_VERSION = 0.9.1
+CURRENT_PROJECT_VERSION = 2
+PRODUCT_BUNDLE_IDENTIFIER = Tunix-LLC.Tunix
