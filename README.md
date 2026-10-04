@@ -87,10 +87,11 @@ product name.
 
 ## Release status
 
-Version `0.9.0 (1)` is a release candidate. Local unsigned Release builds and
-artifact verification are reproducible. Developer ID signing and notarization
-require the authorized Apple credentials and are reported only when the actual
-artifact has been accepted by Apple and Gatekeeper.
+Version `0.9.1 (2)` is the next direct-distribution release candidate. Local
+unsigned Release builds and artifact verification are reproducible. Developer
+ID signing and notarization require the authorized Apple credentials and are
+reported only when the actual artifact has been accepted by Apple and
+Gatekeeper.
 
 ## License
 

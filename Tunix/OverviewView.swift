@@ -3,6 +3,7 @@ import AppKit
 import SwiftUI
 
 struct OverviewView: View {
+    @EnvironmentObject private var settings: SettingsManager
     @EnvironmentObject private var stats: SystemStatsModel
     @EnvironmentObject private var battery: BatteryManager
     @EnvironmentObject private var cooling: CoolingService
@@ -317,7 +318,11 @@ struct OverviewView: View {
     private var coolingDetail: String {
         let fans = cooling.snapshot.fans.prefix(2).map { "Fan \($0.fanIndex + 1) \($0.currentRPM) RPM" }
         let temperature = CoolingTemperaturePresentation.groups(cooling.snapshot.temperatures).first.map {
-            "\($0.label) \(String(format: "%.1f", $0.valueCelsius))°C"
+            let value = TemperaturePresentation.string(
+                celsius: $0.valueCelsius,
+                unit: settings.settings.temperatureUnit
+            )
+            return "\($0.label) \(value)"
         }
         let readings = Array(fans) + (temperature.map { [$0] } ?? [])
         return readings.isEmpty ? "Cooling telemetry unavailable" : readings.joined(separator: " · ")

@@ -130,7 +130,8 @@ final class BatteryTelemetryTruthTests: XCTestCase {
             powerWatts: 0,
             temperatureCelsius: 27.25,
             timeToEmptyMinutes: nil,
-            timeToFullMinutes: nil
+            timeToFullMinutes: nil,
+            temperatureSource: .appleSMC
         )
 
         let stale = snapshot.withAvailability(.stale)
@@ -179,7 +180,8 @@ final class BatteryTelemetryTruthTests: XCTestCase {
             powerWatts: 0,
             temperatureCelsius: 27.25,
             timeToEmptyMinutes: nil,
-            timeToFullMinutes: nil
+            timeToFullMinutes: nil,
+            temperatureSource: .appleSMC
         )
     }
 }

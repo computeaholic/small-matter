@@ -1,12 +1,66 @@
 import SwiftUI
 
+enum TemperatureDisplayUnit: String, Codable, CaseIterable, Identifiable {
+    case system
+    case celsius
+    case fahrenheit
+
+    var id: String {
+        rawValue
+    }
+
+    var label: String {
+        switch self {
+        case .system: return "System"
+        case .celsius: return "Celsius"
+        case .fahrenheit: return "Fahrenheit"
+        }
+    }
+}
+
+enum TemperaturePresentation {
+    static func string(
+        celsius: Double?,
+        unit: TemperatureDisplayUnit,
+        locale: Locale = .current
+    ) -> String {
+        guard let celsius else { return "Unavailable" }
+        return string(celsius: celsius, unit: unit, locale: locale)
+    }
+
+    static func string(
+        celsius: Double,
+        unit: TemperatureDisplayUnit,
+        locale: Locale = .current
+    ) -> String {
+        let measurement: Measurement<UnitTemperature>
+        switch unit {
+        case .system:
+            measurement = Measurement(value: celsius, unit: .celsius)
+        case .celsius:
+            measurement = Measurement(value: celsius, unit: .celsius)
+        case .fahrenheit:
+            measurement = Measurement(value: celsius, unit: .celsius).converted(to: .fahrenheit)
+        }
+
+        let formatter = MeasurementFormatter()
+        formatter.locale = locale
+        formatter.unitOptions = unit == .system ? .naturalScale : .providedUnit
+        formatter.numberFormatter.maximumFractionDigits = 1
+        formatter.numberFormatter.minimumFractionDigits = 1
+        return formatter.string(from: measurement)
+    }
+}
+
 struct AppSettings: Codable {
     var refreshInterval: Double = 3
     var safeCleanupMode: Bool = true
+    var temperatureUnit: TemperatureDisplayUnit = .system
 
     private enum CodingKeys: String, CodingKey {
         case refreshInterval
         case safeCleanupMode
+        case temperatureUnit
     }
 
     init() {}
@@ -15,6 +69,10 @@ struct AppSettings: Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         refreshInterval = try container.decodeIfPresent(Double.self, forKey: .refreshInterval) ?? 3
         safeCleanupMode = try container.decodeIfPresent(Bool.self, forKey: .safeCleanupMode) ?? true
+        temperatureUnit = try container.decodeIfPresent(
+            TemperatureDisplayUnit.self,
+            forKey: .temperatureUnit
+        ) ?? .system
     }
 }
 
@@ -78,6 +136,22 @@ struct SettingsView: View {
                 Text("Current readings refresh in the foreground; history remains bounded.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+            }
+
+            Section("Display") {
+                Picker("Temperature units", selection: $settings.settings.temperatureUnit) {
+                    ForEach(TemperatureDisplayUnit.allCases) { unit in
+                        Text(unit.label).tag(unit)
+                    }
+                }
+                .pickerStyle(.menu)
+                .accessibilityIdentifier("temperature-unit-picker")
+                Text(
+                    "System follows the measurement preferences for this Mac. "
+                        + "Sensor and evidence values remain in Celsius."
+                )
+                .font(.footnote)
+                .foregroundStyle(.secondary)
             }
 
             Section("Cleanup") {

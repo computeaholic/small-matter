@@ -3,6 +3,7 @@ import Charts
 import SwiftUI
 
 struct BatteryView: View {
+    @EnvironmentObject private var settings: SettingsManager
     @EnvironmentObject private var battery: BatteryManager
 
     var body: some View {
@@ -154,7 +155,7 @@ private extension BatteryView {
                     ("Power", battery.signedPowerDisplay),
                     ("Voltage", battery.voltageDisplay),
                     ("Current", battery.amperageDisplay),
-                    ("Temperature", battery.temperatureDisplay),
+                    ("Temperature", battery.temperatureDisplay(for: settings.settings.temperatureUnit)),
                     ("Time remaining", battery.timeToEmptyDisplay),
                     ("Time to full", battery.timeToFullDisplay),
                 ])

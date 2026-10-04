@@ -2,6 +2,7 @@ import SwiftUI
 
 enum AppSection: String, CaseIterable, Identifiable {
     case overview = "Overview"
+    case recentChanges = "Recent Changes"
     case performance = "Performance"
     case fan = "Cooling"
     case battery = "Battery"
@@ -15,6 +16,7 @@ enum AppSection: String, CaseIterable, Identifiable {
     var systemImage: String {
         switch self {
         case .overview: return "sparkles"
+        case .recentChanges: return "clock.arrow.circlepath"
         case .fan: return "fanblades.fill"
         case .battery: return "battery.100percent"
         case .cleanup: return "sparkles.rectangle.stack"
@@ -28,6 +30,8 @@ enum AppSection: String, CaseIterable, Identifiable {
 struct AppShellView: View {
     @Environment(\.openSettings) private var openSettings
     @EnvironmentObject private var keepAwake: KeepAwakeController
+    @EnvironmentObject private var evidenceRuntime: EvidenceRuntime
+    @EnvironmentObject private var contextHistory: IncidentContextHistory
     @AppStorage("tunix.selectedSection") private var selectedSection = AppSection.overview.rawValue
     @State private var uiTestingSelectedSection = AppSection.overview.rawValue
     @StateObject private var settingsManager: SettingsManager
@@ -58,7 +62,7 @@ struct AppShellView: View {
         NavigationSplitView {
             Sidebar(selection: selectionBinding, openSettings: { openSettings() })
         } detail: {
-            DetailView(selection: currentSelection)
+            DetailView(selection: currentSelection, journal: evidenceRuntime.journal)
         }
         .navigationSplitViewStyle(.balanced)
         .frame(minWidth: 900, minHeight: 650)
@@ -91,6 +95,22 @@ struct AppShellView: View {
         }
         .onChange(of: settingsManager.settings.refreshInterval) { _, newValue in
             systemStats.setRefreshInterval(newValue)
+        }
+        .onAppear {
+            contextHistory.append(
+                timestamp: systemStats.telemetrySnapshot.timestamp,
+                systemStats: systemStats,
+                battery: batteryManager,
+                cooling: cooling
+            )
+        }
+        .onReceive(systemStats.$telemetrySnapshot) { snapshot in
+            contextHistory.append(
+                timestamp: snapshot.timestamp,
+                systemStats: systemStats,
+                battery: batteryManager,
+                cooling: cooling
+            )
         }
         .onReceive(NotificationCenter.default.publisher(for: .tunixNavigate)) { notification in
             guard let rawValue = notification.object as? String,
@@ -135,7 +155,7 @@ struct Sidebar: View {
     var body: some View {
         List(selection: $selection) {
             Section("Core") {
-                ForEach([AppSection.overview, .performance, .fan, .battery]) { section in
+                ForEach([AppSection.overview, .recentChanges, .performance, .fan, .battery]) { section in
                     Label(section.rawValue, systemImage: section.systemImage)
                         .tag(section)
                         .accessibilityIdentifier("navigation-\(section.rawValue)")
@@ -158,18 +178,39 @@ struct Sidebar: View {
         }
         .listStyle(.sidebar)
         .navigationTitle(ProductIdentity.displayName)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            HStack(spacing: 9) {
+                TunixSignalMark()
+                    .frame(width: 24, height: 24)
+                    .background(
+                        TunixBrand.accent.opacity(0.13),
+                        in: RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    )
+                Text(ProductIdentity.displayName)
+                    .font(.headline)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(.background)
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("small-matter-sidebar-identity")
+        }
         .frame(minWidth: 190, idealWidth: 210)
     }
 }
 
 struct DetailView: View {
     let selection: AppSection
+    let journal: any EvidenceJournal
 
     var body: some View {
         Group {
             switch selection {
             case .overview:
                 OverviewView()
+            case .recentChanges:
+                RecentChangesView(journal: journal)
             case .fan:
                 FanControlView()
             case .battery:
@@ -189,6 +230,7 @@ struct DetailView: View {
     private var contentWidth: CGFloat {
         switch selection {
         case .overview: return 1180
+        case .recentChanges: return 980
         case .performance: return 1240
         case .fan: return 980
         case .battery: return 1020

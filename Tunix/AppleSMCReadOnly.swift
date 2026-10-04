@@ -291,3 +291,12 @@ final class AppleSMCReadOnlyReader: CoolingTelemetrySource, @unchecked Sendable 
         }
     }
 }
+
+extension AppleSMCReadOnlyReader: BatteryTemperatureReading {
+    func readBatteryTemperatureCelsius() -> Double? {
+        guard case let .success(raw) = collect() else { return nil }
+        return CoolingTemperaturePresentation.groups(raw.temperatures)
+            .first(where: { $0.label == "Battery" })?
+            .valueCelsius
+    }
+}

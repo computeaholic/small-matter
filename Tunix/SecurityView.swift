@@ -7,7 +7,13 @@ struct SecurityView: View {
     @EnvironmentObject private var battery: BatteryManager
     @EnvironmentObject private var cooling: CoolingService
     @EnvironmentObject private var keepAwake: KeepAwakeController
+    @EnvironmentObject private var evidenceRuntime: EvidenceRuntime
     @State private var snapshotMessage: String?
+    @State private var evidenceSupportState: EvidenceSupportState = .loading
+    @State private var latestEvidencePackage: EvidencePackage?
+    @State private var evidenceError: String?
+    @State private var evidenceLoading = true
+    @State private var diagnosticsExpanded = ProcessInfo.processInfo.arguments.contains("-UITesting")
 
     var body: some View {
         TunixAdaptivePage { layout in
@@ -20,6 +26,27 @@ struct SecurityView: View {
             }
         }
         .navigationTitle("System Health")
+        .task {
+            await refreshEvidenceSupport()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .horizon2JournalDidResolve)) { _ in
+            Task { await refreshEvidenceSupport() }
+        }
+        .sheet(item: $latestEvidencePackage) { package in
+            EvidenceExportPreviewView(package: package)
+        }
+        .alert("Evidence unavailable", isPresented: Binding(
+            get: { evidenceError != nil },
+            set: {
+                if !$0 {
+                    evidenceError = nil
+                }
+            }
+        )) {
+            Button("OK", role: .cancel) { evidenceError = nil }
+        } message: {
+            Text(evidenceError ?? "Unable to prepare the evidence package.")
+        }
     }
 
     @ViewBuilder
@@ -29,14 +56,165 @@ struct SecurityView: View {
             integritySection
             telemetrySection
             detailsSection
+            evidenceSupportSection
         case .wide, .large:
-            HStack(alignment: .top, spacing: TunixDesign.sectionSpacing) {
-                VStack(alignment: .leading, spacing: TunixDesign.sectionSpacing) {
-                    integritySection
-                    telemetrySection
+            VStack(alignment: .leading, spacing: TunixDesign.sectionSpacing) {
+                HStack(alignment: .top, spacing: TunixDesign.sectionSpacing) {
+                    VStack(alignment: .leading, spacing: TunixDesign.sectionSpacing) {
+                        integritySection
+                        telemetrySection
+                    }
+                    detailsSection
+                        .frame(maxWidth: 420, alignment: .topLeading)
                 }
-                detailsSection
-                    .frame(maxWidth: 420, alignment: .topLeading)
+                evidenceSupportSection
+            }
+        }
+    }
+
+    private var evidenceSupportSection: some View {
+        TunixPanel {
+            VStack(alignment: .leading, spacing: 12) {
+                TunixSectionHeader(title: "Evidence & Support")
+                    .accessibilityIdentifier("system-health-evidence-section")
+
+                Text("Captured evidence is separate from the current system snapshot.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                evidenceStatusRow("Evidence history", evidenceHistoryLabel)
+                    .accessibilityIdentifier("system-health-evidence-status")
+                evidenceStatusRow("Latest capture", latestCaptureLabel)
+                    .accessibilityIdentifier("system-health-latest-capture")
+
+                if let latestCapture {
+                    Text("Marker \(DateFormatter.recentChanges.string(from: latestCapture.marker.wallTime))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                HStack(spacing: 10) {
+                    Button("Open Recent Changes") {
+                        NotificationCenter.default.post(name: .tunixNavigate, object: "Recent Changes")
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityIdentifier("system-health-open-recent-changes")
+
+                    if latestCapture != nil {
+                        Button("Preview Latest Evidence Package") {
+                            previewLatestEvidence()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .accessibilityIdentifier("system-health-preview-latest-evidence")
+                    }
+                }
+
+                if evidenceLoading {
+                    ProgressView("Loading evidence status…")
+                        .controlSize(.small)
+                        .accessibilityIdentifier("system-health-evidence-loading")
+                } else if case .availableNoCapture = evidenceSupportState {
+                    Text("No evidence capture yet.")
+                        .font(.callout.weight(.medium))
+                        .accessibilityIdentifier("system-health-no-capture")
+                    Text("Use Capture in Recent Changes after something happens.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                if let evidenceError {
+                    Text(evidenceError)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("system-health-evidence-error")
+                }
+            }
+        }
+    }
+
+    private func evidenceStatusRow(_ label: String, _ value: String) -> some View {
+        HStack {
+            Text(label)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text(value)
+                .font(.subheadline.weight(.semibold))
+                .multilineTextAlignment(.trailing)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label), \(value)")
+    }
+
+    private var evidenceHistoryLabel: String {
+        switch evidenceSupportState {
+        case .loading: return "Loading"
+        case .availableNoCapture, .availableCapture: return "Available"
+        case .capacityNoCapture, .capacityCapture:
+            return "Storage full"
+        case .unavailable:
+            return "Unavailable"
+        case let .packageFailure(availability, _):
+            return availability == .capacityUnavailable ? "Storage full" : "Available"
+        }
+    }
+
+    private var latestCaptureLabel: String {
+        guard let latestCapture else { return "No capture" }
+        return latestCapture.status == .complete ? "Complete" : "Incomplete"
+    }
+
+    private var latestCapture: IncidentPackage? {
+        switch evidenceSupportState {
+        case let .availableCapture(package), let .capacityCapture(package), let .packageFailure(_, package):
+            return package
+        case .loading, .availableNoCapture, .capacityNoCapture, .unavailable:
+            return nil
+        }
+    }
+
+    @MainActor
+    private func refreshEvidenceSupport() async {
+        evidenceLoading = true
+        evidenceError = nil
+        let status = await evidenceRuntime.journal.retentionStatus()
+        let latest: IncidentPackage?
+        switch status.availability {
+        case .available, .capacityUnavailable:
+            latest = await evidenceRuntime.journal.incidentSummaries(limit: 1).first
+        case .unavailable:
+            latest = nil
+        }
+        switch (status.availability, latest) {
+        case let (.available, package?): evidenceSupportState = .availableCapture(package)
+        case (.available, nil): evidenceSupportState = .availableNoCapture
+        case let (.capacityUnavailable, package?): evidenceSupportState = .capacityCapture(package)
+        case (.capacityUnavailable, nil): evidenceSupportState = .capacityNoCapture
+        case (.unavailable, _): evidenceSupportState = .unavailable
+        }
+        evidenceLoading = false
+    }
+
+    private func previewLatestEvidence() {
+        guard let latestCapture else { return }
+        evidenceError = nil
+        Task {
+            do {
+                latestEvidencePackage = try await EvidencePackageAssembler().assemble(
+                    incidentID: latestCapture.id,
+                    journal: evidenceRuntime.journal
+                )
+            } catch {
+                let availability: EvidenceJournalAvailability
+                switch evidenceSupportState {
+                case .capacityCapture, .packageFailure(.capacityUnavailable, _):
+                    availability = .capacityUnavailable
+                case .unavailable, .packageFailure(.unavailable, _):
+                    availability = .unavailable
+                default:
+                    availability = .available
+                }
+                evidenceSupportState = .packageFailure(availability: availability, latestCapture)
+                evidenceError = "Unable to prepare the evidence package."
             }
         }
     }
@@ -97,7 +275,7 @@ struct SecurityView: View {
 
     private var detailsSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            DisclosureGroup("Diagnostics") {
+            DisclosureGroup("Diagnostics", isExpanded: $diagnosticsExpanded) {
                 TunixPanel {
                     VStack(alignment: .leading, spacing: 12) {
                         TunixSectionHeader(title: "Freshness")
@@ -121,13 +299,20 @@ struct SecurityView: View {
                         TunixSectionHeader(title: "Keep Awake")
                         diagnosticRow("Status", keepAwake.statusLabel)
                         diagnosticRow("Behavior", keepAwake.statusDetail)
-                        Button {
-                            copySupportSnapshot()
-                        } label: {
-                            Label("Copy Support Snapshot", systemImage: "doc.on.doc")
+                        VStack(alignment: .leading, spacing: 6) {
+                            Button {
+                                copySupportSnapshot()
+                            } label: {
+                                Label("Copy Current System Snapshot", systemImage: "doc.on.doc")
+                            }
+                            .buttonStyle(.bordered)
+                            .accessibilityIdentifier("system-health-copy-current-snapshot")
+                            .help("Copy a privacy-preserving JSON diagnostic summary")
+                            Text("This is a point-in-time system summary. Captured diagnostic evidence is available from Recent Changes.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .accessibilityIdentifier("system-health-current-snapshot")
                         }
-                        .buttonStyle(.bordered)
-                        .help("Copy a privacy-preserving JSON diagnostic summary")
                         if let snapshotMessage {
                             Text(snapshotMessage)
                                 .font(.caption)
@@ -300,6 +485,16 @@ struct SecurityView: View {
             return "unknown"
         #endif
     }
+}
+
+private enum EvidenceSupportState {
+    case loading
+    case availableNoCapture
+    case availableCapture(IncidentPackage)
+    case capacityNoCapture
+    case capacityCapture(IncidentPackage)
+    case unavailable
+    case packageFailure(availability: EvidenceJournalAvailability, IncidentPackage)
 }
 
 // swiftlint:enable trailing_comma type_body_length

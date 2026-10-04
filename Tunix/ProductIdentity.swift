@@ -5,7 +5,7 @@ import Foundation
 enum ProductIdentity {
     static let displayName = "Small Matter"
     static let shortName = "Small Matter"
-    static let tagline = "Precise, read-only system telemetry for macOS."
+    static let tagline = "Read-only answers about what changed on this Mac."
     static let copyright = "© 2025 Tunix LLC"
     static let supportExportFilenameStem = "Small-Matter-Support-Snapshot"
 

@@ -31,6 +31,55 @@ protocol BatteryTelemetryReading {
     func read() -> BatterySnapshot?
 }
 
+protocol BatteryTemperatureReading {
+    func readBatteryTemperatureCelsius() -> Double?
+}
+
+enum BatteryCapacityModel {
+    static func maximumCapacity(
+        registry: [String: Any]?,
+        batteryData: [String: Any]?
+    ) -> Int? {
+        valid(integer(registry?["AppleRawMaxCapacity"]))
+            ?? valid(integer(batteryData?["FullChargeCapacity"]))
+            ?? valid(integer(registry?["NominalChargeCapacity"]))
+            ?? valid(integer(batteryData?["NominalChargeCapacity"]))
+    }
+
+    static func designCapacity(
+        registry: [String: Any]?,
+        batteryData: [String: Any]?
+    ) -> Int? {
+        valid(integer(registry?["DesignCapacity"]))
+            ?? valid(integer(batteryData?["DesignCapacity"]))
+    }
+
+    static func capacities(
+        registry: [String: Any]?,
+        batteryData: [String: Any]?
+    ) -> (maximum: Int?, design: Int?) {
+        (
+            maximum: maximumCapacity(registry: registry, batteryData: batteryData),
+            design: designCapacity(registry: registry, batteryData: batteryData)
+        )
+    }
+
+    static func valid(_ value: Int?) -> Int? {
+        guard let value, value > 0, value < 65535 else { return nil }
+        return value
+    }
+
+    private static func integer(_ value: Any?) -> Int? {
+        if let value = value as? Int {
+            return value
+        }
+        if let value = value as? NSNumber {
+            return value.intValue
+        }
+        return nil
+    }
+}
+
 private struct BatteryReadValues {
     let present: Bool
     let isACConnected: Bool
@@ -49,12 +98,33 @@ private struct BatteryReadValues {
 }
 
 struct NativeBatteryTelemetryReader: BatteryTelemetryReading {
+    private let temperatureReader: any BatteryTemperatureReading
+
+    init(temperatureReader: any BatteryTemperatureReading = AppleSMCReadOnlyReader()) {
+        self.temperatureReader = temperatureReader
+    }
+
     func read() -> BatterySnapshot? {
         let powerSource = Self.readPowerSource()
         let registry = Self.readSmartBatteryProperties()
-        guard powerSource != nil || registry != nil else { return nil }
-        let values = Self.readValues(powerSource: powerSource, registry: registry)
+        return Self.makeSnapshot(
+            powerSource: powerSource,
+            registry: registry,
+            batteryTemperatureCelsius: temperatureReader.readBatteryTemperatureCelsius()
+        )
+    }
 
+    static func makeSnapshot(
+        powerSource: [String: Any]?,
+        registry: [String: Any]?,
+        batteryTemperatureCelsius: Double?
+    ) -> BatterySnapshot? {
+        guard powerSource != nil || registry != nil else { return nil }
+        let values = Self.readValues(
+            powerSource: powerSource,
+            registry: registry,
+            batteryTemperatureCelsius: batteryTemperatureCelsius
+        )
         return BatterySnapshot(
             timestamp: .now,
             availability: .valid,
@@ -80,7 +150,8 @@ struct NativeBatteryTelemetryReader: BatteryTelemetryReading {
             ),
             temperatureCelsius: values.temperatureCelsius,
             timeToEmptyMinutes: values.timeToEmptyMinutes,
-            timeToFullMinutes: values.timeToFullMinutes
+            timeToFullMinutes: values.timeToFullMinutes,
+            temperatureSource: values.temperatureCelsius == nil ? nil : .appleSMC
         )
     }
 }
@@ -88,8 +159,10 @@ struct NativeBatteryTelemetryReader: BatteryTelemetryReading {
 private extension NativeBatteryTelemetryReader {
     static func readValues(
         powerSource: [String: Any]?,
-        registry: [String: Any]?
+        registry: [String: Any]?,
+        batteryTemperatureCelsius: Double?
     ) -> BatteryReadValues {
+        let batteryData = registry?["BatteryData"] as? [String: Any]
         let present = Self.bool(registry?["BatteryInstalled"]) ?? (powerSource != nil)
         let powerSourceState = Self.string(powerSource?[kIOPSPowerSourceStateKey])
         let isACConnected = Self.bool(registry?["ExternalConnected"])
@@ -102,14 +175,15 @@ private extension NativeBatteryTelemetryReader {
             ?? false
 
         let currentCapacityMAh = Self.integer(registry?["AppleRawCurrentCapacity"])
-        let maxCapacityMAh = Self.integer(registry?["AppleRawMaxCapacity"])
-            ?? Self.integer(registry?["NominalChargeCapacity"])
-        let designCapacityMAh = Self.integer(registry?["DesignCapacity"])
+        let capacities = BatteryCapacityModel.capacities(
+            registry: registry,
+            batteryData: batteryData
+        )
         let stateOfChargePercent = Self.chargePercent(
             powerSource: powerSource,
             registry: registry,
             currentCapacityMAh: currentCapacityMAh,
-            maxCapacityMAh: maxCapacityMAh
+            maxCapacityMAh: capacities.maximum
         )
 
         let voltageMillivolts = Self.integer(registry?["Voltage"])
@@ -118,9 +192,6 @@ private extension NativeBatteryTelemetryReader {
         let currentMilliamps = Self.integer(registry?["InstantAmperage"])
             ?? Self.integer(registry?["Amperage"])
             ?? Self.integer(powerSource?[kIOPSCurrentKey])
-        let temperatureCelsius = BatteryPowerModel.temperatureCelsius(
-            rawTenthsKelvin: Self.integer(registry?["Temperature"])
-        )
         let timeToEmptyMinutes = Self.validMinutes(Self.integer(registry?["AvgTimeToEmpty"]))
             ?? Self.validMinutes(Self.integer(registry?["TimeRemaining"]))
         let timeToFullMinutes = Self.validMinutes(Self.integer(registry?["AvgTimeToFull"]))
@@ -132,12 +203,12 @@ private extension NativeBatteryTelemetryReader {
             isFullyCharged: isFullyCharged,
             stateOfChargePercent: stateOfChargePercent,
             currentCapacityMAh: currentCapacityMAh,
-            maxCapacityMAh: maxCapacityMAh,
-            designCapacityMAh: designCapacityMAh,
+            maxCapacityMAh: capacities.maximum,
+            designCapacityMAh: capacities.design,
             cycleCount: Self.integer(registry?["CycleCount"]),
             voltageMillivolts: voltageMillivolts,
             currentMilliamps: currentMilliamps,
-            temperatureCelsius: temperatureCelsius,
+            temperatureCelsius: batteryTemperatureCelsius,
             timeToEmptyMinutes: timeToEmptyMinutes,
             timeToFullMinutes: timeToFullMinutes
         )
@@ -398,8 +469,11 @@ final class BatteryManager: ObservableObject {
     }
 
     var temperatureDisplay: String {
-        guard let temperature = snapshot.temperatureCelsius else { return "Unavailable" }
-        return String(format: "%.1f°C", temperature)
+        temperatureDisplay(for: .system)
+    }
+
+    func temperatureDisplay(for unit: TemperatureDisplayUnit) -> String {
+        TemperaturePresentation.string(celsius: snapshot.temperatureCelsius, unit: unit)
     }
 
     var temperatureStatusText: String {
@@ -407,11 +481,26 @@ final class BatteryManager: ObservableObject {
     }
 
     var timeToEmptyDisplay: String {
-        snapshot.timeToEmptyMinutes.map(Self.formatMinutes) ?? "Unavailable"
+        if let minutes = snapshot.timeToEmptyMinutes {
+            return Self.formatMinutes(minutes)
+        }
+        switch snapshot.operatingState {
+        case .connectedNotCharging: return "Connected to power"
+        case .fullyCharged: return "Fully charged"
+        case .charging, .discharging, .unavailable: return "Unavailable"
+        }
     }
 
     var timeToFullDisplay: String {
-        snapshot.timeToFullMinutes.map(Self.formatMinutes) ?? "Unavailable"
+        if let minutes = snapshot.timeToFullMinutes {
+            return Self.formatMinutes(minutes)
+        }
+        switch snapshot.operatingState {
+        case .connectedNotCharging: return "Not charging"
+        case .fullyCharged: return "Fully charged"
+        case .charging: return "Estimating…"
+        case .discharging, .unavailable: return "Unavailable"
+        }
     }
 
     var sourceDisplay: String {

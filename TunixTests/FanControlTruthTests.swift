@@ -60,6 +60,13 @@ final class FanControlTruthTests: XCTestCase {
         XCTAssertEqual(snapshot.fans.first?.currentRPM, 1362)
     }
 
+    func testFanRangeIsLabeledAsReportedTelemetry() {
+        let view = FanControlView()
+        let fan = CoolingFan(fanIndex: 1, currentRPM: 5840, minimumRPM: 1350, maximumRPM: 5777)
+
+        XCTAssertEqual(view.reportedRangeText(for: fan), "Reported range 1350–5777 RPM")
+    }
+
     @MainActor
     func testCoolingServicePublishesAppProcessTelemetry() async {
         let source = StubCoolingSource(result: .success(

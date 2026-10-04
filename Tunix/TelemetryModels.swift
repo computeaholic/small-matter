@@ -260,6 +260,7 @@ struct BatterySnapshot: Equatable {
     let temperatureCelsius: Double?
     let timeToEmptyMinutes: Int?
     let timeToFullMinutes: Int?
+    let temperatureSource: TelemetrySource?
 
     static let unavailable = BatterySnapshot(
         timestamp: .now,
@@ -280,7 +281,8 @@ struct BatterySnapshot: Equatable {
         powerWatts: nil,
         temperatureCelsius: nil,
         timeToEmptyMinutes: nil,
-        timeToFullMinutes: nil
+        timeToFullMinutes: nil,
+        temperatureSource: nil
     )
 
     var operatingState: BatteryOperatingState {
@@ -312,7 +314,8 @@ struct BatterySnapshot: Equatable {
             powerWatts: powerWatts,
             temperatureCelsius: temperatureCelsius,
             timeToEmptyMinutes: timeToEmptyMinutes,
-            timeToFullMinutes: timeToFullMinutes
+            timeToFullMinutes: timeToFullMinutes,
+            temperatureSource: temperatureSource
         )
     }
 }

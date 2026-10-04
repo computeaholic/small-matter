@@ -2,6 +2,7 @@ import SwiftUI
 
 struct FanControlView: View {
     @EnvironmentObject private var cooling: CoolingService
+    @EnvironmentObject private var settings: SettingsManager
     @EnvironmentObject private var systemStats: SystemStatsModel
 
     var body: some View {
@@ -74,15 +75,14 @@ private extension FanControlView {
     var temperatureSection: some View {
         let groups = CoolingTemperaturePresentation.groups(cooling.snapshot.temperatures)
         if !groups.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
-                TunixSectionHeader(title: "Temperatures", subtitle: "Representative readings")
-                ViewThatFits(in: .horizontal) {
-                    HStack(alignment: .top, spacing: TunixDesign.groupSpacing) {
-                        ForEach(groups) { group in
-                            temperatureRow(group)
-                        }
-                    }
-                    VStack(spacing: TunixDesign.rowSpacing) {
+            TunixPanel {
+                VStack(alignment: .leading, spacing: 14) {
+                    TunixSectionHeader(title: "Temperatures", subtitle: "Representative readings")
+                    LazyVGrid(
+                        columns: [GridItem(.adaptive(minimum: 170, maximum: 230), alignment: .leading)],
+                        alignment: .leading,
+                        spacing: TunixDesign.groupSpacing
+                    ) {
                         ForEach(groups) { group in
                             temperatureRow(group)
                         }
@@ -97,16 +97,13 @@ private extension FanControlView {
         if !cooling.snapshot.fans.isEmpty, cooling.telemetryState != .unavailable {
             VStack(alignment: .leading, spacing: 12) {
                 TunixSectionHeader(title: "Fans", subtitle: "Current speed and operating range")
-                ViewThatFits(in: .horizontal) {
-                    HStack(alignment: .top, spacing: TunixDesign.groupSpacing) {
-                        ForEach(cooling.snapshot.fans, id: \.fanIndex) { fan in
-                            fanModule(fan)
-                        }
-                    }
-                    VStack(spacing: TunixDesign.rowSpacing) {
-                        ForEach(cooling.snapshot.fans, id: \.fanIndex) { fan in
-                            fanModule(fan)
-                        }
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: 220, maximum: 280), alignment: .leading)],
+                    alignment: .leading,
+                    spacing: TunixDesign.groupSpacing
+                ) {
+                    ForEach(cooling.snapshot.fans, id: \.fanIndex) { fan in
+                        fanModule(fan)
                     }
                 }
             }
@@ -127,27 +124,25 @@ private extension FanControlView {
     }
 
     func temperatureRow(_ group: CoolingTemperatureGroup) -> some View {
-        HStack {
+        let temperatureText = TemperaturePresentation.string(
+            celsius: group.valueCelsius,
+            unit: settings.settings.temperatureUnit
+        )
+        return VStack(alignment: .leading, spacing: 4) {
             Text(group.label)
-                .font(.subheadline)
-            Spacer()
-            VStack(alignment: .trailing, spacing: 2) {
-                Text("\(group.valueCelsius, specifier: "%.1f")°C")
-                    .font(.body.weight(.semibold).monospacedDigit())
-                if group.readingCount > 1 {
-                    Text("\(group.readingCount) readings")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                .font(.subheadline.weight(.semibold))
+            Text(temperatureText)
+                .font(.title2.weight(.semibold).monospacedDigit())
+            if group.readingCount > 1 {
+                Text("\(group.readingCount) sensors")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
-        .padding(.vertical, 9)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(alignment: .bottom) {
-            Divider()
-        }
+        .frame(maxWidth: 230, alignment: .leading)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(group.label), \(group.valueCelsius, specifier: "%.1f") degrees Celsius")
+        .accessibilityIdentifier("cooling-temperature-\(group.label.lowercased())")
+        .accessibilityLabel("\(group.label), \(temperatureText)")
     }
 
     func fanModule(_ fan: CoolingFan) -> some View {
@@ -166,16 +161,22 @@ private extension FanControlView {
                 .foregroundStyle(.secondary)
         }
         .padding(18)
-        .frame(maxWidth: .infinity, minHeight: 132, alignment: .leading)
+        .frame(maxWidth: 280, minHeight: 132, alignment: .leading)
         .background(TunixDesign.subtleFill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Fan \(fan.fanIndex + 1), \(fan.currentRPM) RPM, \(rangeText(for: fan))")
     }
 
     func rangeText(for fan: CoolingFan) -> String {
+        return reportedRangeText(for: fan)
+    }
+}
+
+extension FanControlView {
+    func reportedRangeText(for fan: CoolingFan) -> String {
         guard let minimum = fan.minimumRPM, let maximum = fan.maximumRPM else {
             return "Operating range unavailable"
         }
-        return "Range \(minimum)–\(maximum) RPM"
+        return "Reported range \(minimum)–\(maximum) RPM"
     }
 }

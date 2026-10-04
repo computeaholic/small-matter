@@ -10,15 +10,15 @@ enum TunixDesign {
     static let chartHeight: CGFloat = 156
 
     static var panelFill: Color {
-        Color.primary.opacity(0.045)
+        Color(nsColor: .controlBackgroundColor).opacity(0.74)
     }
 
     static var subtleFill: Color {
-        Color.primary.opacity(0.025)
+        Color(nsColor: .controlBackgroundColor).opacity(0.52)
     }
 
     static var panelStroke: Color {
-        Color.primary.opacity(0.08)
+        Color.primary.opacity(0.13)
     }
 
     static var chartGrid: Color {
@@ -32,8 +32,34 @@ enum TunixBrand {
     static let healthy = Color.green
     static let warning = Color.orange
     static let critical = Color.red
+}
 
-    static let motif = "waveform.path.ecg"
+struct TunixSignalMark: View {
+    var body: some View {
+        GeometryReader { proxy in
+            let width = proxy.size.width
+            let height = proxy.size.height
+            Path { path in
+                path.move(to: CGPoint(x: width * 0.11, y: height * 0.54))
+                path.addLine(to: CGPoint(x: width * 0.30, y: height * 0.54))
+                path.addLine(to: CGPoint(x: width * 0.37, y: height * 0.33))
+                path.addLine(to: CGPoint(x: width * 0.46, y: height * 0.73))
+                path.addLine(to: CGPoint(x: width * 0.54, y: height * 0.48))
+                path.addLine(to: CGPoint(x: width * 0.61, y: height * 0.54))
+                path.addLine(to: CGPoint(x: width * 0.86, y: height * 0.54))
+            }
+            .stroke(
+                TunixBrand.accent,
+                style: StrokeStyle(lineWidth: max(2, width * 0.0625), lineCap: .round, lineJoin: .round)
+            )
+            Circle()
+                .fill(TunixBrand.secondary)
+                .frame(width: max(3, width * 0.055), height: max(3, width * 0.055))
+                .position(x: width * 0.86, y: height * 0.54)
+        }
+        .aspectRatio(1, contentMode: .fit)
+        .accessibilityHidden(true)
+    }
 }
 
 enum TunixLayoutClass: Equatable {
@@ -77,12 +103,9 @@ struct TunixPageHeader: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: TunixBrand.motif)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(TunixBrand.accent)
+            TunixSignalMark()
                 .frame(width: 30, height: 30)
                 .background(TunixBrand.accent.opacity(0.13), in: RoundedRectangle(cornerRadius: 8))
-                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 6) {
                 Text(title)
                     .font(.system(.largeTitle, design: .rounded).weight(.bold))
