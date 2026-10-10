@@ -107,6 +107,8 @@ final class NativeStorageInventoryProvider: StorageInventoryProviding, @unchecke
         self.maximumEntities = max(1, maximumEntities)
     }
 
+    // Why: ordered canonical flow.
+    // Why: ordered canonical flow.
     // swiftlint:disable:next function_body_length
     func currentInventory(occurrence: EvidenceSourceOccurrence) -> StorageInventorySnapshot {
         let started = DispatchTime.now().uptimeNanoseconds

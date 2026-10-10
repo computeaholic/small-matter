@@ -1,11 +1,10 @@
-// swiftlint:disable line_length
-// swiftlint:disable trailing_comma
-// swiftlint:disable file_length type_body_length
 import Foundation
 import SQLite3
 @testable import Tunix
 import XCTest
 
+// Why: canonical contract owner.
+// swiftlint:disable:next type_body_length
 final class Horizon2SQLiteJournalTests: XCTestCase {
     func testBoundedNewestFirstQueryUsesTimeIndex() async throws {
         let root = try makeTemporaryRoot()
@@ -65,7 +64,10 @@ final class Horizon2SQLiteJournalTests: XCTestCase {
         let indexes = await journal.schemaIndexNames()
         XCTAssertTrue(indexes.contains("observations_by_time"))
         XCTAssertTrue(indexes.contains("observations_by_source_time"))
-        let plan = await journal.explainQueryPlan(EvidenceJournalQuery(start: observation.time.observedWallTime, sourceID: .storage))
+        let plan = await journal.explainQueryPlan(EvidenceJournalQuery(
+            start: observation.time.observedWallTime,
+            sourceID: .storage
+        ))
         XCTAssertFalse(plan.isEmpty)
         XCTAssertEqual(observation.time.correlationEpochID, fetched?.time.correlationEpochID)
     }
@@ -75,13 +77,29 @@ final class Horizon2SQLiteJournalTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: root) }
         let databaseURL = root.appendingPathComponent("horizon2.sqlite")
         let journal = try SQLiteEvidenceJournal(databaseURL: databaseURL)
-        let clock = FixedEvidenceClock(wallTime: Date(timeIntervalSince1970: 1_700_000_100), continuousNanoseconds: 100, processUptimeNanoseconds: 100)
+        let clock = FixedEvidenceClock(
+            wallTime: Date(timeIntervalSince1970: 1_700_000_100),
+            continuousNanoseconds: 100,
+            processUptimeNanoseconds: 100
+        )
         let runtime = EvidenceRuntime(clock: clock, journal: journal, adapterFactory: { _ in [] })
         runtime.start()
         let raw = StorageRawEvent(
             kind: .diskAppeared,
-            identity: StorageRawIdentity(volumeName: nil, filesystemPath: nil, serialNumber: nil, hardwareUUID: nil, mediaUUID: "qualified-media", bsdName: nil, isWholeDisk: true),
-            occurrence: EvidenceSourceOccurrence(wallTime: clock.reading().wallTime, continuousNanoseconds: 100, quality: .exact),
+            identity: StorageRawIdentity(
+                volumeName: nil,
+                filesystemPath: nil,
+                serialNumber: nil,
+                hardwareUUID: nil,
+                mediaUUID: "qualified-media",
+                bsdName: nil,
+                isWholeDisk: true
+            ),
+            occurrence: EvidenceSourceOccurrence(
+                wallTime: clock.reading().wallTime,
+                continuousNanoseconds: 100,
+                quality: .exact
+            ),
             callbackToken: nil
         )
         let observation = await runtime.ingest(.storage(raw))
@@ -205,7 +223,10 @@ final class Horizon2SQLiteJournalTests: XCTestCase {
         let observations = (0 ..< 3).map { _ in
             makeObservation(id: UUID(), extraAttribute: .string(String(repeating: "S", count: 200_000)))
         }
-        XCTAssertGreaterThan(try observations[0].deterministicData().count, Horizon2EvidenceConfiguration.maximumBatchPayloadBytes / 2)
+        XCTAssertGreaterThan(
+            try observations[0].deterministicData().count,
+            Horizon2EvidenceConfiguration.maximumBatchPayloadBytes / 2
+        )
 
         do {
             try await journal.appendBatch(observations)
@@ -243,7 +264,8 @@ final class Horizon2SQLiteJournalTests: XCTestCase {
         for observation in observations {
             canonicalBytes += try observation.deterministicData().count
         }
-        XCTAssertTrue(canonicalBytes + observations.count * Horizon2EvidenceConfiguration.batchFixedOverheadBytes > 8192)
+        XCTAssertTrue(canonicalBytes + observations.count * Horizon2EvidenceConfiguration
+            .batchFixedOverheadBytes > 8192)
 
         do {
             try await journal.appendBatch(observations)
@@ -312,7 +334,14 @@ final class Horizon2SQLiteJournalTests: XCTestCase {
         let databaseURL = root.appendingPathComponent("horizon2.sqlite")
         let observation = makeObservation()
         let incidentID = UUID()
-        let record = EvidenceSourceHealthRecord(id: UUID(), sourceID: .storage, event: .sourceUnavailable, reason: .incompleteCapture, observedAt: observation.time.observedWallTime, detail: "bounded test overflow")
+        let record = EvidenceSourceHealthRecord(
+            id: UUID(),
+            sourceID: .storage,
+            event: .sourceUnavailable,
+            reason: .incompleteCapture,
+            observedAt: observation.time.observedWallTime,
+            detail: "bounded test overflow"
+        )
 
         do {
             let journal = try SQLiteEvidenceJournal(databaseURL: databaseURL)
@@ -338,7 +367,11 @@ final class Horizon2SQLiteJournalTests: XCTestCase {
         try await journal.append(observation)
         let incident = IncidentPackage(
             id: UUID(),
-            marker: IncidentMarker(observationID: observation.id, wallTime: observation.time.observedWallTime, localSequence: observation.time.localSequence),
+            marker: IncidentMarker(
+                observationID: observation.id,
+                wallTime: observation.time.observedWallTime,
+                localSequence: observation.time.localSequence
+            ),
             status: .complete,
             completedAt: observation.time.observedWallTime,
             materializedContext: .object(["test": .string("context")]),
@@ -360,7 +393,10 @@ final class Horizon2SQLiteJournalTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: root) }
         let futureURL = root.appendingPathComponent("future.sqlite")
         var futureDB: OpaquePointer?
-        XCTAssertEqual(sqlite3_open_v2(futureURL.path, &futureDB, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nil), SQLITE_OK)
+        XCTAssertEqual(
+            sqlite3_open_v2(futureURL.path, &futureDB, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nil),
+            SQLITE_OK
+        )
         XCTAssertEqual(sqlite3_exec(futureDB, "PRAGMA user_version=99", nil, nil, nil), SQLITE_OK)
         sqlite3_close_v2(futureDB)
         XCTAssertThrowsError(try SQLiteEvidenceJournal(databaseURL: futureURL)) { error in
@@ -521,9 +557,18 @@ final class Horizon2SQLiteJournalTests: XCTestCase {
         try await journal.append(makeObservation(observedAt: Date()))
 
         var rawDB: OpaquePointer?
-        XCTAssertEqual(sqlite3_open_v2(databaseURL.path, &rawDB, SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX, nil), SQLITE_OK)
+        XCTAssertEqual(
+            sqlite3_open_v2(databaseURL.path, &rawDB, SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX, nil),
+            SQLITE_OK
+        )
         defer { sqlite3_close_v2(rawDB) }
-        XCTAssertEqual(sqlite3_exec(rawDB, "BEGIN IMMEDIATE; UPDATE schema_metadata SET value='WAL_SENTINEL' WHERE key='journal_created_at'; COMMIT;", nil, nil, nil), SQLITE_OK)
+        XCTAssertEqual(
+            sqlite3_exec(rawDB,
+                         "BEGIN IMMEDIATE; UPDATE schema_metadata SET value='WAL_SENTINEL' " +
+                             "WHERE key='journal_created_at'; COMMIT;",
+                         nil, nil, nil),
+            SQLITE_OK
+        )
 
         let beforeCheckpoint = await journal.retentionStatus().bytes
         let dbBytes = fileSize(databaseURL)
@@ -565,7 +610,11 @@ final class Horizon2SQLiteJournalTests: XCTestCase {
         var accepted = 0
         for offset in 0 ..< 40 {
             do {
-                try await journal.append(makeObservation(observedAt: Date(timeIntervalSince1970: 1_900_000_000 + Double(offset)), id: UUID(), extraAttribute: .string(String(repeating: "w", count: 2000))))
+                try await journal.append(makeObservation(
+                    observedAt: Date(timeIntervalSince1970: 1_900_000_000 + Double(offset)),
+                    id: UUID(),
+                    extraAttribute: .string(String(repeating: "w", count: 2000))
+                ))
                 accepted += 1
             } catch EvidenceJournalError.capacityUnavailable {
                 break
@@ -580,7 +629,10 @@ final class Horizon2SQLiteJournalTests: XCTestCase {
     func testDefaultAgeAndReferencedObservationRetentionMatrix() async throws {
         let root = try makeTemporaryRoot()
         defer { try? FileManager.default.removeItem(at: root) }
-        let journal = try SQLiteEvidenceJournal(databaseURL: root.appendingPathComponent("horizon2.sqlite"), retentionBatchSize: 2)
+        let journal = try SQLiteEvidenceJournal(
+            databaseURL: root.appendingPathComponent("horizon2.sqlite"),
+            retentionBatchSize: 2
+        )
         let expired = makeObservation(observedAt: Date(timeIntervalSinceNow: -8 * 86400), id: UUID())
         let recent = makeObservation(observedAt: Date(timeIntervalSinceNow: -86400), id: UUID())
         let referenced = makeObservation(observedAt: Date(timeIntervalSinceNow: -8 * 86400), id: UUID())
@@ -608,13 +660,19 @@ final class Horizon2SQLiteJournalTests: XCTestCase {
     func testMaximumIncidentAgeAndProtectedIncidentRetention() async throws {
         let root = try makeTemporaryRoot()
         defer { try? FileManager.default.removeItem(at: root) }
-        let journal = try SQLiteEvidenceJournal(databaseURL: root.appendingPathComponent("horizon2.sqlite"), retentionBatchSize: 1)
+        let journal = try SQLiteEvidenceJournal(
+            databaseURL: root.appendingPathComponent("horizon2.sqlite"),
+            retentionBatchSize: 1
+        )
         let oldObservation = makeObservation(observedAt: Date(timeIntervalSinceNow: -31 * 86400), id: UUID())
         let protectedObservation = makeObservation(observedAt: Date(timeIntervalSinceNow: -31 * 86400), id: UUID())
         try await journal.append(oldObservation)
         try await journal.append(protectedObservation)
         let oldIncident = makeIncident(for: oldObservation, completedAt: Date(timeIntervalSinceNow: -31 * 86400))
-        let protectedIncident = makeIncident(for: protectedObservation, completedAt: Date(timeIntervalSinceNow: -31 * 86400))
+        let protectedIncident = makeIncident(
+            for: protectedObservation,
+            completedAt: Date(timeIntervalSinceNow: -31 * 86400)
+        )
         try await journal.persist(incident: oldIncident)
         try await journal.persist(incident: protectedIncident, retentionProtected: true)
 
@@ -630,12 +688,22 @@ final class Horizon2SQLiteJournalTests: XCTestCase {
     func testExpiredIncidentDeletionUsesMultipleBoundedBatches() async throws {
         let root = try makeTemporaryRoot()
         defer { try? FileManager.default.removeItem(at: root) }
-        let journal = try SQLiteEvidenceJournal(databaseURL: root.appendingPathComponent("horizon2.sqlite"), retentionBatchSize: 2)
+        let journal = try SQLiteEvidenceJournal(
+            databaseURL: root.appendingPathComponent("horizon2.sqlite"),
+            retentionBatchSize: 2
+        )
         var incidents: [UUID] = []
         for offset in 0 ..< 7 {
-            let observation = makeObservation(observedAt: Date(timeIntervalSinceNow: -31 * 86400 - Double(offset)), id: UUID())
+            let observation = makeObservation(
+                observedAt: Date(timeIntervalSinceNow: -31 * 86400 - Double(offset)),
+                id: UUID()
+            )
             try await journal.append(observation)
-            let incident = makeIncident(for: observation, completedAt: Date(timeIntervalSinceNow: -31 * 86400 - Double(offset)), id: UUID())
+            let incident = makeIncident(
+                for: observation,
+                completedAt: Date(timeIntervalSinceNow: -31 * 86400 - Double(offset)),
+                id: UUID()
+            )
             incidents.append(incident.id)
             try await journal.persist(incident: incident)
         }
@@ -653,12 +721,30 @@ final class Horizon2SQLiteJournalTests: XCTestCase {
         let root = try makeTemporaryRoot()
         defer { try? FileManager.default.removeItem(at: root) }
         let journal = try SQLiteEvidenceJournal(databaseURL: root.appendingPathComponent("horizon2.sqlite"))
-        let olderObservation = makeObservation(observedAt: Date(), id: UUID(), extraAttribute: .string(String(repeating: "o", count: 10000)))
-        let newerObservation = makeObservation(observedAt: Date(timeIntervalSinceNow: 1), id: UUID(), extraAttribute: .string(String(repeating: "n", count: 10000)))
+        let olderObservation = makeObservation(
+            observedAt: Date(),
+            id: UUID(),
+            extraAttribute: .string(String(repeating: "o", count: 10000))
+        )
+        let newerObservation = makeObservation(
+            observedAt: Date(timeIntervalSinceNow: 1),
+            id: UUID(),
+            extraAttribute: .string(String(repeating: "n", count: 10000))
+        )
         try await journal.append(olderObservation)
         try await journal.append(newerObservation)
-        let olderIncident = makeIncident(for: olderObservation, completedAt: Date(timeIntervalSinceNow: -2), id: UUID(), contextSize: 500_000)
-        let newerIncident = makeIncident(for: newerObservation, completedAt: Date(timeIntervalSinceNow: -1), id: UUID(), contextSize: 20000)
+        let olderIncident = makeIncident(
+            for: olderObservation,
+            completedAt: Date(timeIntervalSinceNow: -2),
+            id: UUID(),
+            contextSize: 500_000
+        )
+        let newerIncident = makeIncident(
+            for: newerObservation,
+            completedAt: Date(timeIntervalSinceNow: -1),
+            id: UUID(),
+            contextSize: 20000
+        )
         try await journal.persist(incident: olderIncident)
         try await journal.persist(incident: newerIncident)
         let before = await journal.retentionStatus().bytes
@@ -681,7 +767,10 @@ final class Horizon2SQLiteJournalTests: XCTestCase {
         let existing = makeObservation(observedAt: Date(), id: UUID())
         try await journal.append(existing)
         var lockDB: OpaquePointer?
-        XCTAssertEqual(sqlite3_open_v2(databaseURL.path, &lockDB, SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX, nil), SQLITE_OK)
+        XCTAssertEqual(
+            sqlite3_open_v2(databaseURL.path, &lockDB, SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX, nil),
+            SQLITE_OK
+        )
         XCTAssertEqual(sqlite3_exec(lockDB, "BEGIN EXCLUSIVE", nil, nil, nil), SQLITE_OK)
         let started = Date()
         do {
@@ -707,7 +796,11 @@ final class Horizon2SQLiteJournalTests: XCTestCase {
         try await journal.append(existing)
         let pageCount = try await journal.pageCountForTesting()
         try await journal.setTestMaximumPageCount(pageCount + 1)
-        let candidate = makeObservation(observedAt: Date(timeIntervalSinceNow: 1), id: UUID(), extraAttribute: .string(String(repeating: "d", count: 500_000)))
+        let candidate = makeObservation(
+            observedAt: Date(timeIntervalSinceNow: 1),
+            id: UUID(),
+            extraAttribute: .string(String(repeating: "d", count: 500_000))
+        )
 
         do {
             try await journal.append(candidate)
@@ -729,11 +822,17 @@ final class Horizon2SQLiteJournalTests: XCTestCase {
         let failedURL = root.appendingPathComponent("failed.sqlite")
         XCTAssertThrowsError(try SQLiteEvidenceJournal(databaseURL: failedURL, injectMigrationFailure: true))
         XCTAssertEqual(try scalarFromDatabase(failedURL, sql: "PRAGMA user_version"), "0")
-        XCTAssertEqual(try scalarFromDatabase(failedURL, sql: "SELECT count(*) FROM sqlite_master WHERE name='observations'"), "0")
+        XCTAssertEqual(
+            try scalarFromDatabase(failedURL, sql: "SELECT count(*) FROM sqlite_master WHERE name='observations'"),
+            "0"
+        )
 
         let mismatchURL = root.appendingPathComponent("mismatch.sqlite")
         _ = try SQLiteEvidenceJournal(databaseURL: mismatchURL)
-        XCTAssertEqual(try execDatabase(mismatchURL, sql: "UPDATE schema_metadata SET value='9' WHERE key='schema_version'"), SQLITE_OK)
+        XCTAssertEqual(
+            try execDatabase(mismatchURL, sql: "UPDATE schema_metadata SET value='9' WHERE key='schema_version'"),
+            SQLITE_OK
+        )
         XCTAssertThrowsError(try SQLiteEvidenceJournal(databaseURL: mismatchURL)) { error in
             XCTAssertEqual(error as? EvidenceJournalError, .schemaMetadataMismatch)
         }
@@ -742,7 +841,10 @@ final class Horizon2SQLiteJournalTests: XCTestCase {
         _ = try SQLiteEvidenceJournal(databaseURL: downgradeURL)
         XCTAssertEqual(try execDatabase(downgradeURL, sql: "PRAGMA user_version=0"), SQLITE_OK)
         XCTAssertThrowsError(try SQLiteEvidenceJournal(databaseURL: downgradeURL))
-        XCTAssertEqual(try scalarFromDatabase(downgradeURL, sql: "SELECT count(*) FROM sqlite_master WHERE name='observations'"), "1")
+        XCTAssertEqual(
+            try scalarFromDatabase(downgradeURL, sql: "SELECT count(*) FROM sqlite_master WHERE name='observations'"),
+            "1"
+        )
     }
 
     func testQueryPlansUseTimeSourceAndSubjectIndexes() async throws {
@@ -750,14 +852,23 @@ final class Horizon2SQLiteJournalTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: root) }
         let journal = try SQLiteEvidenceJournal(databaseURL: root.appendingPathComponent("horizon2.sqlite"))
         try await journal.append(makeObservation(observedAt: Date()))
-        let sourcePlan = await journal.explainQueryPlan(EvidenceJournalQuery(start: Date(timeIntervalSinceNow: -1), sourceID: .storage))
-        let subjectPlan = await journal.explainQueryPlan(EvidenceJournalQuery(start: Date(timeIntervalSinceNow: -1), subjectIdentityDigest: "fixture-digest"))
+        let sourcePlan = await journal.explainQueryPlan(EvidenceJournalQuery(
+            start: Date(timeIntervalSinceNow: -1),
+            sourceID: .storage
+        ))
+        let subjectPlan = await journal.explainQueryPlan(EvidenceJournalQuery(
+            start: Date(timeIntervalSinceNow: -1),
+            subjectIdentityDigest: "fixture-digest"
+        ))
         let timePlan = await journal.explainQueryPlan(EvidenceJournalQuery(start: Date(timeIntervalSinceNow: -1)))
         XCTAssertTrue(sourcePlan.contains(where: { $0.contains("observations_by_source_time") }))
-        XCTAssertTrue(subjectPlan.contains(where: { $0.contains("subjects_by_identity") || $0.contains("observations_by_subject_time") }))
+        XCTAssertTrue(subjectPlan
+            .contains(where: { $0.contains("subjects_by_identity") || $0.contains("observations_by_subject_time") }))
         XCTAssertTrue(timePlan.contains(where: { $0.contains("observations_by_time") }))
     }
 
+    // Why: ordered canonical flow.
+    // swiftlint:disable:next function_body_length
     func testStorageNormalizationAndHealthPrivacySentinelsDoNotPersistRaw() async throws {
         let root = try makeTemporaryRoot()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -768,14 +879,33 @@ final class Horizon2SQLiteJournalTests: XCTestCase {
         runtime.start()
         let raw = StorageRawEvent(
             kind: .diskAppeared,
-            identity: StorageRawIdentity(volumeName: "JEFF_PRIVATE_VOLUME_SENTINEL", filesystemPath: "/Users/private-user/secret-path", serialNumber: "SERIAL_SENTINEL_123", hardwareUUID: "HARDWARE_UUID_SENTINEL", mediaUUID: "MY_PRIVATE_SSID", bsdName: "AA:BB:CC:DD:EE:FF", isWholeDisk: true),
-            occurrence: EvidenceSourceOccurrence(wallTime: clock.reading().wallTime, continuousNanoseconds: 10, quality: .exact),
+            identity: StorageRawIdentity(
+                volumeName: "JEFF_PRIVATE_VOLUME_SENTINEL",
+                filesystemPath: "/Users/private-user/secret-path",
+                serialNumber: "SERIAL_SENTINEL_123",
+                hardwareUUID: "HARDWARE_UUID_SENTINEL",
+                mediaUUID: "MY_PRIVATE_SSID",
+                bsdName: "AA:BB:CC:DD:EE:FF",
+                isWholeDisk: true
+            ),
+            occurrence: EvidenceSourceOccurrence(
+                wallTime: clock.reading().wallTime,
+                continuousNanoseconds: 10,
+                quality: .exact
+            ),
             callbackToken: nil
         )
         let observation = await runtime.ingest(.storage(raw))
         runtime.stop()
         XCTAssertNotNil(observation)
-        let detail = EvidenceSourceHealthRecord(id: UUID(), sourceID: .storage, event: .sourceUnavailable, reason: .sourceUnavailable, observedAt: Date(), detail: "192.0.2.123 PRIVATE_USERNAME_SENTINEL")
+        let detail = EvidenceSourceHealthRecord(
+            id: UUID(),
+            sourceID: .storage,
+            event: .sourceUnavailable,
+            reason: .sourceUnavailable,
+            observedAt: Date(),
+            detail: "192.0.2.123 PRIVATE_USERNAME_SENTINEL"
+        )
         do {
             try await journal.recordSourceHealth(detail)
             XCTFail("Sensitive source-health detail must be rejected")
@@ -783,7 +913,16 @@ final class Horizon2SQLiteJournalTests: XCTestCase {
             XCTAssertEqual(error as? EvidenceJournalError, .invalidSensitivity("health.detail"))
         }
         let bytes = databaseBytes(databaseURL)
-        for sentinel in ["JEFF_PRIVATE_VOLUME_SENTINEL", "/Users/private-user/secret-path", "SERIAL_SENTINEL_123", "HARDWARE_UUID_SENTINEL", "MY_PRIVATE_SSID", "AA:BB:CC:DD:EE:FF", "192.0.2.123", "PRIVATE_USERNAME_SENTINEL"] {
+        for sentinel in [
+            "JEFF_PRIVATE_VOLUME_SENTINEL",
+            "/Users/private-user/secret-path",
+            "SERIAL_SENTINEL_123",
+            "HARDWARE_UUID_SENTINEL",
+            "MY_PRIVATE_SSID",
+            "AA:BB:CC:DD:EE:FF",
+            "192.0.2.123",
+            "PRIVATE_USERNAME_SENTINEL"
+        ] {
             XCTAssertFalse(bytes.contains(Data(sentinel.utf8)), "Raw sentinel leaked: \(sentinel)")
         }
         let digest = observation?.provenance.rawReferenceDigest
@@ -888,22 +1027,38 @@ final class Horizon2SQLiteJournalTests: XCTestCase {
         let journal = try SQLiteEvidenceJournal(databaseURL: databaseURL)
         try await journal.append(makeObservation(observedAt: Date()))
         var rawDB: OpaquePointer?
-        XCTAssertEqual(sqlite3_open_v2(databaseURL.path, &rawDB, SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX, nil), SQLITE_OK)
-        XCTAssertEqual(sqlite3_exec(rawDB, "BEGIN IMMEDIATE; UPDATE schema_metadata SET value='PERMISSION_SENTINEL' WHERE key='journal_created_at'; COMMIT;", nil, nil, nil), SQLITE_OK)
+        XCTAssertEqual(
+            sqlite3_open_v2(databaseURL.path, &rawDB, SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX, nil),
+            SQLITE_OK
+        )
+        XCTAssertEqual(
+            sqlite3_exec(rawDB,
+                         "BEGIN IMMEDIATE; UPDATE schema_metadata SET value='PERMISSION_SENTINEL' " +
+                             "WHERE key='journal_created_at'; COMMIT;",
+                         nil, nil, nil),
+            SQLITE_OK
+        )
         sqlite3_close_v2(rawDB)
         try await journal.checkpointForTesting()
         XCTAssertEqual(filePermissions(databaseURL), 0o600)
-        for sidecar in [URL(fileURLWithPath: databaseURL.path + "-wal"), URL(fileURLWithPath: databaseURL.path + "-shm")] where FileManager.default.fileExists(atPath: sidecar.path) {
+        for sidecar in [URL(fileURLWithPath: databaseURL.path + "-wal"),
+                        URL(fileURLWithPath: databaseURL.path + "-shm")]
+            where FileManager.default.fileExists(atPath: sidecar.path) {
             XCTAssertEqual(filePermissions(sidecar), 0o600)
         }
     }
 
     private func makeTemporaryRoot() throws -> URL {
-        let root = FileManager.default.temporaryDirectory.appendingPathComponent("horizon2-i3-\(UUID().uuidString)", isDirectory: true)
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "horizon2-i3-\(UUID().uuidString)",
+            isDirectory: true
+        )
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         return root
     }
 
+    // Why: ordered canonical flow.
+    // swiftlint:disable:next function_body_length
     private func makeObservation(
         sensitivity: EvidenceSensitivityRegistry? = nil,
         observedAt: Date = Date(timeIntervalSince1970: 1_700_000_000),
@@ -914,21 +1069,78 @@ final class Horizon2SQLiteJournalTests: XCTestCase {
         let runID = UUID(uuidString: "10000000-0000-0000-0000-000000000001")!
         let epochID = UUID(uuidString: "40000000-0000-0000-0000-000000000001")!
         let date = observedAt
-        let subject = EvidenceSubject(type: .storageDisk, identityDigest: "fixture-digest", quality: .qualified, safeDisplayLabel: "External storage disk")
-        let provenance = EvidenceProvenance(sourceID: .storage, apiName: "Fixture API", apiVersion: "1", captureChannel: "I3_FIXTURE", sourceTimestampQuality: .exact, normalizationRuleID: "FIXTURE", normalizationRuleVersion: "1.0.0", hostScope: .provenOnTestedHost, rawReferenceDigest: rawReferenceDigest)
-        let time = EvidenceTime(observedWallTime: date, continuousNanoseconds: 10, processUptimeNanoseconds: 20, processRunID: runID, bootSessionID: "boot", localSequence: 1, sourceTimestampQuality: .exact, orderingDomain: EvidenceOrderingDomain(sourceID: .storage, processRunID: runID, clockDomainID: "fixture"), sourceOccurrence: EvidenceSourceOccurrence(wallTime: date, continuousNanoseconds: 10, quality: .exact), correlationEpochID: epochID)
+        let subject = EvidenceSubject(
+            type: .storageDisk,
+            identityDigest: "fixture-digest",
+            quality: .qualified,
+            safeDisplayLabel: "External storage disk"
+        )
+        let provenance = EvidenceProvenance(
+            sourceID: .storage,
+            apiName: "Fixture API",
+            apiVersion: "1",
+            captureChannel: "I3_FIXTURE",
+            sourceTimestampQuality: .exact,
+            normalizationRuleID: "FIXTURE",
+            normalizationRuleVersion: "1.0.0",
+            hostScope: .provenOnTestedHost,
+            rawReferenceDigest: rawReferenceDigest
+        )
+        let time = EvidenceTime(
+            observedWallTime: date,
+            continuousNanoseconds: 10,
+            processUptimeNanoseconds: 20,
+            processRunID: runID,
+            bootSessionID: "boot",
+            localSequence: 1,
+            sourceTimestampQuality: .exact,
+            orderingDomain: EvidenceOrderingDomain(sourceID: .storage, processRunID: runID, clockDomainID: "fixture"),
+            sourceOccurrence: EvidenceSourceOccurrence(wallTime: date, continuousNanoseconds: 10, quality: .exact),
+            correlationEpochID: epochID
+        )
         var attributes: [String: EvidenceValue] = ["lifecycle": .string("appeared")]
         if let extraAttribute {
             attributes["extra"] = extraAttribute
         }
         let fields = sensitivity ?? EvidenceSensitivityRegistry(fields: [
-            EvidenceFieldSensitivity(path: EvidenceFieldPath("subject.identityDigest"), classification: .deviceMetadata, pseudonymization: .required(scope: "package")),
-            EvidenceFieldSensitivity(path: EvidenceFieldPath("provenance.rawReferenceDigest"), classification: .deviceMetadata, pseudonymization: .required(scope: "package")),
-            EvidenceFieldSensitivity(path: EvidenceFieldPath("currentState"), classification: .none, pseudonymization: .notApplicable),
-            EvidenceFieldSensitivity(path: EvidenceFieldPath("attributes.lifecycle"), classification: .none, pseudonymization: .notApplicable),
-            EvidenceFieldSensitivity(path: EvidenceFieldPath("attributes.extra"), classification: .none, pseudonymization: .notApplicable),
+            EvidenceFieldSensitivity(
+                path: EvidenceFieldPath("subject.identityDigest"),
+                classification: .deviceMetadata,
+                pseudonymization: .required(scope: "package")
+            ),
+            EvidenceFieldSensitivity(
+                path: EvidenceFieldPath("provenance.rawReferenceDigest"),
+                classification: .deviceMetadata,
+                pseudonymization: .required(scope: "package")
+            ),
+            EvidenceFieldSensitivity(
+                path: EvidenceFieldPath("currentState"),
+                classification: .none,
+                pseudonymization: .notApplicable
+            ),
+            EvidenceFieldSensitivity(
+                path: EvidenceFieldPath("attributes.lifecycle"),
+                classification: .none,
+                pseudonymization: .notApplicable
+            ),
+            EvidenceFieldSensitivity(
+                path: EvidenceFieldPath("attributes.extra"),
+                classification: .none,
+                pseudonymization: .notApplicable
+            )
         ])
-        return Observation(id: id, domain: .storage, eventKind: .storageDiskLifecycle, sourceID: .storage, subject: subject, provenance: provenance, time: time, currentState: .object(["lifecycle": .string("appeared")]), attributes: attributes, sensitivity: fields)
+        return Observation(
+            id: id,
+            domain: .storage,
+            eventKind: .storageDiskLifecycle,
+            sourceID: .storage,
+            subject: subject,
+            provenance: provenance,
+            time: time,
+            currentState: .object(["lifecycle": .string("appeared")]),
+            attributes: attributes,
+            sensitivity: fields
+        )
     }
 
     private func makeIncident(
@@ -939,7 +1151,11 @@ final class Horizon2SQLiteJournalTests: XCTestCase {
     ) -> IncidentPackage {
         IncidentPackage(
             id: id,
-            marker: IncidentMarker(observationID: observation.id, wallTime: observation.time.observedWallTime, localSequence: observation.time.localSequence),
+            marker: IncidentMarker(
+                observationID: observation.id,
+                wallTime: observation.time.observedWallTime,
+                localSequence: observation.time.localSequence
+            ),
             status: .complete,
             completedAt: completedAt,
             materializedContext: .object(["context": .string(String(repeating: "c", count: contextSize))]),
@@ -968,7 +1184,9 @@ final class Horizon2SQLiteJournalTests: XCTestCase {
 
     private func scalarFromDatabase(_ databaseURL: URL, sql: String) throws -> String {
         var database: OpaquePointer?
-        guard sqlite3_open_v2(databaseURL.path, &database, SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX, nil) == SQLITE_OK else {
+        guard sqlite3_open_v2(databaseURL.path, &database, SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX, nil) ==
+            SQLITE_OK
+        else {
             throw EvidenceJournalError.unavailable
         }
         defer { sqlite3_close_v2(database) }
@@ -983,7 +1201,9 @@ final class Horizon2SQLiteJournalTests: XCTestCase {
 
     private func execDatabase(_ databaseURL: URL, sql: String) throws -> Int32 {
         var database: OpaquePointer?
-        guard sqlite3_open_v2(databaseURL.path, &database, SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX, nil) == SQLITE_OK else {
+        guard sqlite3_open_v2(databaseURL.path, &database, SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX, nil) ==
+            SQLITE_OK
+        else {
             throw EvidenceJournalError.unavailable
         }
         defer { sqlite3_close_v2(database) }
@@ -1042,9 +1262,6 @@ private final class BootstrapProbeAdapter: Horizon2EvidenceAdapter, @unchecked S
         lock.unlock()
     }
 
+    // Why: cohesive reviewed boundary.
     func reconcileAfterWake() {}
-}
-
-// swiftlint:enable line_length
-// swiftlint:enable trailing_comma
-// swiftlint:enable file_length type_body_length
+} // swiftlint:disable:this file_length

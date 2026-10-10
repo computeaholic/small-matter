@@ -137,6 +137,8 @@ final class CorrelationBoundedTests: XCTestCase {
         )
     }
 
+    // Why: complete canonical inputs.
+    // Why: complete canonical inputs.
     // swiftlint:disable:next function_parameter_count
     private func make(
         index: Int,

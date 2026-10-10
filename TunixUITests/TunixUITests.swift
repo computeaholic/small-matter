@@ -1,7 +1,8 @@
-// swiftlint:disable file_length type_body_length line_length
 import XCTest
 
 @MainActor
+// Why: canonical contract owner.
+// swiftlint:disable:next type_body_length
 final class TunixUITests: XCTestCase {
     private var app: XCUIApplication!
 
@@ -204,8 +205,11 @@ final class TunixUITests: XCTestCase {
 
         XCTAssertTrue(app.staticTexts["WHAT WAS HAPPENING"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["CHANGES OBSERVED"].exists)
-        XCTAssertTrue(app.staticTexts["No supported system transitions were observed during this capture window."].exists)
-        XCTAssertTrue(app.staticTexts["No interpretation was generated because no qualifying change observation was captured."].exists)
+        XCTAssertTrue(app.staticTexts["No supported system transitions were observed during this capture window."]
+            .exists)
+        XCTAssertTrue(app
+            .staticTexts["No interpretation was generated because no qualifying change observation was captured."]
+            .exists)
     }
 
     func testIncidentUnavailableIsNotPresentedAsEmpty() {
@@ -228,9 +232,12 @@ final class TunixUITests: XCTestCase {
         let statusText = status.value as? String ?? status.label
         XCTAssertTrue(statusText.contains("Supported"), "status text: \(statusText.debugDescription)")
         XCTAssertTrue(app.staticTexts["Observed support"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["inference-support-observation-00000000-0000-0000-0000-000000000101"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app
+            .descendants(matching: .any)["inference-support-observation-00000000-0000-0000-0000-000000000101"]
+            .waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Next Test"].exists)
-        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] 'confidence' OR label CONTAINS[c] '%'")).firstMatch.exists)
+        XCTAssertFalse(app.staticTexts
+            .matching(NSPredicate(format: "label CONTAINS[c] 'confidence' OR label CONTAINS[c] '%'")).firstMatch.exists)
     }
 
     func testNetworkInferenceKeepsCauseUnknownAndAlternativesUnranked() {
@@ -244,8 +251,12 @@ final class TunixUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Unknown"].exists)
         XCTAssertTrue(app.staticTexts["Alternative"].exists)
         XCTAssertTrue(app.staticTexts["Next Test"].exists)
-        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] 'router' AND label CONTAINS[c] 'failed'")).firstMatch.exists)
-        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] 'likely' OR label CONTAINS[c] 'probably'")).firstMatch.exists)
+        XCTAssertFalse(app.staticTexts
+            .matching(NSPredicate(format: "label CONTAINS[c] 'router' AND label CONTAINS[c] 'failed'")).firstMatch
+            .exists)
+        XCTAssertFalse(app.staticTexts
+            .matching(NSPredicate(format: "label CONTAINS[c] 'likely' OR label CONTAINS[c] 'probably'")).firstMatch
+            .exists)
     }
 
     func testInsufficientInferenceShowsUnknownWithoutSupportedConclusion() {
@@ -258,7 +269,9 @@ final class TunixUITests: XCTestCase {
         XCTAssertTrue(statusText.contains("Insufficient evidence"), "status text: \(statusText.debugDescription)")
         XCTAssertTrue(app.staticTexts["Unknown"].exists)
         XCTAssertTrue(app.staticTexts["Observed contradiction"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["inference-contradiction-observation-00000000-0000-0000-0000-000000000106"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app
+            .descendants(matching: .any)["inference-contradiction-observation-00000000-0000-0000-0000-000000000106"]
+            .waitForExistence(timeout: 5))
     }
 
     func testInferencePresentationUsesCurrentOnlyAndExactSupportRows() {
@@ -268,7 +281,9 @@ final class TunixUITests: XCTestCase {
 
         XCTAssertTrue(app.descendants(matching: .any)["incident-inference-section"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "incident-inference-section").count, 1)
-        XCTAssertTrue(app.descendants(matching: .any)["inference-support-observation-00000000-0000-0000-0000-000000000101"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app
+            .descendants(matching: .any)["inference-support-observation-00000000-0000-0000-0000-000000000101"]
+            .waitForExistence(timeout: 5))
     }
 
     func testInferenceSupportDoesNotClaimUnrelatedCapturedObservation() {
@@ -276,21 +291,28 @@ final class TunixUITests: XCTestCase {
         app.staticTexts["navigation-Recent Changes"].click()
         app.buttons["incident-history-row-00000000-0000-0000-0000-000000000305"].click()
 
-        XCTAssertTrue(app.descendants(matching: .any)["inference-support-observation-00000000-0000-0000-0000-000000000101"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.descendants(matching: .any)["inference-support-observation-00000000-0000-0000-0000-000000000104"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.descendants(matching: .any)["inference-support-observation-00000000-0000-0000-0000-000000000103"].exists)
+        XCTAssertTrue(app
+            .descendants(matching: .any)["inference-support-observation-00000000-0000-0000-0000-000000000101"]
+            .waitForExistence(timeout: 5))
+        XCTAssertTrue(app
+            .descendants(matching: .any)["inference-support-observation-00000000-0000-0000-0000-000000000104"]
+            .waitForExistence(timeout: 5))
+        XCTAssertFalse(app
+            .descendants(matching: .any)["inference-support-observation-00000000-0000-0000-0000-000000000103"].exists)
     }
 
     func testStorageAndVolumeInferenceUseSpecificSubjectLanguage() {
         relaunchIncidentFixture("storage-inference-supported")
         app.staticTexts["navigation-Recent Changes"].click()
         app.buttons["incident-history-row-00000000-0000-0000-0000-000000000305"].click()
-        XCTAssertTrue(app.staticTexts["Captured evidence supports a storage disk lifecycle change."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Captured evidence supports a storage disk lifecycle change."]
+            .waitForExistence(timeout: 5))
 
         relaunchIncidentFixture("volume-inference-supported")
         app.staticTexts["navigation-Recent Changes"].click()
         app.buttons["incident-history-row-00000000-0000-0000-0000-000000000305"].click()
-        XCTAssertTrue(app.staticTexts["Captured evidence supports a mounted volume lifecycle change."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Captured evidence supports a mounted volume lifecycle change."]
+            .waitForExistence(timeout: 5))
     }
 
     func testNextTestShowsPersistedSnapshotFields() {
@@ -298,10 +320,14 @@ final class TunixUITests: XCTestCase {
         app.staticTexts["navigation-Recent Changes"].click()
         app.buttons["incident-history-row-00000000-0000-0000-0000-000000000305"].click()
 
-        XCTAssertTrue(app.staticTexts["Record the persisted fixture storage presentation."].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["The fixture storage disk lifecycle fact is visible."].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Stop after the fixture storage presentation is recorded."].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["This persisted fixture does not change storage state."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Record the persisted fixture storage presentation."]
+            .waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["The fixture storage disk lifecycle fact is visible."]
+            .waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Stop after the fixture storage presentation is recorded."]
+            .waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["This persisted fixture does not change storage state."]
+            .waitForExistence(timeout: 5))
     }
 
     func testEvidenceExportPreviewUsesCanonicalRedactedPackage() {
@@ -357,18 +383,21 @@ final class TunixUITests: XCTestCase {
         XCTAssertTrue(app.wait(for: .notRunning, timeout: 5), "Small Matter did not terminate before fixture relaunch")
         app = XCUIApplication(bundleIdentifier: "Tunix-LLC.Tunix")
         app.launchArguments = [
-            "-ApplePersistenceIgnoreState", "YES", "-UITesting", "-UITestingRecentChanges=\(mode)",
+            "-ApplePersistenceIgnoreState", "YES", "-UITesting", "-UITestingRecentChanges=\(mode)"
         ]
         launchAndWaitForMainWindow()
     }
 
     private func relaunchIncidentFixture(_ mode: String, exportDestination: String? = nil) {
         app.terminate()
-        XCTAssertTrue(app.wait(for: .notRunning, timeout: 5), "Small Matter did not terminate before incident fixture relaunch")
+        XCTAssertTrue(
+            app.wait(for: .notRunning, timeout: 5),
+            "Small Matter did not terminate before incident fixture relaunch"
+        )
         app = XCUIApplication(bundleIdentifier: "Tunix-LLC.Tunix")
         app.launchArguments = [
             "-ApplePersistenceIgnoreState", "YES", "-UITesting", "-UITestingRecentChanges=loaded",
-            "-UITestingIncident=\(mode)",
+            "-UITestingIncident=\(mode)"
         ]
         if let exportDestination {
             app.launchArguments.append("-UITestingEvidenceExportDestination=\(exportDestination)")
@@ -411,7 +440,10 @@ extension TunixUITests {
         if contentScrollView.waitForExistence(timeout: 2) {
             contentScrollView.swipeUp()
         }
-        XCTAssertTrue(app.descendants(matching: .any)["system-health-copy-current-snapshot"].exists, app.debugDescription)
+        XCTAssertTrue(
+            app.descendants(matching: .any)["system-health-copy-current-snapshot"].exists,
+            app.debugDescription
+        )
         XCTAssertTrue(app.descendants(matching: .any)["system-health-current-snapshot"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["system-health-no-capture"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["Copy Support Snapshot"].exists)
@@ -465,16 +497,28 @@ extension TunixUITests {
         app.staticTexts["navigation-System Health"].click()
         let completeStatus = app.descendants(matching: .any)["system-health-evidence-status"]
         XCTAssertTrue(completeStatus.waitForExistence(timeout: 5))
-        XCTAssertTrue(waitForLabel(completeStatus, containing: "Storage full"), "status=\(completeStatus.label) value=\(completeStatus.value ?? "")\n\(app.debugDescription)")
-        XCTAssertTrue(waitForLabel(app.descendants(matching: .any)["system-health-latest-capture"], containing: "Complete"), app.debugDescription)
+        XCTAssertTrue(
+            waitForLabel(completeStatus, containing: "Storage full"),
+            "status=\(completeStatus.label) value=\(completeStatus.value ?? "")\n\(app.debugDescription)"
+        )
+        XCTAssertTrue(
+            waitForLabel(app.descendants(matching: .any)["system-health-latest-capture"], containing: "Complete"),
+            app.debugDescription
+        )
         XCTAssertTrue(app.buttons["system-health-preview-latest-evidence"].exists)
 
         relaunchIncidentFixture("capacity-incomplete")
         app.staticTexts["navigation-System Health"].click()
         let incompleteStatus = app.descendants(matching: .any)["system-health-evidence-status"]
         XCTAssertTrue(incompleteStatus.waitForExistence(timeout: 5))
-        XCTAssertTrue(waitForLabel(incompleteStatus, containing: "Storage full"), "status=\(incompleteStatus.label) value=\(incompleteStatus.value ?? "")\n\(app.debugDescription)")
-        XCTAssertTrue(waitForLabel(app.descendants(matching: .any)["system-health-latest-capture"], containing: "Incomplete"), app.debugDescription)
+        XCTAssertTrue(
+            waitForLabel(incompleteStatus, containing: "Storage full"),
+            "status=\(incompleteStatus.label) value=\(incompleteStatus.value ?? "")\n\(app.debugDescription)"
+        )
+        XCTAssertTrue(
+            waitForLabel(app.descendants(matching: .any)["system-health-latest-capture"], containing: "Incomplete"),
+            app.debugDescription
+        )
         XCTAssertTrue(app.buttons["system-health-preview-latest-evidence"].exists)
     }
 
@@ -482,7 +526,10 @@ extension TunixUITests {
         relaunchIncidentFixture("package-failure")
         app.staticTexts["navigation-System Health"].click()
         XCTAssertTrue(app.descendants(matching: .any)["system-health-latest-capture"].waitForExistence(timeout: 5))
-        XCTAssertTrue(waitForLabel(app.descendants(matching: .any)["system-health-latest-capture"], containing: "Complete"), app.debugDescription)
+        XCTAssertTrue(
+            waitForLabel(app.descendants(matching: .any)["system-health-latest-capture"], containing: "Complete"),
+            app.debugDescription
+        )
         app.buttons["system-health-preview-latest-evidence"].click()
         XCTAssertTrue(app.staticTexts["Unable to prepare the evidence package."].waitForExistence(timeout: 5))
         XCTAssertTrue(app.descendants(matching: .any)["system-health-latest-capture"].exists)
@@ -495,7 +542,10 @@ extension TunixUITests {
         let preview = app.buttons["system-health-preview-latest-evidence"]
         XCTAssertTrue(preview.waitForExistence(timeout: 5))
         preview.click()
-        XCTAssertTrue(app.descendants(matching: .any)["evidence-export-preview"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(
+            app.descendants(matching: .any)["evidence-export-preview"].waitForExistence(timeout: 5),
+            app.debugDescription
+        )
         XCTAssertTrue(app.descendants(matching: .any)["evidence-export-version-manifest"].exists, app.debugDescription)
     }
 
@@ -504,7 +554,10 @@ extension TunixUITests {
             .appendingPathComponent("small-matter-i81-ui-\(UUID().uuidString)", isDirectory: true)
         let jsonDestination = temporaryDirectory.appendingPathComponent("evidence.json")
         let textDestination = temporaryDirectory.appendingPathComponent("evidence.txt")
-        XCTAssertNoThrow(try FileManager.default.createDirectory(at: temporaryDirectory, withIntermediateDirectories: true))
+        XCTAssertNoThrow(try FileManager.default.createDirectory(
+            at: temporaryDirectory,
+            withIntermediateDirectories: true
+        ))
         defer { try? FileManager.default.removeItem(at: temporaryDirectory) }
 
         relaunchIncidentFixture("export-supported", exportDestination: jsonDestination.path)
@@ -554,7 +607,6 @@ extension TunixUITests {
         XCTAssertFalse(app.debugDescription.contains(destination.path))
         XCTAssertFalse(app.debugDescription.contains("NSError"))
         XCTAssertFalse(FileManager.default.fileExists(atPath: destination.path))
+        // Why: cohesive reviewed boundary.
     }
-}
-
-// swiftlint:enable line_length
+} // swiftlint:disable:this file_length

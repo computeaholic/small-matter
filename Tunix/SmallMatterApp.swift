@@ -1,7 +1,6 @@
 //
 //  SmallMatterApp.swift
 //  Small Matter
-// swiftlint:disable trailing_comma
 import AppKit
 import SwiftUI
 
@@ -24,8 +23,10 @@ final class SmallMatterAppDelegate: NSObject, NSApplicationDelegate {
         contextHistory = IncidentContextHistory()
         let isUITesting = ProcessInfo.processInfo.arguments.contains("-UITesting")
         #if HORIZON2_MEASUREMENT
-            let measurementConfiguration = Horizon2MeasurementConfiguration(arguments: ProcessInfo.processInfo.arguments)
-            let measurementJournal = measurementConfiguration.flatMap { try? SQLiteEvidenceJournal(databaseURL: $0.journalURL) }
+            let measurementConfiguration = Horizon2MeasurementConfiguration(arguments: ProcessInfo.processInfo
+                .arguments)
+            let measurementJournal = measurementConfiguration
+                .flatMap { try? SQLiteEvidenceJournal(databaseURL: $0.journalURL) }
             let measurementEnabled = !(measurementConfiguration?.disableEvidenceRuntime ?? false)
         #else
             let measurementJournal: (any EvidenceJournal)? = nil
@@ -48,7 +49,8 @@ final class SmallMatterAppDelegate: NSObject, NSApplicationDelegate {
                 } else {
                     measurementAdapterFactory = nil
                 }
-                let measurementIngressCapacity = measurementConfiguration?.ingressCapacity ?? Horizon2EvidenceConfiguration.collectorQueueCapacity
+                let measurementIngressCapacity = measurementConfiguration?
+                    .ingressCapacity ?? Horizon2EvidenceConfiguration.collectorQueueCapacity
             #else
                 let measurementAdapterFactory: EvidenceRuntime.AdapterFactory? = nil
                 let measurementIngressCapacity = Horizon2EvidenceConfiguration.collectorQueueCapacity
@@ -210,7 +212,7 @@ private struct SmallMatterCommands: Commands {
                         forInfoDictionaryKey: "CFBundleShortVersionString"
                     ) as? String ?? "",
                     .credits: NSAttributedString(string: ProductIdentity.tagline),
-                    .version: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "",
+                    .version: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? ""
                 ])
             }
         }
@@ -252,5 +254,3 @@ private struct SmallMatterCommands: Commands {
         NotificationCenter.default.post(name: .tunixNavigate, object: destination.rawValue)
     }
 }
-
-// swiftlint:enable trailing_comma

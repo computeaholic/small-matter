@@ -1,9 +1,9 @@
-// swiftlint:disable file_length type_body_length
-
 import Foundation
 @testable import Tunix
 import XCTest
 
+// Why: canonical contract owner.
+// swiftlint:disable:next type_body_length
 final class EvidenceExportTests: XCTestCase {
     func testSystemHealthHistoryFixtureAssemblesCanonicalPackage() async throws {
         let journal = RecentChangesFixture.journal(arguments: ["-UITestingIncident=history"])
@@ -36,7 +36,10 @@ final class EvidenceExportTests: XCTestCase {
             XCTAssertEqual(rebuilt, first)
         }
 
-        let root = FileManager.default.temporaryDirectory.appendingPathComponent("horizon2-i8-sqlite-\(UUID().uuidString)", isDirectory: true)
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "horizon2-i8-sqlite-\(UUID().uuidString)",
+            isDirectory: true
+        )
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
         let databaseURL = root.appendingPathComponent("journal.sqlite")
@@ -47,13 +50,24 @@ final class EvidenceExportTests: XCTestCase {
         try await sqlite.persist(incident: incident)
         let sets = try CorrelationEngine().correlate(incident: incident, observations: [observation])
         try await sqlite.persistEvidenceSets(incidentID: incident.id, sets: sets)
-        let inferences = try sets.map { try InferenceEngine().evaluate(incident: incident, evidenceSet: $0, observations: [observation]) }
-        try await sqlite.persistInferences(incidentID: incident.id, inferences: inferences, catalogEntries: Horizon2NextTestCatalog.production.entries)
+        let inferences = try sets.map { try InferenceEngine().evaluate(
+            incident: incident,
+            evidenceSet: $0,
+            observations: [observation]
+        ) }
+        try await sqlite.persistInferences(
+            incidentID: incident.id,
+            inferences: inferences,
+            catalogEntries: Horizon2NextTestCatalog.production.entries
+        )
         let beforeReopen = try await assembler.assemble(incidentID: incident.id, journal: sqlite)
         let reopened = try SQLiteEvidenceJournal(databaseURL: databaseURL)
         let afterReopen = try await assembler.assemble(incidentID: incident.id, journal: reopened)
         XCTAssertEqual(beforeReopen, afterReopen)
-        XCTAssertEqual(try EvidencePackageJSONRenderer.render(beforeReopen), try EvidencePackageJSONRenderer.render(afterReopen))
+        XCTAssertEqual(
+            try EvidencePackageJSONRenderer.render(beforeReopen),
+            try EvidencePackageJSONRenderer.render(afterReopen)
+        )
     }
 
     func testPackageJSONRoundTripAndPreviewDeriveFromCanonicalPackage() async throws {
@@ -78,14 +92,16 @@ final class EvidenceExportTests: XCTestCase {
             observation: observation,
             packageScope: incidentID.uuidString
         )
-        let encoded = try String(decoding: result.observation.deterministicData(), as: UTF8.self)
+        let encoded = try XCTUnwrap(String(bytes: result.observation.deterministicData(), encoding: .utf8))
 
         XCTAssertFalse(encoded.contains("JEFF_PRIVATE_VOLUME_SENTINEL"))
         XCTAssertFalse(encoded.contains("JEFF_PRIVATE_PATH_SENTINEL"))
         XCTAssertTrue(encoded.contains("JEFF_SAFE_ATTRIBUTE"))
-        XCTAssertTrue(result.manifest.contains { $0.action == .pseudonymize && $0.path.rawValue.contains("volumeName") })
+        XCTAssertTrue(result.manifest
+            .contains { $0.action == .pseudonymize && $0.path.rawValue.contains("volumeName") })
         XCTAssertTrue(result.manifest.contains { $0.action == .omit && $0.path.rawValue.contains("filesystemPath") })
-        XCTAssertTrue(result.manifest.contains { $0.action == .pseudonymize && $0.path.rawValue.contains("interfaces") })
+        XCTAssertTrue(result.manifest
+            .contains { $0.action == .pseudonymize && $0.path.rawValue.contains("interfaces") })
     }
 
     func testPseudonymizationIsStableWithinPackageAndDifferentAcrossScopes() throws {
@@ -104,20 +120,28 @@ final class EvidenceExportTests: XCTestCase {
             domain: .storage,
             eventKind: .storageDiskLifecycle,
             sourceID: .storage,
-            subject: EvidenceSubject(type: .storageDisk, identityDigest: nil, quality: .unavailable, safeDisplayLabel: nil),
+            subject: EvidenceSubject(
+                type: .storageDisk,
+                identityDigest: nil,
+                quality: .unavailable,
+                safeDisplayLabel: nil
+            ),
             provenance: provenance,
             time: time,
             attributes: ["futureSecret": .string("JEFF_PRIVATE_FUTURE_SECRET")]
         )
 
-        XCTAssertThrowsError(try EvidenceRedactionPolicy.redact(observation: observation, packageScope: "scope")) { error in
+        XCTAssertThrowsError(try EvidenceRedactionPolicy.redact(
+            observation: observation,
+            packageScope: "scope"
+        )) { error in
             XCTAssertEqual(error as? EvidencePackageError, .unclassifiedField("attributes.futureSecret"))
         }
     }
 
     func testUnknownContextFieldFailsClosed() {
         XCTAssertThrowsError(try EvidenceRedactionPolicy.redactContext(.object([
-            "system": .object(["futureSecret": .string("JEFF_PRIVATE_CONTEXT_SENTINEL")]),
+            "system": .object(["futureSecret": .string("JEFF_PRIVATE_CONTEXT_SENTINEL")])
         ]))) { error in
             XCTAssertEqual(error as? EvidencePackageError, .unclassifiedField("context.system.futureSecret"))
         }
@@ -137,8 +161,8 @@ final class EvidenceExportTests: XCTestCase {
                 "sampleCount": .unsigned(181),
                 "coverage": .string("COMPLETE"),
                 "metric_cpuUtilizationPercent_mean": .decimal("12.50"),
-                "state_memoryPressure": .string("normal"),
-            ]),
+                "state_memoryPressure": .string("normal")
+            ])
         ])
 
         let redacted = try EvidenceRedactionPolicy.redactContext(context)
@@ -159,14 +183,22 @@ final class EvidenceExportTests: XCTestCase {
         XCTAssertTrue(text.contains("WHAT WAS HAPPENING"))
         XCTAssertTrue(text.contains("CPU mean across captured samples: 12.50%"))
         XCTAssertTrue(text.contains("CHANGES OBSERVED"))
-        XCTAssertTrue(text.contains("No interpretation was generated because no qualifying change observation was captured."))
+        XCTAssertTrue(text
+            .contains("No interpretation was generated because no qualifying change observation was captured."))
     }
 
     func testIncompleteIncidentAndPowerOnlyIncidentRemainValid() async throws {
         let incompleteJournal = try await makeJournal(observations: [storageObservation()], status: .incomplete)
-        let incomplete = try await EvidencePackageAssembler().assemble(incidentID: incidentID, journal: incompleteJournal)
+        let incomplete = try await EvidencePackageAssembler().assemble(
+            incidentID: incidentID,
+            journal: incompleteJournal
+        )
         XCTAssertEqual(incomplete.incident?.status, .incomplete)
-        XCTAssertEqual(incomplete.captureWindow.end.timeIntervalSince(incomplete.captureWindow.start), 180, accuracy: 0.001)
+        XCTAssertEqual(
+            incomplete.captureWindow.end.timeIntervalSince(incomplete.captureWindow.start),
+            180,
+            accuracy: 0.001
+        )
 
         let powerJournal = try await makeJournal(observations: [powerObservation()])
         let powerOnly = try await EvidencePackageAssembler().assemble(incidentID: incidentID, journal: powerJournal)
@@ -175,11 +207,11 @@ final class EvidenceExportTests: XCTestCase {
         XCTAssertTrue(powerOnly.inferences.isEmpty)
         XCTAssertEqual(powerOnly.versionManifest?.correlationRules.map(\.ruleID), [
             "H2-CORR-NETWORK-PATH-TRANSITION",
-            "H2-CORR-STORAGE-LIFECYCLE",
+            "H2-CORR-STORAGE-LIFECYCLE"
         ])
         XCTAssertEqual(powerOnly.versionManifest?.inferenceRules.map(\.ruleID), [
             "EXTERNAL_STORAGE_LIFECYCLE",
-            "NETWORK_PATH_TRANSITION",
+            "NETWORK_PATH_TRANSITION"
         ])
     }
 
@@ -217,7 +249,11 @@ final class EvidenceExportTests: XCTestCase {
             completedAt: nil,
             materializedContext: .object([:]),
             observationIDs: [missingID],
-            unknowns: [EvidenceMissing(sourceID: nil, reason: .incompleteCapture, explanation: "Capture was incomplete.")]
+            unknowns: [EvidenceMissing(
+                sourceID: nil,
+                reason: .incompleteCapture,
+                explanation: "Capture was incomplete."
+            )]
         )
         let journal = InMemoryEvidenceJournal(incidents: [incident])
 
@@ -232,7 +268,10 @@ final class EvidenceExportTests: XCTestCase {
     func testWriterProducesRendererBytesWithOwnerOnlyPermissions() async throws {
         let journal = try await makeJournal(observations: [storageObservation()])
         let package = try await EvidencePackageAssembler().assemble(incidentID: incidentID, journal: journal)
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("horizon2-i8-\(UUID().uuidString)", isDirectory: true)
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "horizon2-i8-\(UUID().uuidString)",
+            isDirectory: true
+        )
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
         let destination = directory.appendingPathComponent("Small-Matter-Evidence-test.json")
@@ -248,7 +287,8 @@ final class EvidenceExportTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: textDestination), try writer.data(for: package, format: .text))
         let textAttributes = try FileManager.default.attributesOfItem(atPath: textDestination.path)
         XCTAssertEqual((textAttributes[.posixPermissions] as? NSNumber)?.intValue, 0o600)
-        XCTAssertFalse(try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil).contains { $0.lastPathComponent.contains(".partial") })
+        XCTAssertFalse(try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+            .contains { $0.lastPathComponent.contains(".partial") })
 
         try writer.write(package: package, format: .json, to: destination)
         XCTAssertEqual(try Data(contentsOf: destination), try writer.data(for: package, format: .json))
@@ -268,7 +308,10 @@ final class EvidenceExportTests: XCTestCase {
     func testWriterPermissionFailureDoesNotExposeDestinationOrTemporaryFile() async throws {
         let journal = try await makeJournal(observations: [storageObservation()])
         let package = try await EvidencePackageAssembler().assemble(incidentID: incidentID, journal: journal)
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("horizon2-i8-permission-(UUID().uuidString)", isDirectory: true)
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "horizon2-i8-permission-(UUID().uuidString)",
+            isDirectory: true
+        )
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
         let destination = directory.appendingPathComponent("export.json")
@@ -278,13 +321,18 @@ final class EvidenceExportTests: XCTestCase {
 
         XCTAssertThrowsError(try writer.write(package: package, format: .json, to: destination))
         XCTAssertFalse(FileManager.default.fileExists(atPath: destination.path))
-        XCTAssertFalse(try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil).contains { $0.lastPathComponent.contains(".partial") })
+        XCTAssertFalse(try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+            .contains { $0.lastPathComponent.contains(".partial") })
     }
 
     func testTextRendererPreservesInferenceEpistemicCategories() async throws {
         let journal = try await makeJournal(
             observations: [networkObservation()],
-            incidentUnknowns: [EvidenceMissing(sourceID: .network, reason: .sourceUnavailable, explanation: "Network capture was incomplete.")]
+            incidentUnknowns: [EvidenceMissing(
+                sourceID: .network,
+                reason: .sourceUnavailable,
+                explanation: "Network capture was incomplete."
+            )]
         )
         let package = try await EvidencePackageAssembler().assemble(incidentID: incidentID, journal: journal)
         XCTAssertFalse(package.nextTestSnapshots.isEmpty)
@@ -334,13 +382,16 @@ final class EvidenceExportTests: XCTestCase {
     private func journalIncident(observation: Observation) -> IncidentPackage {
         IncidentPackage(
             id: UUID(uuidString: "00000000-0000-0000-0000-000000000231")!,
-            marker: IncidentMarker(markerID: UUID(uuidString: "00000000-0000-0000-0000-000000000232")!, wallTime: markerDate),
+            marker: IncidentMarker(
+                markerID: UUID(uuidString: "00000000-0000-0000-0000-000000000232")!,
+                wallTime: markerDate
+            ),
             status: .complete,
             completedAt: markerDate.addingTimeInterval(120),
             materializedContext: .object([
                 "system": .object(["cpuUtilizationPercent": .decimal("12.50")]),
                 "battery": .object(["acConnected": .boolean(true)]),
-                "cooling": .object([:]),
+                "cooling": .object([:])
             ]),
             observationIDs: [observation.id]
         )
@@ -352,16 +403,37 @@ final class EvidenceExportTests: XCTestCase {
             domain: .storage,
             eventKind: .storageDiskLifecycle,
             sourceID: .storage,
-            subject: EvidenceSubject(type: .storageDisk, identityDigest: "JEFF_PRIVATE_DEVICE_SENTINEL", quality: .qualified, safeDisplayLabel: "JEFF_PRIVATE_VOLUME_SENTINEL"),
+            subject: EvidenceSubject(
+                type: .storageDisk,
+                identityDigest: "JEFF_PRIVATE_DEVICE_SENTINEL",
+                quality: .qualified,
+                safeDisplayLabel: "JEFF_PRIVATE_VOLUME_SENTINEL"
+            ),
             provenance: provenance,
             time: time,
             currentState: .object(["lifecycle": .string("diskDisappeared")]),
             attributes: ["lifecycle": .string("diskDisappeared")],
             sensitivity: EvidenceSensitivityRegistry(fields: [
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("subject.identityDigest"), classification: .deviceMetadata, pseudonymization: .required(scope: "package")),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("provenance.rawReferenceDigest"), classification: .deviceMetadata, pseudonymization: .required(scope: "package")),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("currentState.lifecycle"), classification: .none, pseudonymization: .notApplicable),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("attributes.lifecycle"), classification: .none, pseudonymization: .notApplicable),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("subject.identityDigest"),
+                    classification: .deviceMetadata,
+                    pseudonymization: .required(scope: "package")
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("provenance.rawReferenceDigest"),
+                    classification: .deviceMetadata,
+                    pseudonymization: .required(scope: "package")
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("currentState.lifecycle"),
+                    classification: .none,
+                    pseudonymization: .notApplicable
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("attributes.lifecycle"),
+                    classification: .none,
+                    pseudonymization: .notApplicable
+                )
             ])
         )
     }
@@ -372,7 +444,12 @@ final class EvidenceExportTests: XCTestCase {
             domain: .network,
             eventKind: .networkPathTransition,
             sourceID: .network,
-            subject: EvidenceSubject(type: .networkInterface, identityDigest: nil, quality: .unavailable, safeDisplayLabel: "Network path"),
+            subject: EvidenceSubject(
+                type: .networkInterface,
+                identityDigest: nil,
+                quality: .unavailable,
+                safeDisplayLabel: "Network path"
+            ),
             provenance: EvidenceProvenance(
                 sourceID: .network,
                 apiName: "Fixture API",
@@ -389,9 +466,21 @@ final class EvidenceExportTests: XCTestCase {
             currentState: .object(["status": .string("UNSATISFIED")]),
             attributes: ["supplemental": .boolean(true)],
             sensitivity: EvidenceSensitivityRegistry(fields: [
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("previousState.status"), classification: .none, pseudonymization: .notApplicable),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("currentState.status"), classification: .none, pseudonymization: .notApplicable),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("attributes.supplemental"), classification: .none, pseudonymization: .notApplicable),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("previousState.status"),
+                    classification: .none,
+                    pseudonymization: .notApplicable
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("currentState.status"),
+                    classification: .none,
+                    pseudonymization: .notApplicable
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("attributes.supplemental"),
+                    classification: .none,
+                    pseudonymization: .notApplicable
+                )
             ])
         )
     }
@@ -402,7 +491,12 @@ final class EvidenceExportTests: XCTestCase {
             domain: .power,
             eventKind: .powerSourceTransition,
             sourceID: .power,
-            subject: EvidenceSubject(type: .powerSource, identityDigest: nil, quality: .provenStable, safeDisplayLabel: "Power source"),
+            subject: EvidenceSubject(
+                type: .powerSource,
+                identityDigest: nil,
+                quality: .provenStable,
+                safeDisplayLabel: "Power source"
+            ),
             provenance: EvidenceProvenance(
                 sourceID: .power,
                 apiName: "Fixture API",
@@ -419,20 +513,39 @@ final class EvidenceExportTests: XCTestCase {
             currentState: .object(["source": .string("BATTERY")]),
             attributes: ["transition": .string("POWER_SOURCE")],
             sensitivity: EvidenceSensitivityRegistry(fields: [
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("previousState.source"), classification: .none, pseudonymization: .notApplicable),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("currentState.source"), classification: .none, pseudonymization: .notApplicable),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("attributes.transition"), classification: .none, pseudonymization: .notApplicable),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("previousState.source"),
+                    classification: .none,
+                    pseudonymization: .notApplicable
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("currentState.source"),
+                    classification: .none,
+                    pseudonymization: .notApplicable
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("attributes.transition"),
+                    classification: .none,
+                    pseudonymization: .notApplicable
+                )
             ])
         )
     }
 
+    // Why: ordered canonical flow.
+    // swiftlint:disable:next function_body_length
     private func nestedSensitiveObservation() -> Observation {
         Observation(
             id: UUID(uuidString: "00000000-0000-0000-0000-000000000223")!,
             domain: .storage,
             eventKind: .storageMountLifecycle,
             sourceID: .storage,
-            subject: EvidenceSubject(type: .mountedVolume, identityDigest: "JEFF_PRIVATE_DEVICE_SENTINEL", quality: .weak, safeDisplayLabel: "JEFF_PRIVATE_VOLUME_SENTINEL"),
+            subject: EvidenceSubject(
+                type: .mountedVolume,
+                identityDigest: "JEFF_PRIVATE_DEVICE_SENTINEL",
+                quality: .weak,
+                safeDisplayLabel: "JEFF_PRIVATE_VOLUME_SENTINEL"
+            ),
             provenance: provenance,
             time: time,
             currentState: .object(["lifecycle": .string("volumeMounted")]),
@@ -440,18 +553,42 @@ final class EvidenceExportTests: XCTestCase {
                 "mount": .object([
                     "volumeName": .string("JEFF_PRIVATE_VOLUME_SENTINEL"),
                     "filesystemPath": .string("JEFF_PRIVATE_PATH_SENTINEL"),
-                    "safe": .string("JEFF_SAFE_ATTRIBUTE"),
+                    "safe": .string("JEFF_SAFE_ATTRIBUTE")
                 ]),
                 "interfaces": .array([.object(["name": .string("JEFF_PRIVATE_SSID_SENTINEL")])]),
-                "optional": .null,
+                "optional": .null
             ],
             sensitivity: EvidenceSensitivityRegistry(fields: [
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("currentState.lifecycle"), classification: .none, pseudonymization: .notApplicable),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("attributes.mount.volumeName"), classification: .filesystemMetadata, pseudonymization: .required(scope: "package")),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("attributes.mount.filesystemPath"), classification: .filesystemMetadata, pseudonymization: .unknown),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("attributes.mount.safe"), classification: .none, pseudonymization: .notApplicable),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("attributes.interfaces[*].name"), classification: .networkMetadata, pseudonymization: .allowed(scope: "package")),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("attributes.optional"), classification: .none, pseudonymization: .notApplicable),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("currentState.lifecycle"),
+                    classification: .none,
+                    pseudonymization: .notApplicable
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("attributes.mount.volumeName"),
+                    classification: .filesystemMetadata,
+                    pseudonymization: .required(scope: "package")
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("attributes.mount.filesystemPath"),
+                    classification: .filesystemMetadata,
+                    pseudonymization: .unknown
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("attributes.mount.safe"),
+                    classification: .none,
+                    pseudonymization: .notApplicable
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("attributes.interfaces[*].name"),
+                    classification: .networkMetadata,
+                    pseudonymization: .allowed(scope: "package")
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("attributes.optional"),
+                    classification: .none,
+                    pseudonymization: .notApplicable
+                )
             ])
         )
     }
@@ -465,21 +602,29 @@ private extension EvidenceExportTests {
     ) async throws -> any EvidenceJournal {
         let incident = IncidentPackage(
             id: incidentID,
-            marker: IncidentMarker(markerID: UUID(uuidString: "00000000-0000-0000-0000-000000000202")!, wallTime: markerDate),
+            marker: IncidentMarker(
+                markerID: UUID(uuidString: "00000000-0000-0000-0000-000000000202")!,
+                wallTime: markerDate
+            ),
             status: status,
             completedAt: status == .complete ? markerDate.addingTimeInterval(120) : nil,
             materializedContext: .object([
                 "system": .object(["cpuUtilizationPercent": .decimal("12.50")]),
                 "battery": .object(["acConnected": .boolean(true)]),
-                "cooling": .object([:]),
+                "cooling": .object([:])
             ]),
             observationIDs: observations.map(\.id),
             unknowns: status == .incomplete
-                ? [EvidenceMissing(sourceID: nil, reason: .incompleteCapture, explanation: "Capture ended before completion.")]
+                ? [EvidenceMissing(
+                    sourceID: nil,
+                    reason: .incompleteCapture,
+                    explanation: "Capture ended before completion."
+                )]
                 : incidentUnknowns
         )
         let journal = InMemoryEvidenceJournal(observations: observations, incidents: [incident])
-        if status == .complete, let observation = observations.first, observation.sourceID == .storage || observation.sourceID == .network {
+        if status == .complete, let observation = observations.first,
+           observation.sourceID == .storage || observation.sourceID == .network {
             let sets = try CorrelationEngine().correlate(incident: incident, observations: observations)
             try await journal.persistEvidenceSets(incidentID: incidentID, sets: sets)
             let inferences = try sets.map { set in
@@ -492,5 +637,6 @@ private extension EvidenceExportTests {
             )
         }
         return journal
+        // Why: cohesive reviewed boundary.
     }
-}
+} // swiftlint:disable:this file_length

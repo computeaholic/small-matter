@@ -28,14 +28,15 @@ enum Horizon2EvidenceConfiguration {
     static let combinedQueuePayloadMaximumBytes = 8 * 1024 * 1024
     // Measurement builds may override this only to select the production value
     // from repeated evidence; ordinary Release uses this compiled value.
-    static let collectorQueueResidenceMaximumMilliseconds = 725
+    static let collectorQueueResidenceLimitMilliseconds = 725
     static let maximumBatchCount = 7
     static let maximumBatchPayloadBytes = 256 * 1024
     static let batchFixedOverheadBytes = 8 * 1024
     static let temporalEligibilitySeconds = 15
     static let transactionalHeadroomBytes = 1 * 1024 * 1024
 
-    static func batchFits(count: Int, canonicalPayloadBytes: Int, headroomBytes: Int = transactionalHeadroomBytes) -> Bool {
+    static func batchFits(count: Int, canonicalPayloadBytes: Int,
+                          headroomBytes: Int = transactionalHeadroomBytes) -> Bool {
         count <= maximumBatchCount
             && canonicalPayloadBytes <= maximumBatchPayloadBytes
             && canonicalPayloadBytes + count * batchFixedOverheadBytes <= headroomBytes

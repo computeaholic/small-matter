@@ -16,7 +16,8 @@ struct IncidentInferenceService: Sendable {
         guard let incident = await journal.incident(id: incidentID) else {
             throw EvidenceJournalError.invalidIncident
         }
-        let currentSets = await journal.evidenceSets(incidentID: incidentID).filter(InferenceVersionPolicy.isCurrentEvidenceSet)
+        let currentSets = await journal.evidenceSets(incidentID: incidentID)
+            .filter(InferenceVersionPolicy.isCurrentEvidenceSet)
         var outputs: [Inference] = []
         var allEntries: [NextTestCatalogEntry] = []
         for evidenceSet in currentSets {
@@ -32,7 +33,11 @@ struct IncidentInferenceService: Sendable {
                 }
                 return found
             }
-            let inference = try engine.evaluate(incident: incident, evidenceSet: evidenceSet, observations: observations)
+            let inference = try engine.evaluate(
+                incident: incident,
+                evidenceSet: evidenceSet,
+                observations: observations
+            )
             outputs.append(inference)
             allEntries.append(contentsOf: inference.nextTests.compactMap { engine.catalog.entry(for: $0) })
         }

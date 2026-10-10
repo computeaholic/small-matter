@@ -205,7 +205,6 @@ extension StorageRawIdentity {
     }
 
     func stateIdentifier(for entityClass: StorageEntityClass) -> String? {
-        // swiftlint:disable trailing_comma
         let candidates: [(String, String?)]
         switch entityClass {
         case .disk:
@@ -215,7 +214,7 @@ extension StorageRawIdentity {
                 ("serial", serialNumber),
                 ("bsd", bsdName),
                 ("path", filesystemPath),
-                ("volume", volumeName),
+                ("volume", volumeName)
             ]
         case .volume:
             // NSWorkspace mount notifications expose the mounted path and do
@@ -226,10 +225,9 @@ extension StorageRawIdentity {
                 ("media", mediaUUID),
                 ("hardware", hardwareUUID),
                 ("serial", serialNumber),
-                ("bsd", bsdName),
+                ("bsd", bsdName)
             ]
         }
-        // swiftlint:enable trailing_comma
 
         for (prefix, value) in candidates {
             if let value, !value.isEmpty {

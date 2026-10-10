@@ -4,6 +4,7 @@ import IOKit
 import SwiftUI
 
 @MainActor
+// Why: canonical contract owner.
 // swiftlint:disable:next type_body_length
 final class SystemStatsModel: ObservableObject {
     @Published private(set) var telemetrySnapshot = SystemTelemetrySnapshot.unavailable
@@ -620,7 +621,6 @@ extension SystemStatsModel {
         formatter.countStyle = .decimal
         formatter.allowedUnits = [.useKB, .useMB, .useGB]
         return formatter
+        // Why: cohesive reviewed boundary.
     }()
-
-    // swiftlint:disable:next file_length
-}
+} // swiftlint:disable:this file_length

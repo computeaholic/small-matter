@@ -1,9 +1,9 @@
-// swiftlint:disable line_length trailing_comma identifier_name optional_data_string_conversion
-// swiftlint:disable file_length
 @testable import Tunix
 import XCTest
 
-final class Horizon2NativeAdaptersTests: XCTestCase { // swiftlint:disable:this type_body_length
+// Why: canonical contract owner.
+// swiftlint:disable:next type_body_length
+final class Horizon2NativeAdaptersTests: XCTestCase {
     private let fixedDate = Date(timeIntervalSince1970: 1_700_000_000)
 
     func testStorageNormalizationKeepsDiskAndVolumeSemanticsDistinctAndRedactsIdentity() throws {
@@ -33,7 +33,7 @@ final class Horizon2NativeAdaptersTests: XCTestCase { // swiftlint:disable:this 
         XCTAssertEqual(disk.subject.quality, .qualified)
         XCTAssertNotNil(disk.subject.identityDigest)
         let encoded = try ObservationFixtureFactory.observation(from: disk).deterministicData()
-        let text = String(decoding: encoded, as: UTF8.self)
+        let text = String(bytes: encoded, encoding: .utf8) ?? ""
         XCTAssertFalse(text.contains("Private Volume"))
         XCTAssertFalse(text.contains("/Volumes/Private Volume"))
         XCTAssertFalse(text.contains("serial-secret"))
@@ -43,13 +43,36 @@ final class Horizon2NativeAdaptersTests: XCTestCase { // swiftlint:disable:this 
     }
 
     func testStorageDuplicateGateSuppressesExactDeliveryButPreservesBurst() {
-        let identity = StorageRawIdentity(volumeName: "Disk", filesystemPath: "/Volumes/Disk", serialNumber: nil, hardwareUUID: nil, mediaUUID: "media", bsdName: "disk2", isWholeDisk: true)
+        let identity = StorageRawIdentity(
+            volumeName: "Disk",
+            filesystemPath: "/Volumes/Disk",
+            serialNumber: nil,
+            hardwareUUID: nil,
+            mediaUUID: "media",
+            bsdName: "disk2",
+            isWholeDisk: true
+        )
         let occurrence = EvidenceSourceOccurrence(wallTime: fixedDate, continuousNanoseconds: 1, quality: .exact)
         var gate = StorageDuplicateGate()
-        let first = StorageRawEvent(kind: .diskAppeared, identity: identity, occurrence: occurrence, callbackToken: "callback-1")
+        let first = StorageRawEvent(
+            kind: .diskAppeared,
+            identity: identity,
+            occurrence: occurrence,
+            callbackToken: "callback-1"
+        )
         let exactDuplicate = first
-        let legitimateBurst = StorageRawEvent(kind: .diskAppeared, identity: identity, occurrence: occurrence, callbackToken: "callback-2")
-        let mount = StorageRawEvent(kind: .volumeMounted, identity: identity, occurrence: occurrence, callbackToken: "callback-1")
+        let legitimateBurst = StorageRawEvent(
+            kind: .diskAppeared,
+            identity: identity,
+            occurrence: occurrence,
+            callbackToken: "callback-2"
+        )
+        let mount = StorageRawEvent(
+            kind: .volumeMounted,
+            identity: identity,
+            occurrence: occurrence,
+            callbackToken: "callback-1"
+        )
 
         XCTAssertFalse(gate.shouldSuppress(first))
         XCTAssertTrue(gate.shouldSuppress(exactDuplicate))
@@ -68,10 +91,21 @@ final class Horizon2NativeAdaptersTests: XCTestCase { // swiftlint:disable:this 
             isWholeDisk: false
         )
         let occurrence = EvidenceSourceOccurrence(wallTime: fixedDate, continuousNanoseconds: 1, quality: .exact)
-        let baseline = StorageRawEvent(kind: .volumeMounted, identity: identity, occurrence: occurrence, callbackToken: "snapshot", semanticRole: .baseline)
+        let baseline = StorageRawEvent(
+            kind: .volumeMounted,
+            identity: identity,
+            occurrence: occurrence,
+            callbackToken: "snapshot",
+            semanticRole: .baseline
+        )
         var machine = StorageStateMachine(baseline: [baseline])
 
-        let lateCallback = StorageRawEvent(kind: .volumeMounted, identity: identity, occurrence: occurrence, callbackToken: nil)
+        let lateCallback = StorageRawEvent(
+            kind: .volumeMounted,
+            identity: identity,
+            occurrence: occurrence,
+            callbackToken: nil
+        )
 
         XCTAssertEqual(machine.classify(lateCallback), .baseline)
         XCTAssertEqual(machine.classify(lateCallback), .baseline)
@@ -85,8 +119,8 @@ final class Horizon2NativeAdaptersTests: XCTestCase { // swiftlint:disable:this 
                 "DiskUUID": "disk-media",
                 "VolumeUUID": "mounted-volume",
                 "VolumeName": "Backup",
-                "MountPoint": "/Volumes/Backup",
-            ]],
+                "MountPoint": "/Volumes/Backup"
+            ]]
         ]
         let data = try PropertyListSerialization.data(fromPropertyList: plist, format: .binary, options: 0)
         let events = StorageEvidenceAdapter.parseInventoryFixture(data: data, occurrence: occurrence).events
@@ -98,6 +132,8 @@ final class Horizon2NativeAdaptersTests: XCTestCase { // swiftlint:disable:this 
         XCTAssertEqual(events[1].identity.stateIdentifier(for: .volume), "path:/Volumes/Backup")
     }
 
+    // Why: ordered canonical flow.
+    // swiftlint:disable:next function_body_length
     func testStartupCallbacksForMountedBaselineAreConfirmationsAcrossBothNamespaces() throws {
         let occurrence = EvidenceSourceOccurrence(wallTime: fixedDate, continuousNanoseconds: 1, quality: .exact)
         let plist: [String: Any] = [
@@ -106,8 +142,8 @@ final class Horizon2NativeAdaptersTests: XCTestCase { // swiftlint:disable:this 
                 "DiskUUID": "disk-media",
                 "VolumeUUID": "mounted-volume",
                 "VolumeName": "Backup",
-                "MountPoint": "/Volumes/Backup",
-            ]],
+                "MountPoint": "/Volumes/Backup"
+            ]]
         ]
         let data = try PropertyListSerialization.data(fromPropertyList: plist, format: .binary, options: 0)
         let snapshot = StorageEvidenceAdapter.parseInventoryFixture(data: data, occurrence: occurrence)
@@ -120,13 +156,29 @@ final class Horizon2NativeAdaptersTests: XCTestCase { // swiftlint:disable:this 
         adapter.start()
         adapter.receiveForTesting(StorageRawEvent(
             kind: .diskAppeared,
-            identity: StorageRawIdentity(volumeName: nil, filesystemPath: nil, serialNumber: nil, hardwareUUID: nil, mediaUUID: "mounted-volume", bsdName: "disk5s1", isWholeDisk: false),
+            identity: StorageRawIdentity(
+                volumeName: nil,
+                filesystemPath: nil,
+                serialNumber: nil,
+                hardwareUUID: nil,
+                mediaUUID: "mounted-volume",
+                bsdName: "disk5s1",
+                isWholeDisk: false
+            ),
             occurrence: occurrence,
             callbackToken: "disk-startup"
         ))
         adapter.receiveForTesting(StorageRawEvent(
             kind: .volumeMounted,
-            identity: StorageRawIdentity(volumeName: "Backup", filesystemPath: "/Volumes/Backup", serialNumber: nil, hardwareUUID: nil, mediaUUID: nil, bsdName: nil, isWholeDisk: false),
+            identity: StorageRawIdentity(
+                volumeName: "Backup",
+                filesystemPath: "/Volumes/Backup",
+                serialNumber: nil,
+                hardwareUUID: nil,
+                mediaUUID: nil,
+                bsdName: nil,
+                isWholeDisk: false
+            ),
             occurrence: occurrence,
             callbackToken: "volume-startup"
         ))
@@ -140,43 +192,172 @@ final class Horizon2NativeAdaptersTests: XCTestCase { // swiftlint:disable:this 
         XCTAssertFalse(startupCallbacks.contains { $0.semanticRole == .transition })
     }
 
+    // Why: ordered canonical flow.
+    // swiftlint:disable:next function_body_length
     func testDiskAndVolumeIdentityNormalizationMatchesNativeCallbackFields() {
         let occurrence = EvidenceSourceOccurrence(wallTime: fixedDate, continuousNanoseconds: 1, quality: .exact)
-        let diskutilIdentity = StorageRawIdentity(volumeName: "Backup", filesystemPath: "/Volumes/Backup", serialNumber: nil, hardwareUUID: nil, mediaUUID: "mounted-volume", bsdName: "disk5s1", isWholeDisk: false)
-        let diskArbitrationIdentity = StorageRawIdentity(volumeName: nil, filesystemPath: nil, serialNumber: nil, hardwareUUID: nil, mediaUUID: "mounted-volume", bsdName: "disk5s1", isWholeDisk: false)
-        let workspaceIdentity = StorageRawIdentity(volumeName: "Backup", filesystemPath: "/Volumes/Backup", serialNumber: nil, hardwareUUID: nil, mediaUUID: nil, bsdName: nil, isWholeDisk: false)
+        let diskutilIdentity = StorageRawIdentity(
+            volumeName: "Backup",
+            filesystemPath: "/Volumes/Backup",
+            serialNumber: nil,
+            hardwareUUID: nil,
+            mediaUUID: "mounted-volume",
+            bsdName: "disk5s1",
+            isWholeDisk: false
+        )
+        let diskArbitrationIdentity = StorageRawIdentity(
+            volumeName: nil,
+            filesystemPath: nil,
+            serialNumber: nil,
+            hardwareUUID: nil,
+            mediaUUID: "mounted-volume",
+            bsdName: "disk5s1",
+            isWholeDisk: false
+        )
+        let workspaceIdentity = StorageRawIdentity(
+            volumeName: "Backup",
+            filesystemPath: "/Volumes/Backup",
+            serialNumber: nil,
+            hardwareUUID: nil,
+            mediaUUID: nil,
+            bsdName: nil,
+            isWholeDisk: false
+        )
 
-        XCTAssertEqual(diskutilIdentity.stateIdentifier(for: .disk), diskArbitrationIdentity.stateIdentifier(for: .disk))
+        XCTAssertEqual(
+            diskutilIdentity.stateIdentifier(for: .disk),
+            diskArbitrationIdentity.stateIdentifier(for: .disk)
+        )
         XCTAssertEqual(diskutilIdentity.stateIdentifier(for: .volume), workspaceIdentity.stateIdentifier(for: .volume))
 
         var machine = StorageStateMachine(baseline: [
-            StorageRawEvent(kind: .diskAppeared, identity: diskutilIdentity, occurrence: occurrence, callbackToken: "diskutil", semanticRole: .baseline),
-            StorageRawEvent(kind: .volumeMounted, identity: diskutilIdentity, occurrence: occurrence, callbackToken: "diskutil", semanticRole: .baseline),
+            StorageRawEvent(
+                kind: .diskAppeared,
+                identity: diskutilIdentity,
+                occurrence: occurrence,
+                callbackToken: "diskutil",
+                semanticRole: .baseline
+            ),
+            StorageRawEvent(
+                kind: .volumeMounted,
+                identity: diskutilIdentity,
+                occurrence: occurrence,
+                callbackToken: "diskutil",
+                semanticRole: .baseline
+            )
         ])
-        XCTAssertEqual(machine.classify(StorageRawEvent(kind: .diskAppeared, identity: diskArbitrationIdentity, occurrence: occurrence, callbackToken: "da")), .baseline)
-        XCTAssertEqual(machine.classify(StorageRawEvent(kind: .volumeMounted, identity: workspaceIdentity, occurrence: occurrence, callbackToken: "workspace")), .baseline)
+        XCTAssertEqual(
+            machine.classify(StorageRawEvent(
+                kind: .diskAppeared,
+                identity: diskArbitrationIdentity,
+                occurrence: occurrence,
+                callbackToken: "da"
+            )),
+            .baseline
+        )
+        XCTAssertEqual(
+            machine.classify(StorageRawEvent(
+                kind: .volumeMounted,
+                identity: workspaceIdentity,
+                occurrence: occurrence,
+                callbackToken: "workspace"
+            )),
+            .baseline
+        )
     }
 
+    // Why: ordered canonical flow.
+    // swiftlint:disable:next function_body_length
     func testRealPostBaselineStorageTransitionsRemainTransitions() {
         let occurrence = EvidenceSourceOccurrence(wallTime: fixedDate, continuousNanoseconds: 1, quality: .exact)
-        let identity = StorageRawIdentity(volumeName: "Backup", filesystemPath: "/Volumes/Backup", serialNumber: nil, hardwareUUID: nil, mediaUUID: "mounted-volume", bsdName: "disk5s1", isWholeDisk: false)
+        let identity = StorageRawIdentity(
+            volumeName: "Backup",
+            filesystemPath: "/Volumes/Backup",
+            serialNumber: nil,
+            hardwareUUID: nil,
+            mediaUUID: "mounted-volume",
+            bsdName: "disk5s1",
+            isWholeDisk: false
+        )
         var machine = StorageStateMachine(baseline: [
-            StorageRawEvent(kind: .diskAppeared, identity: identity, occurrence: occurrence, callbackToken: "baseline", semanticRole: .baseline),
-            StorageRawEvent(kind: .volumeMounted, identity: identity, occurrence: occurrence, callbackToken: "baseline", semanticRole: .baseline),
+            StorageRawEvent(
+                kind: .diskAppeared,
+                identity: identity,
+                occurrence: occurrence,
+                callbackToken: "baseline",
+                semanticRole: .baseline
+            ),
+            StorageRawEvent(
+                kind: .volumeMounted,
+                identity: identity,
+                occurrence: occurrence,
+                callbackToken: "baseline",
+                semanticRole: .baseline
+            )
         ])
 
-        XCTAssertEqual(machine.classify(StorageRawEvent(kind: .diskDisappeared, identity: identity, occurrence: occurrence, callbackToken: "detach")), .transition)
-        XCTAssertEqual(machine.classify(StorageRawEvent(kind: .diskAppeared, identity: identity, occurrence: occurrence, callbackToken: "attach")), .transition)
-        XCTAssertEqual(machine.classify(StorageRawEvent(kind: .volumeUnmounted, identity: identity, occurrence: occurrence, callbackToken: "unmount")), .transition)
-        XCTAssertEqual(machine.classify(StorageRawEvent(kind: .volumeMounted, identity: identity, occurrence: occurrence, callbackToken: "mount")), .transition)
+        XCTAssertEqual(
+            machine.classify(StorageRawEvent(
+                kind: .diskDisappeared,
+                identity: identity,
+                occurrence: occurrence,
+                callbackToken: "detach"
+            )),
+            .transition
+        )
+        XCTAssertEqual(
+            machine.classify(StorageRawEvent(
+                kind: .diskAppeared,
+                identity: identity,
+                occurrence: occurrence,
+                callbackToken: "attach"
+            )),
+            .transition
+        )
+        XCTAssertEqual(
+            machine.classify(StorageRawEvent(
+                kind: .volumeUnmounted,
+                identity: identity,
+                occurrence: occurrence,
+                callbackToken: "unmount"
+            )),
+            .transition
+        )
+        XCTAssertEqual(
+            machine.classify(StorageRawEvent(
+                kind: .volumeMounted,
+                identity: identity,
+                occurrence: occurrence,
+                callbackToken: "mount"
+            )),
+            .transition
+        )
     }
 
     func testStorageStateMachineDistinguishesTransitionsAndRepeatedObservations() {
-        let identity = StorageRawIdentity(volumeName: "Backup", filesystemPath: "/Volumes/Backup", serialNumber: nil, hardwareUUID: nil, mediaUUID: "backup-media", bsdName: "disk4s1", isWholeDisk: false)
+        let identity = StorageRawIdentity(
+            volumeName: "Backup",
+            filesystemPath: "/Volumes/Backup",
+            serialNumber: nil,
+            hardwareUUID: nil,
+            mediaUUID: "backup-media",
+            bsdName: "disk4s1",
+            isWholeDisk: false
+        )
         let occurrence = EvidenceSourceOccurrence(wallTime: fixedDate, continuousNanoseconds: 1, quality: .exact)
         var machine = StorageStateMachine()
-        let mounted = StorageRawEvent(kind: .volumeMounted, identity: identity, occurrence: occurrence, callbackToken: nil)
-        let unmounted = StorageRawEvent(kind: .volumeUnmounted, identity: identity, occurrence: occurrence, callbackToken: nil)
+        let mounted = StorageRawEvent(
+            kind: .volumeMounted,
+            identity: identity,
+            occurrence: occurrence,
+            callbackToken: nil
+        )
+        let unmounted = StorageRawEvent(
+            kind: .volumeUnmounted,
+            identity: identity,
+            occurrence: occurrence,
+            callbackToken: nil
+        )
 
         XCTAssertEqual(machine.classify(mounted), .transition)
         XCTAssertEqual(machine.classify(mounted), .confirmation)
@@ -186,18 +367,47 @@ final class Horizon2NativeAdaptersTests: XCTestCase { // swiftlint:disable:this 
     }
 
     func testStorageStateMachineDoesNotMergeUnavailableIdentities() {
-        let identity = StorageRawIdentity(volumeName: nil, filesystemPath: nil, serialNumber: nil, hardwareUUID: nil, mediaUUID: nil, bsdName: nil, isWholeDisk: true)
+        let identity = StorageRawIdentity(
+            volumeName: nil,
+            filesystemPath: nil,
+            serialNumber: nil,
+            hardwareUUID: nil,
+            mediaUUID: nil,
+            bsdName: nil,
+            isWholeDisk: true
+        )
         let occurrence = EvidenceSourceOccurrence(wallTime: fixedDate, continuousNanoseconds: 1, quality: .exact)
         var machine = StorageStateMachine()
 
-        XCTAssertEqual(machine.classify(StorageRawEvent(kind: .diskAppeared, identity: identity, occurrence: occurrence, callbackToken: nil)), .uncertain)
+        XCTAssertEqual(
+            machine.classify(StorageRawEvent(
+                kind: .diskAppeared,
+                identity: identity,
+                occurrence: occurrence,
+                callbackToken: nil
+            )),
+            .uncertain
+        )
         XCTAssertTrue(machine.currentInventoryForTesting.isEmpty)
     }
 
     func testNativeStorageInitializationBuffersAmbiguousSnapshotCallbackAsUncertain() {
         let occurrence = EvidenceSourceOccurrence(wallTime: fixedDate, continuousNanoseconds: 10, quality: .exact)
-        let identity = StorageRawIdentity(volumeName: nil, filesystemPath: nil, serialNumber: nil, hardwareUUID: nil, mediaUUID: "media", bsdName: "disk7", isWholeDisk: true)
-        let callback = StorageRawEvent(kind: .diskAppeared, identity: identity, occurrence: occurrence, callbackToken: "during-snapshot")
+        let identity = StorageRawIdentity(
+            volumeName: nil,
+            filesystemPath: nil,
+            serialNumber: nil,
+            hardwareUUID: nil,
+            mediaUUID: "media",
+            bsdName: "disk7",
+            isWholeDisk: true
+        )
+        let callback = StorageRawEvent(
+            kind: .diskAppeared,
+            identity: identity,
+            occurrence: occurrence,
+            callbackToken: "during-snapshot"
+        )
         let box = StorageAdapterBox()
         let provider = CallbackStorageInventoryProvider(snapshot: .available([])) {
             box.adapter?.receiveForTesting(callback)
@@ -227,7 +437,15 @@ final class Horizon2NativeAdaptersTests: XCTestCase { // swiftlint:disable:this 
 
     func testNativeStorageInitializationBufferHasHardBoundAndPreservesOrder() {
         let occurrence = EvidenceSourceOccurrence(wallTime: fixedDate, continuousNanoseconds: 1, quality: .exact)
-        let identity = StorageRawIdentity(volumeName: nil, filesystemPath: nil, serialNumber: nil, hardwareUUID: nil, mediaUUID: "media", bsdName: "disk7", isWholeDisk: true)
+        let identity = StorageRawIdentity(
+            volumeName: nil,
+            filesystemPath: nil,
+            serialNumber: nil,
+            hardwareUUID: nil,
+            mediaUUID: "media",
+            bsdName: "disk7",
+            isWholeDisk: true
+        )
         var buffer = StorageInitializationBuffer(maximumEntries: 2)
         for index in 0 ..< 3 {
             buffer.append(StorageRawEvent(
@@ -253,28 +471,66 @@ final class Horizon2NativeAdaptersTests: XCTestCase { // swiftlint:disable:this 
     }
 
     func testPowerNormalizerEmitsOnlyMeaningfulTransitions() {
-        let ac = PowerRawState(externalPowerConnected: true, source: .ac, charging: false, currentCapacity: 80, maximumCapacity: 100)
-        let battery = PowerRawState(externalPowerConnected: false, source: .battery, charging: false, currentCapacity: 79, maximumCapacity: 100)
-        let charging = PowerRawState(externalPowerConnected: false, source: .battery, charging: true, currentCapacity: 79, maximumCapacity: 100)
+        let acPowerState = PowerRawState(
+            externalPowerConnected: true,
+            source: .acPower,
+            charging: false,
+            currentCapacity: 80,
+            maximumCapacity: 100
+        )
+        let battery = PowerRawState(
+            externalPowerConnected: false,
+            source: .battery,
+            charging: false,
+            currentCapacity: 79,
+            maximumCapacity: 100
+        )
+        let charging = PowerRawState(
+            externalPowerConnected: false,
+            source: .battery,
+            charging: true,
+            currentCapacity: 79,
+            maximumCapacity: 100
+        )
         let occurrence = EvidenceSourceOccurrence(wallTime: fixedDate, continuousNanoseconds: 2, quality: .exact)
 
-        XCTAssertNotNil(PowerTransitionNormalizer.normalize(PowerRawTransition(previous: ac, current: battery, occurrence: occurrence)))
-        XCTAssertNotNil(PowerTransitionNormalizer.normalize(PowerRawTransition(previous: battery, current: ac, occurrence: occurrence)))
-        XCTAssertNotNil(PowerTransitionNormalizer.normalize(PowerRawTransition(previous: battery, current: charging, occurrence: occurrence)))
-        XCTAssertNil(PowerTransitionNormalizer.normalize(PowerRawTransition(previous: ac, current: ac, occurrence: occurrence)))
+        XCTAssertNotNil(PowerTransitionNormalizer.normalize(PowerRawTransition(
+            previous: acPowerState,
+            current: battery,
+            occurrence: occurrence
+        )))
+        XCTAssertNotNil(PowerTransitionNormalizer.normalize(PowerRawTransition(
+            previous: battery,
+            current: acPowerState,
+            occurrence: occurrence
+        )))
+        XCTAssertNotNil(PowerTransitionNormalizer.normalize(PowerRawTransition(
+            previous: battery,
+            current: charging,
+            occurrence: occurrence
+        )))
+        XCTAssertNil(PowerTransitionNormalizer.normalize(PowerRawTransition(
+            previous: acPowerState,
+            current: acPowerState,
+            occurrence: occurrence
+        )))
     }
 
     func testNetworkNormalizerIsSupplementalAndCarriesNoPhysicalFailureOrSensitiveMetadata() throws {
         let occurrence = EvidenceSourceOccurrence(wallTime: fixedDate, continuousNanoseconds: 3, quality: .exact)
         let previous = NetworkRawPath(status: .satisfied, interfaces: [.wifi])
         let current = NetworkRawPath(status: .unsatisfied, interfaces: [])
-        let fact = try XCTUnwrap(NetworkPathNormalizer.normalize(NetworkRawTransition(previous: previous, current: current, occurrence: occurrence)))
+        let fact = try XCTUnwrap(NetworkPathNormalizer.normalize(NetworkRawTransition(
+            previous: previous,
+            current: current,
+            occurrence: occurrence
+        )))
 
         XCTAssertEqual(fact.sourceID, .network)
         XCTAssertEqual(fact.provenance.captureChannel, "NWPathMonitor")
         XCTAssertEqual(fact.attributes["supplemental"], .boolean(true))
         let observation = try ObservationFixtureFactory.observation(from: fact)
-        let text = try String(decoding: observation.deterministicData(), as: UTF8.self)
+        let text = try XCTUnwrap(String(bytes: observation.deterministicData(), encoding: .utf8))
         XCTAssertFalse(text.localizedCaseInsensitiveContains("physical failure"))
         XCTAssertFalse(text.localizedCaseInsensitiveContains("ssid"))
         XCTAssertFalse(text.localizedCaseInsensitiveContains("mac address"))
@@ -282,11 +538,22 @@ final class Horizon2NativeAdaptersTests: XCTestCase { // swiftlint:disable:this 
     }
 
     func testRuntimeCreatesInMemoryObservationsWithMonotonicSourceSequences() async {
-        let runtime = EvidenceRuntime(clock: FixedEvidenceClock(wallTime: fixedDate, continuousNanoseconds: 100, processUptimeNanoseconds: 100), adapterFactory: { _ in [] })
+        let runtime = EvidenceRuntime(
+            clock: FixedEvidenceClock(wallTime: fixedDate, continuousNanoseconds: 100, processUptimeNanoseconds: 100),
+            adapterFactory: { _ in [] }
+        )
         runtime.start()
         defer { runtime.stop() }
 
-        let identity = StorageRawIdentity(volumeName: nil, filesystemPath: nil, serialNumber: nil, hardwareUUID: nil, mediaUUID: "media", bsdName: nil, isWholeDisk: true)
+        let identity = StorageRawIdentity(
+            volumeName: nil,
+            filesystemPath: nil,
+            serialNumber: nil,
+            hardwareUUID: nil,
+            mediaUUID: "media",
+            bsdName: nil,
+            isWholeDisk: true
+        )
         let occurrence = EvidenceSourceOccurrence(wallTime: fixedDate, continuousNanoseconds: 100, quality: .exact)
         await withTaskGroup(of: Void.self) { group in
             for index in 0 ..< 24 {
@@ -307,24 +574,60 @@ final class Horizon2NativeAdaptersTests: XCTestCase { // swiftlint:disable:this 
         XCTAssertEqual(Set(observations.map(\.time.correlationEpochID)).count, 1)
     }
 
+    // Why: ordered canonical flow.
+    // swiftlint:disable:next function_body_length
     func testSleepWakeChangesEpochAndPrePostObservationsAreIncomparable() async throws {
-        let runtime = EvidenceRuntime(clock: FixedEvidenceClock(wallTime: fixedDate, continuousNanoseconds: 100, processUptimeNanoseconds: 100), adapterFactory: { _ in [] })
+        let runtime = EvidenceRuntime(
+            clock: FixedEvidenceClock(wallTime: fixedDate, continuousNanoseconds: 100, processUptimeNanoseconds: 100),
+            adapterFactory: { _ in [] }
+        )
         runtime.start()
         defer { runtime.stop() }
-        let identity = StorageRawIdentity(volumeName: nil, filesystemPath: nil, serialNumber: nil, hardwareUUID: nil, mediaUUID: "media", bsdName: nil, isWholeDisk: true)
+        let identity = StorageRawIdentity(
+            volumeName: nil,
+            filesystemPath: nil,
+            serialNumber: nil,
+            hardwareUUID: nil,
+            mediaUUID: "media",
+            bsdName: nil,
+            isWholeDisk: true
+        )
         let occurrence = EvidenceSourceOccurrence(wallTime: fixedDate, continuousNanoseconds: 100, quality: .exact)
-        let beforeValue = await runtime.ingest(.storage(StorageRawEvent(kind: .diskAppeared, identity: identity, occurrence: occurrence, callbackToken: "before")))
+        let beforeValue = await runtime.ingest(.storage(StorageRawEvent(
+            kind: .diskAppeared,
+            identity: identity,
+            occurrence: occurrence,
+            callbackToken: "before"
+        )))
         let before = try XCTUnwrap(beforeValue)
 
-        _ = await runtime.ingest(.lifecycle(SleepWakeRawEvent(kind: .willSleep, observedAt: FixedEvidenceClock(wallTime: fixedDate, continuousNanoseconds: 100, processUptimeNanoseconds: 100).reading())))
-        let afterSleepValue = await runtime.ingest(.storage(StorageRawEvent(kind: .diskDisappeared, identity: identity, occurrence: occurrence, callbackToken: "during")))
+        _ = await runtime.ingest(.lifecycle(SleepWakeRawEvent(
+            kind: .willSleep,
+            observedAt: FixedEvidenceClock(wallTime: fixedDate, continuousNanoseconds: 100,
+                                           processUptimeNanoseconds: 100).reading()
+        )))
+        let afterSleepValue = await runtime.ingest(.storage(StorageRawEvent(
+            kind: .diskDisappeared,
+            identity: identity,
+            occurrence: occurrence,
+            callbackToken: "during"
+        )))
         let afterSleep = try XCTUnwrap(afterSleepValue)
         XCTAssertNotEqual(before.time.correlationEpochID, afterSleep.time.correlationEpochID)
         XCTAssertEqual(before.time.compare(to: afterSleep.time).relation, .incomparable)
         XCTAssertEqual(before.time.compare(to: afterSleep.time).basis, .none)
 
-        _ = await runtime.ingest(.lifecycle(SleepWakeRawEvent(kind: .didWake, observedAt: FixedEvidenceClock(wallTime: fixedDate, continuousNanoseconds: 100, processUptimeNanoseconds: 100).reading())))
-        let afterWakeValue = await runtime.ingest(.storage(StorageRawEvent(kind: .diskAppeared, identity: identity, occurrence: occurrence, callbackToken: "after")))
+        _ = await runtime.ingest(.lifecycle(SleepWakeRawEvent(
+            kind: .didWake,
+            observedAt: FixedEvidenceClock(wallTime: fixedDate, continuousNanoseconds: 100,
+                                           processUptimeNanoseconds: 100).reading()
+        )))
+        let afterWakeValue = await runtime.ingest(.storage(StorageRawEvent(
+            kind: .diskAppeared,
+            identity: identity,
+            occurrence: occurrence,
+            callbackToken: "after"
+        )))
         let afterWake = try XCTUnwrap(afterWakeValue)
         XCTAssertNotEqual(afterSleep.time.correlationEpochID, afterWake.time.correlationEpochID)
         let sleepObservations = await runtime.journal.query(EvidenceJournalQuery(sourceID: .sleepWake))
@@ -344,7 +647,14 @@ final class Horizon2NativeAdaptersTests: XCTestCase { // swiftlint:disable:this 
         XCTAssertTrue(adapter?.started == true)
         runtime.stop()
         XCTAssertTrue(adapter?.stopped == true)
-        adapter?.emit(.health(EvidenceSourceHealthUpdate(sourceID: .storage, event: .started, reason: .notObserved, suppressedCount: 0, observedAt: .now, detail: "late")))
+        adapter?.emit(.health(EvidenceSourceHealthUpdate(
+            sourceID: .storage,
+            event: .started,
+            reason: .notObserved,
+            suppressedCount: 0,
+            observedAt: .now,
+            detail: "late"
+        )))
         await runtime.drainForTesting()
         XCTAssertFalse(runtime.isRunning)
     }
@@ -360,9 +670,22 @@ final class Horizon2NativeAdaptersTests: XCTestCase { // swiftlint:disable:this 
             return [failed, healthy]
         })
         runtime.start()
-        let identity = StorageRawIdentity(volumeName: nil, filesystemPath: nil, serialNumber: nil, hardwareUUID: nil, mediaUUID: "media", bsdName: nil, isWholeDisk: true)
+        let identity = StorageRawIdentity(
+            volumeName: nil,
+            filesystemPath: nil,
+            serialNumber: nil,
+            hardwareUUID: nil,
+            mediaUUID: "media",
+            bsdName: nil,
+            isWholeDisk: true
+        )
         let occurrence = EvidenceSourceOccurrence(wallTime: fixedDate, continuousNanoseconds: 4, quality: .exact)
-        box.adapter?.emit(.raw(.storage(StorageRawEvent(kind: .diskAppeared, identity: identity, occurrence: occurrence, callbackToken: "healthy"))))
+        box.adapter?.emit(.raw(.storage(StorageRawEvent(
+            kind: .diskAppeared,
+            identity: identity,
+            occurrence: occurrence,
+            callbackToken: "healthy"
+        ))))
         await runtime.drainForTesting()
         let storageObservations = await runtime.journal.query(EvidenceJournalQuery(sourceID: .storage))
         XCTAssertEqual(storageObservations.count, 1)
@@ -375,7 +698,7 @@ final class Horizon2NativeAdaptersTests: XCTestCase { // swiftlint:disable:this 
             StorageEvidenceAdapter(emit: { emissions.append($0) }),
             PowerEvidenceAdapter(emit: { emissions.append($0) }),
             NetworkEvidenceAdapter(emit: { emissions.append($0) }),
-            SleepWakeBoundaryAdapter(emit: { emissions.append($0) }),
+            SleepWakeBoundaryAdapter(emit: { emissions.append($0) })
         ]
         adapters.forEach { $0.start() }
         adapters.forEach { $0.stop() }
@@ -408,10 +731,28 @@ final class Horizon2NativeAdaptersTests: XCTestCase { // swiftlint:disable:this 
         runtime.start()
         defer { runtime.stop() }
 
-        let identity = StorageRawIdentity(volumeName: nil, filesystemPath: nil, serialNumber: nil, hardwareUUID: nil, mediaUUID: "media", bsdName: nil, isWholeDisk: true)
+        let identity = StorageRawIdentity(
+            volumeName: nil,
+            filesystemPath: nil,
+            serialNumber: nil,
+            hardwareUUID: nil,
+            mediaUUID: "media",
+            bsdName: nil,
+            isWholeDisk: true
+        )
         let occurrence = EvidenceSourceOccurrence(wallTime: fixedDate, continuousNanoseconds: 10, quality: .exact)
-        callbacks.callback(at: 0)?(.raw(.storage(StorageRawEvent(kind: .diskAppeared, identity: identity, occurrence: occurrence, callbackToken: "stale"))))
-        callbacks.callback(at: 1)?(.raw(.storage(StorageRawEvent(kind: .diskAppeared, identity: identity, occurrence: occurrence, callbackToken: "current"))))
+        callbacks.callback(at: 0)?(.raw(.storage(StorageRawEvent(
+            kind: .diskAppeared,
+            identity: identity,
+            occurrence: occurrence,
+            callbackToken: "stale"
+        ))))
+        callbacks.callback(at: 1)?(.raw(.storage(StorageRawEvent(
+            kind: .diskAppeared,
+            identity: identity,
+            occurrence: occurrence,
+            callbackToken: "current"
+        ))))
         await runtime.drainForTesting()
 
         let observations = await runtime.journal.query(EvidenceJournalQuery(sourceID: .storage))
@@ -428,7 +769,15 @@ final class Horizon2NativeAdaptersTests: XCTestCase { // swiftlint:disable:this 
         )
         runtime.start()
         defer { runtime.stop() }
-        let identity = StorageRawIdentity(volumeName: nil, filesystemPath: nil, serialNumber: nil, hardwareUUID: nil, mediaUUID: "media", bsdName: nil, isWholeDisk: true)
+        let identity = StorageRawIdentity(
+            volumeName: nil,
+            filesystemPath: nil,
+            serialNumber: nil,
+            hardwareUUID: nil,
+            mediaUUID: "media",
+            bsdName: nil,
+            isWholeDisk: true
+        )
         let occurrence = EvidenceSourceOccurrence(wallTime: fixedDate, continuousNanoseconds: 10, quality: .exact)
         for index in 0 ..< 512 {
             runtime.receive(.raw(.storage(StorageRawEvent(
@@ -530,7 +879,8 @@ final class Horizon2NativeAdaptersTests: XCTestCase { // swiftlint:disable:this 
         let runtime = EvidenceRuntime(adapterFactory: { _ in [] })
         runtime.start()
         defer { runtime.stop() }
-        let reading = FixedEvidenceClock(wallTime: fixedDate, continuousNanoseconds: 10, processUptimeNanoseconds: 10).reading()
+        let reading = FixedEvidenceClock(wallTime: fixedDate, continuousNanoseconds: 10, processUptimeNanoseconds: 10)
+            .reading()
         for _ in 0 ..< 100 {
             _ = await runtime.ingest(.lifecycle(SleepWakeRawEvent(kind: .willSleep, observedAt: reading)))
             _ = await runtime.ingest(.lifecycle(SleepWakeRawEvent(kind: .didWake, observedAt: reading)))
@@ -542,14 +892,26 @@ final class Horizon2NativeAdaptersTests: XCTestCase { // swiftlint:disable:this 
     func testStorageWakeRequiresFreshBaselineBeforeEmittingTransition() {
         let emissions = EmissionBox()
         let clock = FixedEvidenceClock(wallTime: fixedDate, continuousNanoseconds: 10, processUptimeNanoseconds: 10)
-        let adapter = StorageEvidenceAdapter(clock: clock, baselineSnapshotProvider: { _ in .available([]) }, emit: { emissions.append($0) })
+        let adapter = StorageEvidenceAdapter(
+            clock: clock,
+            baselineSnapshotProvider: { _ in .available([]) },
+            emit: { emissions.append($0) }
+        )
         adapter.start()
         adapter.reconcileAfterWake()
         XCTAssertTrue(adapter.isReconciledForTesting)
 
         let raw = StorageRawEvent(
             kind: .diskAppeared,
-            identity: StorageRawIdentity(volumeName: "Disk", filesystemPath: "/Volumes/Disk", serialNumber: nil, hardwareUUID: nil, mediaUUID: "media", bsdName: "disk2", isWholeDisk: true),
+            identity: StorageRawIdentity(
+                volumeName: "Disk",
+                filesystemPath: "/Volumes/Disk",
+                serialNumber: nil,
+                hardwareUUID: nil,
+                mediaUUID: "media",
+                bsdName: "disk2",
+                isWholeDisk: true
+            ),
             occurrence: EvidenceSourceOccurrence(wallTime: fixedDate, continuousNanoseconds: 10, quality: .exact),
             callbackToken: nil
         )
@@ -573,15 +935,32 @@ final class Horizon2NativeAdaptersTests: XCTestCase { // swiftlint:disable:this 
 
     func testStorageStartupEnumerationEstablishesBaselineBeforeRealTransitions() {
         let emissions = EmissionBox()
-        let adapter = StorageEvidenceAdapter(clock: FixedEvidenceClock(wallTime: fixedDate, continuousNanoseconds: 10, processUptimeNanoseconds: 10), baselineSnapshotProvider: { _ in .available([]) }, emit: { emissions.append($0) })
+        let adapter = StorageEvidenceAdapter(
+            clock: FixedEvidenceClock(wallTime: fixedDate, continuousNanoseconds: 10, processUptimeNanoseconds: 10),
+            baselineSnapshotProvider: { _ in .available([]) },
+            emit: { emissions.append($0) }
+        )
         adapter.start()
         while !adapter.isStartupBaselineEstablishedForTesting {
             RunLoop.current.run(until: Date().addingTimeInterval(0.01))
         }
 
-        let identity = StorageRawIdentity(volumeName: "Disk", filesystemPath: "/Volumes/Disk", serialNumber: nil, hardwareUUID: nil, mediaUUID: "media", bsdName: "disk2", isWholeDisk: true)
+        let identity = StorageRawIdentity(
+            volumeName: "Disk",
+            filesystemPath: "/Volumes/Disk",
+            serialNumber: nil,
+            hardwareUUID: nil,
+            mediaUUID: "media",
+            bsdName: "disk2",
+            isWholeDisk: true
+        )
         let occurrence = EvidenceSourceOccurrence(wallTime: fixedDate, continuousNanoseconds: 10, quality: .exact)
-        adapter.receiveForTesting(StorageRawEvent(kind: .diskAppeared, identity: identity, occurrence: occurrence, callbackToken: nil))
+        adapter.receiveForTesting(StorageRawEvent(
+            kind: .diskAppeared,
+            identity: identity,
+            occurrence: occurrence,
+            callbackToken: nil
+        ))
         adapter.stop()
 
         let rawCount = emissions.emissions.reduce(into: 0) { count, emission in
@@ -599,7 +978,10 @@ final class Horizon2NativeAdaptersTests: XCTestCase { // swiftlint:disable:this 
 
     func testStorageInventoryParserRejectsMalformedInputWithoutCreatingBaseline() {
         let occurrence = EvidenceSourceOccurrence(wallTime: fixedDate, continuousNanoseconds: 10, quality: .exact)
-        let snapshot = StorageEvidenceAdapter.parseInventoryFixture(data: Data("not-a-plist".utf8), occurrence: occurrence)
+        let snapshot = StorageEvidenceAdapter.parseInventoryFixture(
+            data: Data("not-a-plist".utf8),
+            occurrence: occurrence
+        )
 
         XCTAssertEqual(snapshot.failure, .malformedPropertyList)
         XCTAssertTrue(snapshot.events.isEmpty)
@@ -617,11 +999,11 @@ final class Horizon2NativeAdaptersTests: XCTestCase { // swiftlint:disable:this 
                             "DeviceIdentifier": "disk4s1",
                             "VolumeName": "Backup",
                             "VolumeUUID": "mounted-volume",
-                            "MountPoint": "/Volumes/Backup",
-                        ],
-                    ],
-                ],
-            ],
+                            "MountPoint": "/Volumes/Backup"
+                        ]
+                    ]
+                ]
+            ]
         ]
         let data = try PropertyListSerialization.data(fromPropertyList: plist, format: .binary, options: 0)
         let snapshot = StorageEvidenceAdapter.parseInventoryFixture(data: data, occurrence: occurrence)
@@ -641,7 +1023,15 @@ final class Horizon2NativeAdaptersTests: XCTestCase { // swiftlint:disable:this 
             emit: { emissions.append($0) }
         )
         adapter.start()
-        let identity = StorageRawIdentity(volumeName: "Disk", filesystemPath: "/Volumes/Disk", serialNumber: nil, hardwareUUID: nil, mediaUUID: "media", bsdName: "disk2", isWholeDisk: true)
+        let identity = StorageRawIdentity(
+            volumeName: "Disk",
+            filesystemPath: "/Volumes/Disk",
+            serialNumber: nil,
+            hardwareUUID: nil,
+            mediaUUID: "media",
+            bsdName: "disk2",
+            isWholeDisk: true
+        )
         adapter.receiveForTesting(StorageRawEvent(
             kind: .diskAppeared,
             identity: identity,
@@ -662,15 +1052,43 @@ final class Horizon2NativeAdaptersTests: XCTestCase { // swiftlint:disable:this 
     }
 
     func testStorageDuplicateGateIsBoundedAndTokenReuseAfterRetirementIsNotSuppressed() {
-        let identity = StorageRawIdentity(volumeName: "Disk", filesystemPath: "/Volumes/Disk", serialNumber: nil, hardwareUUID: nil, mediaUUID: "media", bsdName: "disk2", isWholeDisk: true)
+        let identity = StorageRawIdentity(
+            volumeName: "Disk",
+            filesystemPath: "/Volumes/Disk",
+            serialNumber: nil,
+            hardwareUUID: nil,
+            mediaUUID: "media",
+            bsdName: "disk2",
+            isWholeDisk: true
+        )
         let occurrence = EvidenceSourceOccurrence(wallTime: fixedDate, continuousNanoseconds: 10, quality: .exact)
         var gate = StorageDuplicateGate(maximumEntries: 2)
         for token in ["one", "two"] {
-            XCTAssertFalse(gate.shouldSuppress(StorageRawEvent(kind: .diskAppeared, identity: identity, occurrence: occurrence, callbackToken: token)))
+            XCTAssertFalse(gate.shouldSuppress(StorageRawEvent(
+                kind: .diskAppeared,
+                identity: identity,
+                occurrence: occurrence,
+                callbackToken: token
+            )))
         }
-        XCTAssertTrue(gate.shouldSuppress(StorageRawEvent(kind: .diskAppeared, identity: identity, occurrence: occurrence, callbackToken: "two")))
-        XCTAssertFalse(gate.shouldSuppress(StorageRawEvent(kind: .diskAppeared, identity: identity, occurrence: occurrence, callbackToken: "three")))
-        XCTAssertFalse(gate.shouldSuppress(StorageRawEvent(kind: .diskAppeared, identity: identity, occurrence: occurrence, callbackToken: "one")))
+        XCTAssertTrue(gate.shouldSuppress(StorageRawEvent(
+            kind: .diskAppeared,
+            identity: identity,
+            occurrence: occurrence,
+            callbackToken: "two"
+        )))
+        XCTAssertFalse(gate.shouldSuppress(StorageRawEvent(
+            kind: .diskAppeared,
+            identity: identity,
+            occurrence: occurrence,
+            callbackToken: "three"
+        )))
+        XCTAssertFalse(gate.shouldSuppress(StorageRawEvent(
+            kind: .diskAppeared,
+            identity: identity,
+            occurrence: occurrence,
+            callbackToken: "one"
+        )))
         XCTAssertLessThanOrEqual(gate.countForTesting, 2)
     }
 
@@ -689,7 +1107,10 @@ final class Horizon2NativeAdaptersTests: XCTestCase { // swiftlint:disable:this 
     }
 
     func testConcurrentEnqueueAroundWorkerEmptyBoundaryDoesNotLoseWake() async {
-        let runtime = EvidenceRuntime(clock: FixedEvidenceClock(wallTime: fixedDate, continuousNanoseconds: 10, processUptimeNanoseconds: 10), adapterFactory: { _ in [] })
+        let runtime = EvidenceRuntime(
+            clock: FixedEvidenceClock(wallTime: fixedDate, continuousNanoseconds: 10, processUptimeNanoseconds: 10),
+            adapterFactory: { _ in [] }
+        )
         runtime.start()
         defer { runtime.stop() }
 
@@ -706,7 +1127,10 @@ final class Horizon2NativeAdaptersTests: XCTestCase { // swiftlint:disable:this 
     }
 
     func testSparseEventsPersistWithoutIndefiniteCoalescingDelay() async {
-        let runtime = EvidenceRuntime(clock: FixedEvidenceClock(wallTime: fixedDate, continuousNanoseconds: 10, processUptimeNanoseconds: 10), adapterFactory: { _ in [] })
+        let runtime = EvidenceRuntime(
+            clock: FixedEvidenceClock(wallTime: fixedDate, continuousNanoseconds: 10, processUptimeNanoseconds: 10),
+            adapterFactory: { _ in [] }
+        )
         runtime.start()
         defer { runtime.stop() }
 
@@ -743,7 +1167,11 @@ final class Horizon2NativeAdaptersTests: XCTestCase { // swiftlint:disable:this 
             runtime.receive(.raw(.storage(StorageRawEvent(
                 kind: .diskAppeared,
                 identity: identity,
-                occurrence: EvidenceSourceOccurrence(wallTime: fixedDate, continuousNanoseconds: UInt64(index), quality: .exact),
+                occurrence: EvidenceSourceOccurrence(
+                    wallTime: fixedDate,
+                    continuousNanoseconds: UInt64(index),
+                    quality: .exact
+                ),
                 callbackToken: "payload-\(index)"
             ))))
         }
@@ -771,7 +1199,10 @@ final class Horizon2NativeAdaptersTests: XCTestCase { // swiftlint:disable:this 
     }
 
     func testMixedLifecycleBoundaryBatchPreservesPreAndPostWakeEpochs() async {
-        let runtime = EvidenceRuntime(clock: FixedEvidenceClock(wallTime: fixedDate, continuousNanoseconds: 10, processUptimeNanoseconds: 10), adapterFactory: { _ in [] })
+        let runtime = EvidenceRuntime(
+            clock: FixedEvidenceClock(wallTime: fixedDate, continuousNanoseconds: 10, processUptimeNanoseconds: 10),
+            adapterFactory: { _ in [] }
+        )
         runtime.start()
         defer { runtime.stop() }
 
@@ -784,7 +1215,8 @@ final class Horizon2NativeAdaptersTests: XCTestCase { // swiftlint:disable:this 
         let observations = await runtime.journal.query(EvidenceJournalQuery(sourceID: .storage))
         XCTAssertEqual(observations.count, 2)
         let ordered = observations.sorted {
-            ($0.time.sourceOccurrence?.continuousNanoseconds ?? 0) < ($1.time.sourceOccurrence?.continuousNanoseconds ?? 0)
+            ($0.time.sourceOccurrence?.continuousNanoseconds ?? 0) <
+                ($1.time.sourceOccurrence?.continuousNanoseconds ?? 0)
         }
         XCTAssertNotEqual(ordered[0].time.correlationEpochID, ordered[1].time.correlationEpochID)
         XCTAssertEqual(ordered.map(\.time.localSequence), [1, 1])
@@ -793,8 +1225,20 @@ final class Horizon2NativeAdaptersTests: XCTestCase { // swiftlint:disable:this 
     private func storageEvent(token: String, continuousNanoseconds: UInt64 = 10) -> StorageRawEvent {
         StorageRawEvent(
             kind: .diskAppeared,
-            identity: StorageRawIdentity(volumeName: nil, filesystemPath: nil, serialNumber: nil, hardwareUUID: nil, mediaUUID: "media", bsdName: nil, isWholeDisk: true),
-            occurrence: EvidenceSourceOccurrence(wallTime: fixedDate, continuousNanoseconds: continuousNanoseconds, quality: .exact),
+            identity: StorageRawIdentity(
+                volumeName: nil,
+                filesystemPath: nil,
+                serialNumber: nil,
+                hardwareUUID: nil,
+                mediaUUID: "media",
+                bsdName: nil,
+                isWholeDisk: true
+            ),
+            occurrence: EvidenceSourceOccurrence(
+                wallTime: fixedDate,
+                continuousNanoseconds: continuousNanoseconds,
+                quality: .exact
+            ),
             callbackToken: token
         )
     }
@@ -864,7 +1308,14 @@ private final class ManualEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked S
     func start() {
         started = true
         if let startupHealth {
-            emitter?(.health(EvidenceSourceHealthUpdate(sourceID: sourceID, event: startupHealth, reason: .permissionOrAPIUnavailable, suppressedCount: 0, observedAt: .now, detail: "fake startup failure")))
+            emitter?(.health(EvidenceSourceHealthUpdate(
+                sourceID: sourceID,
+                event: startupHealth,
+                reason: .permissionOrAPIUnavailable,
+                suppressedCount: 0,
+                observedAt: .now,
+                detail: "fake startup failure"
+            )))
         }
     }
 
@@ -889,7 +1340,11 @@ private enum ObservationFixtureFactory {
             bootSessionID: "fixture-boot",
             localSequence: 1,
             sourceTimestampQuality: fact.provenance.sourceTimestampQuality,
-            orderingDomain: EvidenceOrderingDomain(sourceID: fact.sourceID, processRunID: UUID(), clockDomainID: "fixture"),
+            orderingDomain: EvidenceOrderingDomain(
+                sourceID: fact.sourceID,
+                processRunID: UUID(),
+                clockDomainID: "fixture"
+            ),
             sourceOccurrence: fact.sourceOccurrence
         )
         return Observation(
@@ -905,7 +1360,6 @@ private enum ObservationFixtureFactory {
             currentState: fact.currentState,
             attributes: fact.attributes
         )
+        // Why: cohesive reviewed boundary.
     }
-}
-
-// swiftlint:enable line_length trailing_comma identifier_name optional_data_string_conversion file_length
+} // swiftlint:disable:this file_length

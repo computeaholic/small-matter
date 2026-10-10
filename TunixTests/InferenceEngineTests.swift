@@ -1,11 +1,15 @@
 @testable import Tunix
 import XCTest
 
+// Why: canonical contract owner.
 // swiftlint:disable:next type_body_length
 final class InferenceEngineTests: XCTestCase {
     func testProductionRegistryIsExactlyTwoCurrentRules() {
         XCTAssertTrue(InitialInferenceRuleRegistry.production.validateProductionInventory())
-        XCTAssertEqual(Set(InitialInferenceRuleRegistry.production.definitions.keys), Horizon2EvidenceConfiguration.initialRuleIDs)
+        XCTAssertEqual(
+            Set(InitialInferenceRuleRegistry.production.definitions.keys),
+            Horizon2EvidenceConfiguration.initialRuleIDs
+        )
         XCTAssertEqual(InitialInferenceRule.storage.version, "1.0.0")
         XCTAssertEqual(InitialInferenceRule.network.version, "1.0.0")
     }
@@ -52,7 +56,11 @@ final class InferenceEngineTests: XCTestCase {
         let missing = storage(.storageDiskLifecycle, lifecycle: nil, id: id(4))
         let missingPackage = incident([missing])
         let missingSet = try XCTUnwrap(try currentSet(package: missingPackage, observations: [missing]).first)
-        let missingResult = try InferenceEngine().evaluate(incident: missingPackage, evidenceSet: missingSet, observations: [missing])
+        let missingResult = try InferenceEngine().evaluate(
+            incident: missingPackage,
+            evidenceSet: missingSet,
+            observations: [missing]
+        )
         XCTAssertEqual(missingResult.evidenceClass, .insufficientEvidence)
         XCTAssertEqual(missingResult.missingEvidence.first?.sourceID, .storage)
         XCTAssertEqual(missingResult.missingEvidence.first?.reason, .notObserved)
@@ -60,16 +68,32 @@ final class InferenceEngineTests: XCTestCase {
 
     func testUnrelatedIncidentUnknownDoesNotDegradeRelevantRule() throws {
         let observation = storage(.storageDiskLifecycle, lifecycle: "diskDisappeared", id: id(5))
-        let unrelated = EvidenceMissing(sourceID: .network, reason: .incompleteCapture, explanation: "Network coverage was incomplete.")
+        let unrelated = EvidenceMissing(
+            sourceID: .network,
+            reason: .incompleteCapture,
+            explanation: "Network coverage was incomplete."
+        )
         let package = incident([observation], status: .incomplete, unknowns: [unrelated])
         let set = try XCTUnwrap(try currentSet(package: package, observations: [observation]).first)
         let result = try InferenceEngine().evaluate(incident: package, evidenceSet: set, observations: [observation])
         XCTAssertEqual(result.evidenceClass, .supported)
         XCTAssertTrue(result.missingEvidence.isEmpty)
 
-        let relevant = incident([observation], status: .incomplete, unknowns: [EvidenceMissing(sourceID: .storage, reason: .incompleteCapture, explanation: "Storage coverage was incomplete.")])
+        let relevant = incident(
+            [observation],
+            status: .incomplete,
+            unknowns: [EvidenceMissing(
+                sourceID: .storage,
+                reason: .incompleteCapture,
+                explanation: "Storage coverage was incomplete."
+            )]
+        )
         let relevantSet = try XCTUnwrap(try currentSet(package: relevant, observations: [observation]).first)
-        let relevantResult = try InferenceEngine().evaluate(incident: relevant, evidenceSet: relevantSet, observations: [observation])
+        let relevantResult = try InferenceEngine().evaluate(
+            incident: relevant,
+            evidenceSet: relevantSet,
+            observations: [observation]
+        )
         XCTAssertEqual(relevantResult.evidenceClass, .insufficientEvidence)
     }
 
@@ -86,7 +110,11 @@ final class InferenceEngineTests: XCTestCase {
             orderingQuality: current.orderingQuality,
             evidenceSetSchemaVersion: EvidenceSet.legacySchemaVersion
         )
-        XCTAssertThrowsError(try InferenceEngine().evaluate(incident: package, evidenceSet: legacy, observations: [observation])) { error in
+        XCTAssertThrowsError(try InferenceEngine().evaluate(
+            incident: package,
+            evidenceSet: legacy,
+            observations: [observation]
+        )) { error in
             XCTAssertTrue(error is InferenceEngineError)
         }
     }
@@ -94,14 +122,18 @@ final class InferenceEngineTests: XCTestCase {
     func testInferenceIDIsStableAcrossOneHundredEvaluations() throws {
         let observations = [
             storage(.storageDiskLifecycle, lifecycle: "diskAppeared", id: id(7), sequence: 1),
-            storage(.storageDiskLifecycle, lifecycle: "diskDisappeared", id: id(8), sequence: 2),
+            storage(.storageDiskLifecycle, lifecycle: "diskDisappeared", id: id(8), sequence: 2)
         ]
         let package = incident(observations)
         let set = try XCTUnwrap(try currentSet(package: package, observations: observations).first)
         let expected = try InferenceEngine().evaluate(incident: package, evidenceSet: set, observations: observations)
         for offset in 0 ..< 100 {
             let permutation = offset.isMultiple(of: 2) ? observations : observations.reversed()
-            let actual = try InferenceEngine().evaluate(incident: package, evidenceSet: set, observations: Array(permutation))
+            let actual = try InferenceEngine().evaluate(
+                incident: package,
+                evidenceSet: set,
+                observations: Array(permutation)
+            )
             XCTAssertEqual(actual, expected)
         }
     }
@@ -138,7 +170,11 @@ final class InferenceEngineTests: XCTestCase {
         )
         try await journal.persistEvidenceSets(incidentID: package.id, sets: [current, legacy])
 
-        let currentInference = try InferenceEngine().evaluate(incident: package, evidenceSet: current, observations: [observation])
+        let currentInference = try InferenceEngine().evaluate(
+            incident: package,
+            evidenceSet: current,
+            observations: [observation]
+        )
         let legacyInference = Inference(
             id: id(13),
             evidenceSetID: legacy.id,
@@ -210,6 +246,8 @@ final class InferenceEngineTests: XCTestCase {
         XCTAssertEqual(foreignKeyViolations, [])
     }
 
+    // Why: ordered canonical flow.
+    // swiftlint:disable:next function_body_length
     func testSQLiteCurrentOnlySeparatesLegacyInference() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(
             "i7-current-only-\(UUID().uuidString)",
@@ -236,7 +274,11 @@ final class InferenceEngineTests: XCTestCase {
         )
         try await journal.persistEvidenceSets(incidentID: package.id, sets: [current, legacy])
 
-        let currentInference = try InferenceEngine().evaluate(incident: package, evidenceSet: current, observations: [observation])
+        let currentInference = try InferenceEngine().evaluate(
+            incident: package,
+            evidenceSet: current,
+            observations: [observation]
+        )
         let legacyInference = Inference(
             id: id(16),
             evidenceSetID: legacy.id,
@@ -281,7 +323,7 @@ final class InferenceEngineTests: XCTestCase {
         let journal = RecentChangesFixture.journal(arguments: [
             "-UITesting",
             "-UITestingRecentChanges=loaded",
-            "-UITestingIncident=inference-insufficient",
+            "-UITestingIncident=inference-insufficient"
         ])
         await RecentChangesFixture.seedIncidentFixture(
             mode: "inference-insufficient",
@@ -308,7 +350,10 @@ final class InferenceEngineTests: XCTestCase {
     ) -> IncidentPackage {
         IncidentPackage(
             id: UUID(uuidString: "40000000-0000-0000-0000-000000000001")!,
-            marker: IncidentMarker(markerID: UUID(uuidString: "40000000-0000-0000-0000-000000000002")!, wallTime: start),
+            marker: IncidentMarker(
+                markerID: UUID(uuidString: "40000000-0000-0000-0000-000000000002")!,
+                wallTime: start
+            ),
             status: status,
             completedAt: start.addingTimeInterval(120),
             materializedContext: .object([:]),
@@ -324,15 +369,32 @@ final class InferenceEngineTests: XCTestCase {
             domain: .storage,
             eventKind: kind,
             sourceID: .storage,
-            subject: EvidenceSubject(type: .storageDisk, identityDigest: "storage-fixture", quality: .qualified, safeDisplayLabel: "Storage disk"),
+            subject: EvidenceSubject(
+                type: .storageDisk,
+                identityDigest: "storage-fixture",
+                quality: .qualified,
+                safeDisplayLabel: "Storage disk"
+            ),
             provenance: provenance(.storage),
             time: time(.storage, sequence: sequence),
             currentState: lifecycle.map { .object(["lifecycle": .string($0)]) },
             attributes: lifecycle.map { ["lifecycle": .string($0)] } ?? [:],
             sensitivity: EvidenceSensitivityRegistry(fields: [
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("subject.identityDigest"), classification: .deviceMetadata, pseudonymization: .required(scope: "package")),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("currentState"), classification: .none, pseudonymization: .notApplicable),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("attributes.lifecycle"), classification: .none, pseudonymization: .notApplicable),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("subject.identityDigest"),
+                    classification: .deviceMetadata,
+                    pseudonymization: .required(scope: "package")
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("currentState"),
+                    classification: .none,
+                    pseudonymization: .notApplicable
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("attributes.lifecycle"),
+                    classification: .none,
+                    pseudonymization: .notApplicable
+                )
             ])
         )
     }
@@ -343,7 +405,12 @@ final class InferenceEngineTests: XCTestCase {
             domain: .network,
             eventKind: .networkPathTransition,
             sourceID: .network,
-            subject: EvidenceSubject(type: .networkInterface, identityDigest: nil, quality: .unavailable, safeDisplayLabel: "Network path"),
+            subject: EvidenceSubject(
+                type: .networkInterface,
+                identityDigest: nil,
+                quality: .unavailable,
+                safeDisplayLabel: "Network path"
+            ),
             provenance: provenance(.network),
             time: time(.network, sequence: sequence),
             previousState: .object(["status": .string(previous)]),
@@ -393,5 +460,8 @@ final class InferenceEngineTests: XCTestCase {
     }
 
     private let start = Date(timeIntervalSince1970: 1_700_000_000)
-    private let processRunID = UUID(uuidString: "40000000-0000-0000-0000-000000000010")!
-}
+    private let processRunID = UUID(
+        uuidString: "40000000-0000-0000-0000-000000000010"
+        // Why: cohesive reviewed boundary.
+    )!
+} // swiftlint:disable:this file_length

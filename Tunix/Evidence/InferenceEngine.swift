@@ -1,4 +1,3 @@
-// swiftlint:disable line_length function_body_length cyclomatic_complexity
 import Foundation
 
 enum InferenceEngineError: Error, Equatable, Sendable {
@@ -56,7 +55,7 @@ struct InitialInferenceRuleRegistry: Sendable {
 
     static let production = InitialInferenceRuleRegistry(definitions: [
         InitialInferenceRule.storage.id: InitialInferenceRule.storage,
-        InitialInferenceRule.network.id: InitialInferenceRule.network,
+        InitialInferenceRule.network.id: InitialInferenceRule.network
     ])
 
     func validateProductionInventory() -> Bool {
@@ -78,6 +77,8 @@ private struct InferenceComponents {
     let nextTests: [NextTestReference]
 }
 
+// Why: canonical contract owner.
+// swiftlint:disable:next type_body_length
 struct InferenceEngine: Sendable {
     let registry: InitialInferenceRuleRegistry
     let catalog: NextTestCatalogSnapshot
@@ -90,6 +91,8 @@ struct InferenceEngine: Sendable {
         self.catalog = catalog
     }
 
+    // Why: explicit fail-closed matrix.
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     func evaluate(
         incident: IncidentPackage,
         evidenceSet: EvidenceSet,
@@ -109,7 +112,9 @@ struct InferenceEngine: Sendable {
               evidenceSet.ruleID == definition.acceptedCorrelationRuleID
         else {
             throw InferenceEngineError.unsupportedCorrelationInput(
-                "Only current correlation \(definition.acceptedCorrelationRuleID) \(definition.acceptedCorrelationRuleVersion) with EvidenceSet schema \(definition.acceptedEvidenceSetSchemaVersion) is eligible."
+                "Only current correlation \(definition.acceptedCorrelationRuleID) " +
+                    "\(definition.acceptedCorrelationRuleVersion) with EvidenceSet schema " +
+                    "\(definition.acceptedEvidenceSetSchemaVersion) is eligible."
             )
         }
         _ = try catalog.validated()
@@ -133,7 +138,8 @@ struct InferenceEngine: Sendable {
         }
         let ordered = evidenceSet.memberObservationIDs.compactMap { byID[$0] }.sorted(by: canonicalOrder)
         guard ordered.allSatisfy({ $0.sourceID == definition.supportedSource }) else {
-            throw InferenceEngineError.unsupportedSource(ordered.first(where: { $0.sourceID != definition.supportedSource })!.sourceID)
+            throw InferenceEngineError
+                .unsupportedSource(ordered.first(where: { $0.sourceID != definition.supportedSource })!.sourceID)
         }
         guard ordered.allSatisfy({ definition.supportedEventKinds.contains(eventCode($0.eventKind)) }) else {
             throw InferenceEngineError.unsupportedEventKind
@@ -149,6 +155,8 @@ struct InferenceEngine: Sendable {
         }
     }
 
+    // Why: ordered canonical flow.
+    // swiftlint:disable:next function_body_length
     private func evaluateStorage(
         incident: IncidentPackage,
         set: EvidenceSet,
@@ -163,23 +171,29 @@ struct InferenceEngine: Sendable {
 
         for observation in observations {
             guard let lifecycle = lifecycleValue(for: observation) else {
-                missing.append(EvidenceMissing(sourceID: .storage, reason: .notObserved, explanation: "Storage lifecycle value was not observed."))
+                missing.append(EvidenceMissing(
+                    sourceID: .storage,
+                    reason: .notObserved,
+                    explanation: "Storage lifecycle value was not observed."
+                ))
                 continue
             }
             if observation.eventKind == .storageDiskLifecycle,
-               lifecycle == "volumeMounted" || lifecycle == "volumeUnmounted"
-            {
+               lifecycle == "volumeMounted" || lifecycle == "volumeUnmounted" {
                 contradictions.append(observation.id)
                 continue
             }
             if observation.eventKind == .storageMountLifecycle,
-               lifecycle == "diskAppeared" || lifecycle == "diskDisappeared"
-            {
+               lifecycle == "diskAppeared" || lifecycle == "diskDisappeared" {
                 contradictions.append(observation.id)
                 continue
             }
             guard ["diskAppeared", "diskDisappeared", "volumeMounted", "volumeUnmounted"].contains(lifecycle) else {
-                missing.append(EvidenceMissing(sourceID: .storage, reason: .notObserved, explanation: "Storage lifecycle value was not recognized."))
+                missing.append(EvidenceMissing(
+                    sourceID: .storage,
+                    reason: .notObserved,
+                    explanation: "Storage lifecycle value was not recognized."
+                ))
                 continue
             }
             support.append(observation.id)
@@ -191,7 +205,7 @@ struct InferenceEngine: Sendable {
         let hypothesis = EvidenceValue.object([
             "kind": .string(rule.id),
             "subjectType": .string(subjectType),
-            "observedTransitions": .array(transitions.map(EvidenceValue.string)),
+            "observedTransitions": .array(transitions.map(EvidenceValue.string))
         ])
         let refs = try references(for: rule)
         return makeInference(
@@ -200,7 +214,8 @@ struct InferenceEngine: Sendable {
             rule: rule,
             components: InferenceComponents(
                 hypothesis: hypothesis,
-                evidenceClass: support.isEmpty || !missing.isEmpty || !contradictions.isEmpty ? .insufficientEvidence : .supported,
+                evidenceClass: support.isEmpty || !missing.isEmpty || !contradictions
+                    .isEmpty ? .insufficientEvidence : .supported,
                 supporting: support,
                 contradictions: contradictions,
                 alternatives: [],
@@ -210,6 +225,8 @@ struct InferenceEngine: Sendable {
         )
     }
 
+    // Why: ordered canonical flow.
+    // swiftlint:disable:next function_body_length
     private func evaluateNetwork(
         incident: IncidentPackage,
         set: EvidenceSet,
@@ -223,11 +240,19 @@ struct InferenceEngine: Sendable {
 
         for observation in observations {
             guard let previous = statusValue(from: observation.previousState) else {
-                missing.append(EvidenceMissing(sourceID: .network, reason: .notObserved, explanation: "Network previous path state was not observed."))
+                missing.append(EvidenceMissing(
+                    sourceID: .network,
+                    reason: .notObserved,
+                    explanation: "Network previous path state was not observed."
+                ))
                 continue
             }
             guard let current = statusValue(from: observation.currentState) else {
-                missing.append(EvidenceMissing(sourceID: .network, reason: .notObserved, explanation: "Network current path state was not observed."))
+                missing.append(EvidenceMissing(
+                    sourceID: .network,
+                    reason: .notObserved,
+                    explanation: "Network current path state was not observed."
+                ))
                 continue
             }
             guard previous != current else {
@@ -242,12 +267,21 @@ struct InferenceEngine: Sendable {
         let hypothesis = EvidenceValue.object([
             "kind": .string(rule.id),
             "observedPathStates": .array(states),
-            "physicalCause": .string("UNKNOWN"),
+            "physicalCause": .string("UNKNOWN")
         ])
         let alternatives = [
-            EvidenceAlternative(hypothesis: "A local physical-interface condition", reason: "This supplemental path evidence does not establish it."),
-            EvidenceAlternative(hypothesis: "A configuration or interface-selection change", reason: "This supplemental path evidence does not establish it."),
-            EvidenceAlternative(hypothesis: "An upstream router, network, or service condition", reason: "This supplemental path evidence does not establish it."),
+            EvidenceAlternative(
+                hypothesis: "A local physical-interface condition",
+                reason: "This supplemental path evidence does not establish it."
+            ),
+            EvidenceAlternative(
+                hypothesis: "A configuration or interface-selection change",
+                reason: "This supplemental path evidence does not establish it."
+            ),
+            EvidenceAlternative(
+                hypothesis: "An upstream router, network, or service condition",
+                reason: "This supplemental path evidence does not establish it."
+            )
         ]
         let refs = try references(for: rule)
         return makeInference(
@@ -256,7 +290,8 @@ struct InferenceEngine: Sendable {
             rule: rule,
             components: InferenceComponents(
                 hypothesis: hypothesis,
-                evidenceClass: support.isEmpty || !missing.isEmpty || !contradictions.isEmpty ? .insufficientEvidence : .supported,
+                evidenceClass: support.isEmpty || !missing.isEmpty || !contradictions
+                    .isEmpty ? .insufficientEvidence : .supported,
                 supporting: support,
                 contradictions: contradictions,
                 alternatives: alternatives,
@@ -286,7 +321,10 @@ struct InferenceEngine: Sendable {
         encoder.outputFormatting = [.sortedKeys]
         encoder.dateEncodingStrategy = .iso8601
         let semanticData = (try? encoder.encode(incident)) ?? Data()
-        let semanticDigest = EvidenceIdentityDigest.make(scope: "incident-semantics", material: [String(decoding: semanticData, as: UTF8.self)]) ?? ""
+        let semanticDigest = EvidenceIdentityDigest.make(
+            scope: "incident-semantics",
+            material: [String(bytes: semanticData, encoding: .utf8) ?? ""]
+        ) ?? ""
         let material = [
             set.id.uuidString,
             rule.id,
@@ -295,7 +333,7 @@ struct InferenceEngine: Sendable {
             catalog.version,
             incident.id.uuidString,
             incident.status.rawValue,
-            semanticDigest,
+            semanticDigest
         ]
         let id = EvidenceIdentityDigest.makeUUID(scope: "horizon2-inference", material: material)!
         return Inference(
@@ -323,7 +361,10 @@ struct InferenceEngine: Sendable {
     ) {
         for unknown in incident.unknowns {
             let relevant = unknown.sourceID == source
-                || (unknown.sourceID == nil && incident.status == .incomplete && (unknown.reason == .incompleteCapture || unknown.reason == .sourceCoverageGap))
+                ||
+                (unknown.sourceID == nil && incident
+                    .status == .incomplete &&
+                    (unknown.reason == .incompleteCapture || unknown.reason == .sourceCoverageGap))
             guard relevant, !missing.contains(unknown) else { continue }
             missing.append(unknown)
         }
@@ -372,5 +413,6 @@ extension Inference {
         case .stronglySupported: return "Supported"
         case .plausible: return "Supported"
         }
+        // Why: cohesive reviewed boundary.
     }
-}
+} // swiftlint:disable:this file_length

@@ -1,4 +1,3 @@
-// swiftlint:disable trailing_comma
 @testable import Tunix
 import XCTest
 
@@ -13,11 +12,11 @@ final class TelemetryModelTests: XCTestCase {
     func testCPUAggregationSumsLogicalCPUTime() {
         let previous = [
             ProcessorCPUTicks(identifier: 0, user: 0, system: 0, idle: 0, nice: 0),
-            ProcessorCPUTicks(identifier: 1, user: 0, system: 0, idle: 0, nice: 0),
+            ProcessorCPUTicks(identifier: 1, user: 0, system: 0, idle: 0, nice: 0)
         ]
         let current = [
             ProcessorCPUTicks(identifier: 0, user: 10, system: 0, idle: 90, nice: 0),
-            ProcessorCPUTicks(identifier: 1, user: 50, system: 0, idle: 50, nice: 0),
+            ProcessorCPUTicks(identifier: 1, user: 50, system: 0, idle: 50, nice: 0)
         ]
 
         guard let result = CPUUsageCalculator.calculate(previous: previous, current: current) else {
@@ -33,11 +32,11 @@ final class TelemetryModelTests: XCTestCase {
     func testCPUCoreIdentitySurvivesReorderedSamples() {
         let previous = [
             ProcessorCPUTicks(identifier: 5, user: 0, system: 0, idle: 0, nice: 0),
-            ProcessorCPUTicks(identifier: 7, user: 0, system: 0, idle: 0, nice: 0),
+            ProcessorCPUTicks(identifier: 7, user: 0, system: 0, idle: 0, nice: 0)
         ]
         let current = [
             ProcessorCPUTicks(identifier: 7, user: 50, system: 0, idle: 50, nice: 0),
-            ProcessorCPUTicks(identifier: 5, user: 10, system: 0, idle: 90, nice: 0),
+            ProcessorCPUTicks(identifier: 5, user: 10, system: 0, idle: 90, nice: 0)
         ]
 
         guard let result = CPUUsageCalculator.calculate(previous: previous, current: current) else {
@@ -150,5 +149,3 @@ final class TelemetryModelTests: XCTestCase {
         return result
     }
 }
-
-// swiftlint:enable trailing_comma

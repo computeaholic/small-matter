@@ -1,4 +1,3 @@
-// swiftlint:disable line_length trailing_comma
 import Foundation
 @testable import Tunix
 import XCTest
@@ -141,10 +140,14 @@ final class RecentChangesPresentationTests: XCTestCase {
             sequence: 3,
             attributes: [
                 "semanticRole": .string(StorageRawSemanticRole.transition.rawValue),
-                "lifecycle": .string("diskAppeared"),
+                "lifecycle": .string("diskAppeared")
             ]
         )
-        let model = RecentChangesViewModel(journal: InMemoryEvidenceJournal(observations: [baseline, confirmation, transition]))
+        let model = RecentChangesViewModel(journal: InMemoryEvidenceJournal(observations: [
+            baseline,
+            confirmation,
+            transition
+        ]))
 
         await model.refresh()
 
@@ -158,7 +161,7 @@ final class RecentChangesPresentationTests: XCTestCase {
             sequence: 4,
             attributes: [
                 "semanticRole": .string(StorageRawSemanticRole.uncertain.rawValue),
-                "lifecycle": .string("diskAppeared"),
+                "lifecycle": .string("diskAppeared")
             ]
         )
         let model = RecentChangesViewModel(journal: InMemoryEvidenceJournal(observations: [uncertain]))
@@ -225,13 +228,19 @@ final class RecentChangesPresentationTests: XCTestCase {
                 bootSessionID: "test-boot",
                 localSequence: sequence,
                 sourceTimestampQuality: .exact,
-                orderingDomain: EvidenceOrderingDomain(sourceID: sourceID, processRunID: runID, clockDomainID: "test-clock"),
-                sourceOccurrence: EvidenceSourceOccurrence(wallTime: date, continuousNanoseconds: sequence, quality: .exact)
+                orderingDomain: EvidenceOrderingDomain(
+                    sourceID: sourceID,
+                    processRunID: runID,
+                    clockDomainID: "test-clock"
+                ),
+                sourceOccurrence: EvidenceSourceOccurrence(
+                    wallTime: date,
+                    continuousNanoseconds: sequence,
+                    quality: .exact
+                )
             ),
             currentState: .object(["lifecycle": .string("diskAppeared")]),
             attributes: attributes
         )
     }
 }
-
-// swiftlint:enable line_length trailing_comma

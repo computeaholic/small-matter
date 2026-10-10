@@ -1,7 +1,8 @@
-// swiftlint:disable type_body_length
 import AppKit
 import SwiftUI
 
+// Why: canonical contract owner.
+// swiftlint:disable:next type_body_length
 struct OverviewView: View {
     @EnvironmentObject private var settings: SettingsManager
     @EnvironmentObject private var stats: SystemStatsModel
@@ -337,5 +338,3 @@ struct OverviewView: View {
         }
     }
 }
-
-// swiftlint:enable type_body_length

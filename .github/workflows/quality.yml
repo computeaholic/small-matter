@@ -9,19 +9,38 @@ permissions:
   contents: read
 
 jobs:
-  quality:
+  quality-style:
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install format and lint tools
         run: brew install swiftformat swiftlint
+      - name: Print tool versions
+        run: |
+          swiftformat --version
+          swiftlint version
+          xcodebuild -version
       - name: Format check
-        run: swiftformat Tunix TunixTests --lint
+        run: swiftformat Tunix TunixTests TunixUITests --lint
       - name: Lint
-        run: swiftlint lint Tunix TunixTests --reporter json
+        run: swiftlint lint --strict Tunix TunixTests TunixUITests --reporter json
+
+  quality-unit:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
       - name: App unit tests
         run: ./scripts/run_tunix_app_unit_tests.sh --fresh-derived-data
+
+  quality-release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
       - name: Unsigned Release build
         run: ./scripts/build_release.sh --prepare-only
       - name: Structural artifact verification
         run: ./scripts/verify_release_artifact.sh --allow-unsigned --app '.deriveddata/release/Build/Products/Release/Small Matter.app'
+
+  # macOS UI tests require interactive Automation permissions that are not
+  # available deterministically on GitHub-hosted runners. They remain a
+  # mandatory local release gate; see README.md for the exact command.

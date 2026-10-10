@@ -1,10 +1,10 @@
-// swiftlint:disable line_length trailing_comma
-
 import Foundation
 @testable import Tunix
 import XCTest
 
 @MainActor
+// Why: canonical contract owner.
+// swiftlint:disable:next type_body_length
 final class IncidentCaptureTests: XCTestCase {
     func testMarkerIsIndependentFromObservationAndLegacyMarkerDecodes() throws {
         let markerID = try XCTUnwrap(UUID(uuidString: "40000000-0000-0000-0000-000000000001"))
@@ -35,12 +35,20 @@ final class IncidentCaptureTests: XCTestCase {
         let scheduler = ManualIncidentCaptureScheduler()
         let coordinator = IncidentCaptureCoordinator(
             journal: journal,
-            clock: FixedEvidenceClock(wallTime: markerTime, continuousNanoseconds: 1000, processUptimeNanoseconds: 1000),
+            clock: FixedEvidenceClock(
+                wallTime: markerTime,
+                continuousNanoseconds: 1000,
+                processUptimeNanoseconds: 1000
+            ),
             scheduler: scheduler,
             processRunID: EvidenceFixtureIDs.processA
         )
 
-        coordinator.start(context: IncidentContextSnapshot(capturedAt: markerTime, values: .object(["system": .object(["safe": .boolean(true)])]), unknowns: []))
+        coordinator.start(context: IncidentContextSnapshot(
+            capturedAt: markerTime,
+            values: .object(["system": .object(["safe": .boolean(true)])]),
+            unknowns: []
+        ))
         await yieldToCoordinator()
         XCTAssertEqual(coordinator.state, IncidentCaptureState.capturing)
         let activeAfterStart = await journal.activeIncidentCaptures()
@@ -66,11 +74,19 @@ final class IncidentCaptureTests: XCTestCase {
         let scheduler = ManualIncidentCaptureScheduler()
         let coordinator = IncidentCaptureCoordinator(
             journal: journal,
-            clock: FixedEvidenceClock(wallTime: Date(timeIntervalSince1970: 1_700_000_000), continuousNanoseconds: 1, processUptimeNanoseconds: 1),
+            clock: FixedEvidenceClock(
+                wallTime: Date(timeIntervalSince1970: 1_700_000_000),
+                continuousNanoseconds: 1,
+                processUptimeNanoseconds: 1
+            ),
             scheduler: scheduler,
             processRunID: EvidenceFixtureIDs.processA
         )
-        let context = IncidentContextSnapshot(capturedAt: Date(timeIntervalSince1970: 1_700_000_000), values: .object([:]), unknowns: [])
+        let context = IncidentContextSnapshot(
+            capturedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            values: .object([:]),
+            unknowns: []
+        )
 
         coordinator.start(context: context)
         await yieldToCoordinator()
@@ -122,7 +138,10 @@ final class IncidentCaptureTests: XCTestCase {
             try await journal.append(EvidenceFixtureIDs.observation)
             let session = try IncidentCaptureSession(
                 id: XCTUnwrap(UUID(uuidString: "40000000-0000-0000-0000-000000000003")),
-                marker: IncidentMarker(markerID: UUID(), wallTime: EvidenceFixtureIDs.observation.time.observedWallTime),
+                marker: IncidentMarker(
+                    markerID: UUID(),
+                    wallTime: EvidenceFixtureIDs.observation.time.observedWallTime
+                ),
                 startedAt: EvidenceFixtureIDs.observation.time.observedWallTime,
                 processRunID: EvidenceFixtureIDs.processA,
                 materializedContext: .object(["system": .object(["safe": .boolean(true)])]),
@@ -261,15 +280,15 @@ final class IncidentCaptureTests: XCTestCase {
                 "memoryUsedBytes": .unsigned(memory),
                 "memoryPressure": .string(pressure),
                 "thermalState": .string("Nominal"),
-                "lowPowerMode": .boolean(false),
+                "lowPowerMode": .boolean(false)
             ]),
             "network": .object([:]),
             "battery": .object([
                 "present": .boolean(true),
                 "acConnected": .boolean(acConnected),
-                "charging": .boolean(acConnected),
+                "charging": .boolean(acConnected)
             ]),
-            "cooling": .object([:]),
+            "cooling": .object([:])
         ])
     }
 
@@ -292,15 +311,60 @@ private enum EvidenceFixtureIDs {
             domain: .storage,
             eventKind: .storageDiskLifecycle,
             sourceID: .storage,
-            subject: EvidenceSubject(type: .storageDisk, identityDigest: nil, quality: .weak, safeDisplayLabel: "Storage disk"),
-            provenance: EvidenceProvenance(sourceID: .storage, apiName: "Fixture", apiVersion: nil, captureChannel: "I5_TEST", sourceTimestampQuality: .exact, normalizationRuleID: "I5_TEST", normalizationRuleVersion: "1.0.0", hostScope: .supportedProductBehavior, rawReferenceDigest: nil),
-            time: EvidenceTime(observedWallTime: date, continuousNanoseconds: 1, processUptimeNanoseconds: 1, processRunID: processA, bootSessionID: "i5-test", localSequence: 1, sourceTimestampQuality: .exact, orderingDomain: EvidenceOrderingDomain(sourceID: .storage, processRunID: processA, clockDomainID: "i5-clock"), sourceOccurrence: EvidenceSourceOccurrence(wallTime: date, continuousNanoseconds: 1, quality: .exact)),
+            subject: EvidenceSubject(
+                type: .storageDisk,
+                identityDigest: nil,
+                quality: .weak,
+                safeDisplayLabel: "Storage disk"
+            ),
+            provenance: EvidenceProvenance(
+                sourceID: .storage,
+                apiName: "Fixture",
+                apiVersion: nil,
+                captureChannel: "I5_TEST",
+                sourceTimestampQuality: .exact,
+                normalizationRuleID: "I5_TEST",
+                normalizationRuleVersion: "1.0.0",
+                hostScope: .supportedProductBehavior,
+                rawReferenceDigest: nil
+            ),
+            time: EvidenceTime(
+                observedWallTime: date,
+                continuousNanoseconds: 1,
+                processUptimeNanoseconds: 1,
+                processRunID: processA,
+                bootSessionID: "i5-test",
+                localSequence: 1,
+                sourceTimestampQuality: .exact,
+                orderingDomain: EvidenceOrderingDomain(
+                    sourceID: .storage,
+                    processRunID: processA,
+                    clockDomainID: "i5-clock"
+                ),
+                sourceOccurrence: EvidenceSourceOccurrence(wallTime: date, continuousNanoseconds: 1, quality: .exact)
+            ),
             attributes: ["lifecycle": .string("diskAppeared")],
             sensitivity: EvidenceSensitivityRegistry(fields: [
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("subject.identityDigest"), classification: .deviceMetadata, pseudonymization: .required(scope: "package")),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("provenance.rawReferenceDigest"), classification: .deviceMetadata, pseudonymization: .required(scope: "package")),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("currentState"), classification: .none, pseudonymization: .notApplicable),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("attributes.lifecycle"), classification: .none, pseudonymization: .notApplicable),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("subject.identityDigest"),
+                    classification: .deviceMetadata,
+                    pseudonymization: .required(scope: "package")
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("provenance.rawReferenceDigest"),
+                    classification: .deviceMetadata,
+                    pseudonymization: .required(scope: "package")
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("currentState"),
+                    classification: .none,
+                    pseudonymization: .notApplicable
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("attributes.lifecycle"),
+                    classification: .none,
+                    pseudonymization: .notApplicable
+                )
             ])
         )
     }()

@@ -9,7 +9,7 @@ final class CapacityRecoveryUITests: XCTestCase {
         continueAfterFailure = false
         app = XCUIApplication(bundleIdentifier: "Tunix-LLC.Tunix")
         app.launchArguments = [
-            "-ApplePersistenceIgnoreState", "YES", "-UITesting", "-UITestingRecentChanges=capacity",
+            "-ApplePersistenceIgnoreState", "YES", "-UITesting", "-UITestingRecentChanges=capacity"
         ]
         app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 5))

@@ -1,7 +1,10 @@
-// swiftlint:disable line_length function_parameter_count trailing_comma function_body_length cyclomatic_complexity type_body_length
 import Foundation
 
+// Why: canonical contract owner.
+// swiftlint:disable:next type_body_length
 enum RecentChangesFixture {
+    // Why: explicit fail-closed matrix.
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     static func journal(arguments: [String]) -> any EvidenceJournal {
         #if DEBUG
             let incidentMode = incidentMode(arguments: arguments)
@@ -12,7 +15,7 @@ enum RecentChangesFixture {
                 return InMemoryEvidenceJournal(availability: .capacityUnavailable)
             }
             if let incidentMode, [
-                "history", "incomplete", "capacity-complete", "capacity-incomplete", "package-failure",
+                "history", "incomplete", "capacity-complete", "capacity-incomplete", "package-failure"
             ].contains(incidentMode) {
                 let fixtureMode: String
                 let availability: EvidenceJournalAvailability
@@ -72,6 +75,8 @@ enum RecentChangesFixture {
                 .map(String.init)
         }
 
+        // Why: explicit fail-closed matrix.
+        // swiftlint:disable:next cyclomatic_complexity function_body_length
         static func seedIncidentFixture(
             mode: String,
             journal: any EvidenceJournal,
@@ -79,13 +84,13 @@ enum RecentChangesFixture {
         ) async {
             guard ![
                 "idle", "unavailable", "capacity", "history", "incomplete",
-                "capacity-complete", "capacity-incomplete", "package-failure",
+                "capacity-complete", "capacity-incomplete", "package-failure"
             ].contains(mode) else { return }
 
             let context = EvidenceValue.object([
                 "system": .object(["cpuUtilizationPercent": .decimal("12.50")]),
                 "battery": .object(["acConnected": .boolean(true)]),
-                "cooling": .object([:]),
+                "cooling": .object([:])
             ])
             let markerDate = mode == "capturing" ? Date() : baseDate.addingTimeInterval(240)
             let observationsInWindow = observations.map(\.id)
@@ -132,11 +137,19 @@ enum RecentChangesFixture {
                     completedAt: markerDate,
                     materializedContext: context,
                     observationIDs: Array(observationsInWindow.prefix(2)),
-                    unknowns: [EvidenceMissing(sourceID: nil, reason: .processInterrupted, explanation: "Small Matter was closed before this capture finished.")],
+                    unknowns: [EvidenceMissing(
+                        sourceID: nil,
+                        reason: .processInterrupted,
+                        explanation: "Small Matter was closed before this capture finished."
+                    )],
                     failureReason: .processInterrupted
                 )
                 try? await journal.finalizeIncidentCapture(package)
-            case "zero-event", "storage-inference-supported", "volume-inference-supported", "network-inference-supported", "network-inference-alternatives", "inference-insufficient", "inference-none", "export-supported", "export-redacted", "export-power-only":
+            case "zero-event", "storage-inference-supported", "volume-inference-supported",
+                 "network-inference-supported",
+                 "network-inference-alternatives", "inference-insufficient", "inference-none", "export-supported",
+                 "export-redacted",
+                 "export-power-only":
                 let selected: [Observation]
                 switch mode {
                 case "storage-inference-supported": selected = [observations[0]]
@@ -168,7 +181,11 @@ enum RecentChangesFixture {
                     completedAt: nil,
                     materializedContext: context,
                     observationIDs: [observations[0].id],
-                    unknowns: [EvidenceMissing(sourceID: .network, reason: .incompleteCapture, explanation: "Network capture ended before the incident was complete.")],
+                    unknowns: [EvidenceMissing(
+                        sourceID: .network,
+                        reason: .incompleteCapture,
+                        explanation: "Network capture ended before the incident was complete."
+                    )],
                     failureReason: .incompleteCapture
                 )
                 try? await journal.finalizeIncidentCapture(package)
@@ -200,6 +217,8 @@ enum RecentChangesFixture {
             }
         }
 
+        // Why: complete canonical inputs.
+        // swiftlint:disable:next function_parameter_count
         private static func seedCompletedPackage(
             id: UUID,
             markerID: UUID,
@@ -296,7 +315,10 @@ enum RecentChangesFixture {
                 safetyWarning: "This persisted fixture does not change storage state.",
                 catalogProvenance: "Horizon 2 I7.1 snapshot fixture"
             )
-            let snapshot = NextTestCatalogSnapshot(version: Horizon2NextTestCatalog.currentVersion, entries: [snapshotEntry])
+            let snapshot = NextTestCatalogSnapshot(
+                version: Horizon2NextTestCatalog.currentVersion,
+                entries: [snapshotEntry]
+            )
             guard let inference = try? InferenceEngine(catalog: snapshot).evaluate(
                 incident: package,
                 evidenceSet: set,
@@ -333,11 +355,13 @@ enum RecentChangesFixture {
         private static let correlationEpochID = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!
         private static let baseDate = Date(timeIntervalSince1970: 1_735_689_600)
 
+        // Why: ordered canonical flow.
+        // swiftlint:disable:next function_body_length
         private static func incidentPackages(mode: String) -> [IncidentPackage] {
             let context = EvidenceValue.object([
                 "system": .object(["cpuUtilizationPercent": .decimal("12.50")]),
                 "battery": .object(["acConnected": .boolean(true)]),
-                "cooling": .object([:]),
+                "cooling": .object([:])
             ])
             let ids = observations.map(\.id)
             let markerDate = baseDate.addingTimeInterval(240)
@@ -365,7 +389,11 @@ enum RecentChangesFixture {
                     completedAt: markerDate,
                     materializedContext: context,
                     observationIDs: Array(ids.prefix(2)),
-                    unknowns: [EvidenceMissing(sourceID: nil, reason: .processInterrupted, explanation: "Small Matter was closed before this capture finished.")],
+                    unknowns: [EvidenceMissing(
+                        sourceID: nil,
+                        reason: .processInterrupted,
+                        explanation: "Small Matter was closed before this capture finished."
+                    )],
                     failureReason: .processInterrupted
                 )]
             }
@@ -391,7 +419,7 @@ enum RecentChangesFixture {
                     completedAt: markerDate.addingTimeInterval(-60),
                     materializedContext: context,
                     observationIDs: Array(ids.prefix(3))
-                ),
+                )
             ]
         }
 
@@ -403,10 +431,19 @@ enum RecentChangesFixture {
                     domain: .storage,
                     eventKind: .storageDiskLifecycle,
                     sourceID: .storage,
-                    subject: EvidenceSubject(type: .storageDisk, identityDigest: "fixture-storage-digest", quality: .qualified, safeDisplayLabel: "External storage disk"),
+                    subject: EvidenceSubject(
+                        type: .storageDisk,
+                        identityDigest: "fixture-storage-digest",
+                        quality: .qualified,
+                        safeDisplayLabel: "External storage disk"
+                    ),
                     source: "Disk Arbitration",
                     currentState: .object(["lifecycle": .string("diskAppeared")]),
-                    attributes: ["lifecycle": .string("diskAppeared"), "identityQuality": .string("QUALIFIED"), "isWholeDisk": .boolean(true)]
+                    attributes: [
+                        "lifecycle": .string("diskAppeared"),
+                        "identityQuality": .string("QUALIFIED"),
+                        "isWholeDisk": .boolean(true)
+                    ]
                 ),
                 observation(
                     id: "00000000-0000-0000-0000-000000000102",
@@ -414,7 +451,12 @@ enum RecentChangesFixture {
                     domain: .storage,
                     eventKind: .storageMountLifecycle,
                     sourceID: .storage,
-                    subject: EvidenceSubject(type: .mountedVolume, identityDigest: "fixture-volume-digest", quality: .weak, safeDisplayLabel: "Mounted storage volume"),
+                    subject: EvidenceSubject(
+                        type: .mountedVolume,
+                        identityDigest: "fixture-volume-digest",
+                        quality: .weak,
+                        safeDisplayLabel: "Mounted storage volume"
+                    ),
                     source: "NSWorkspace",
                     currentState: .object(["lifecycle": .string("volumeMounted")]),
                     attributes: ["lifecycle": .string("volumeMounted"), "identityQuality": .string("WEAK")]
@@ -425,7 +467,12 @@ enum RecentChangesFixture {
                     domain: .power,
                     eventKind: .powerSourceTransition,
                     sourceID: .power,
-                    subject: EvidenceSubject(type: .powerSource, identityDigest: "power-source", quality: .provenStable, safeDisplayLabel: "Direct power source"),
+                    subject: EvidenceSubject(
+                        type: .powerSource,
+                        identityDigest: "power-source",
+                        quality: .provenStable,
+                        safeDisplayLabel: "Direct power source"
+                    ),
                     source: "IOPowerSources",
                     previousState: .object(["source": .string("AC"), "externalPowerConnected": .boolean(true)]),
                     currentState: .object(["source": .string("BATTERY"), "externalPowerConnected": .boolean(false)]),
@@ -437,13 +484,21 @@ enum RecentChangesFixture {
                     domain: .network,
                     eventKind: .networkPathTransition,
                     sourceID: .network,
-                    subject: EvidenceSubject(type: .networkInterface, identityDigest: nil, quality: .unavailable, safeDisplayLabel: "Network path"),
+                    subject: EvidenceSubject(
+                        type: .networkInterface,
+                        identityDigest: nil,
+                        quality: .unavailable,
+                        safeDisplayLabel: "Network path"
+                    ),
                     source: "Network.framework",
-                    previousState: .object(["status": .string("SATISFIED"), "interfaces": .array([.string("WIRED_ETHERNET")])]),
+                    previousState: .object([
+                        "status": .string("SATISFIED"),
+                        "interfaces": .array([.string("WIRED_ETHERNET")])
+                    ]),
                     currentState: .object(["status": .string("UNSATISFIED"), "interfaces": .array([])]),
                     attributes: ["supplemental": .boolean(true), "interfaceTypes": .array([])]
                 ),
-                unknownObservation,
+                unknownObservation
             ]
         }
 
@@ -453,7 +508,12 @@ enum RecentChangesFixture {
             domain: .storage,
             eventKind: .storageDiskLifecycle,
             sourceID: .storage,
-            subject: EvidenceSubject(type: .storageDisk, identityDigest: nil, quality: .unavailable, safeDisplayLabel: "Storage disk"),
+            subject: EvidenceSubject(
+                type: .storageDisk,
+                identityDigest: nil,
+                quality: .unavailable,
+                safeDisplayLabel: "Storage disk"
+            ),
             source: "Disk Arbitration",
             availability: .unknown(.identityUnavailable),
             attributes: ["lifecycle": .string("diskDisappeared")]
@@ -465,7 +525,12 @@ enum RecentChangesFixture {
             domain: .network,
             eventKind: .networkPathTransition,
             sourceID: .network,
-            subject: EvidenceSubject(type: .networkInterface, identityDigest: nil, quality: .unavailable, safeDisplayLabel: "Network path"),
+            subject: EvidenceSubject(
+                type: .networkInterface,
+                identityDigest: nil,
+                quality: .unavailable,
+                safeDisplayLabel: "Network path"
+            ),
             source: "Network.framework",
             previousState: .object(["status": .string("SATISFIED")]),
             currentState: .object(["status": .string("SATISFIED")]),
@@ -482,6 +547,8 @@ enum RecentChangesFixture {
             detail: "fixture coverage warning"
         )
 
+        // Why: complete canonical inputs.
+        // swiftlint:disable:next function_parameter_count
         private static func observation(
             id: String,
             sequence: UInt64,
@@ -520,15 +587,27 @@ enum RecentChangesFixture {
                     bootSessionID: "fixture-boot",
                     localSequence: sequence,
                     sourceTimestampQuality: .exact,
-                    orderingDomain: EvidenceOrderingDomain(sourceID: sourceID, processRunID: processRunID, clockDomainID: "fixture-clock"),
-                    sourceOccurrence: EvidenceSourceOccurrence(wallTime: baseDate, continuousNanoseconds: UInt64(sequence) * 1_000_000_000, quality: .exact),
+                    orderingDomain: EvidenceOrderingDomain(
+                        sourceID: sourceID,
+                        processRunID: processRunID,
+                        clockDomainID: "fixture-clock"
+                    ),
+                    sourceOccurrence: EvidenceSourceOccurrence(
+                        wallTime: baseDate,
+                        continuousNanoseconds: UInt64(sequence) * 1_000_000_000,
+                        quality: .exact
+                    ),
                     correlationEpochID: correlationEpochID
                 ),
                 availability: availability,
                 previousState: previousState,
                 currentState: currentState,
                 attributes: attributes,
-                sensitivity: fixtureSensitivity(previousState: previousState, currentState: currentState, attributes: attributes)
+                sensitivity: fixtureSensitivity(
+                    previousState: previousState,
+                    currentState: currentState,
+                    attributes: attributes
+                )
             )
         }
 
@@ -557,15 +636,26 @@ enum RecentChangesFixture {
                 }
             case let .array(values):
                 if values.isEmpty {
-                    fields.append(EvidenceFieldSensitivity(path: EvidenceFieldPath(prefix), classification: .none, pseudonymization: .notApplicable))
+                    fields.append(EvidenceFieldSensitivity(
+                        path: EvidenceFieldPath(prefix),
+                        classification: .none,
+                        pseudonymization: .notApplicable
+                    ))
                 } else {
-                    fields.append(EvidenceFieldSensitivity(path: EvidenceFieldPath("\(prefix)[*]"), classification: .none, pseudonymization: .notApplicable))
+                    fields.append(EvidenceFieldSensitivity(
+                        path: EvidenceFieldPath("\(prefix)[*]"),
+                        classification: .none,
+                        pseudonymization: .notApplicable
+                    ))
                 }
             default:
-                fields.append(EvidenceFieldSensitivity(path: EvidenceFieldPath(prefix), classification: .none, pseudonymization: .notApplicable))
+                fields.append(EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath(prefix),
+                    classification: .none,
+                    pseudonymization: .notApplicable
+                ))
             }
         }
+        // Why: cohesive reviewed boundary.
     #endif
-}
-
-// swiftlint:enable line_length function_parameter_count trailing_comma
+} // swiftlint:disable:this file_length

@@ -1,8 +1,6 @@
 import AppKit
 import Foundation
 
-// swiftlint:disable trailing_comma
-
 final class SleepWakeBoundaryAdapter: Horizon2EvidenceAdapter, @unchecked Sendable {
     let sourceID: Horizon2SourceID = .sleepWake
 
@@ -34,7 +32,7 @@ final class SleepWakeBoundaryAdapter: Horizon2EvidenceAdapter, @unchecked Sendab
             },
             center.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
                 self?.handle(.didWake)
-            },
+            }
         ]
         lock.unlock()
         emit(.health(health(event: .started, detail: "Sleep/wake control boundary registered")))
@@ -87,5 +85,3 @@ final class SleepWakeBoundaryAdapter: Horizon2EvidenceAdapter, @unchecked Sendab
         stop()
     }
 }
-
-// swiftlint:enable trailing_comma
