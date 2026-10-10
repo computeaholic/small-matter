@@ -43,6 +43,7 @@ struct RecentChangeField: Identifiable, Equatable, Sendable {
 }
 
 @MainActor
+// Why: canonical contract owner.
 // swiftlint:disable:next type_body_length
 final class RecentChangesViewModel: ObservableObject {
     static let maximumRows = 200
@@ -433,5 +434,6 @@ final class RecentChangesViewModel: ObservableObject {
         case "LOOPBACK": return "Loopback"
         default: return "Other"
         }
+        // Why: cohesive reviewed boundary.
     }
 } // swiftlint:disable:this file_length

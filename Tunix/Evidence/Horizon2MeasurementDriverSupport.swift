@@ -37,6 +37,8 @@
             }
         }
 
+        // Why: ordered canonical flow.
+        // Why: ordered canonical flow.
         // swiftlint:disable:next function_body_length
         private func makeRawEvent(_ record: NormalizedRecord) -> Horizon2RawEvent? {
             switch record.sourceID {

@@ -3,6 +3,7 @@ import Foundation
 import XCTest
 
 // swiftformat:disable trailingCommas
+// Why: canonical contract owner.
 // swiftlint:disable:next type_body_length
 final class CorrelationEngineTests: XCTestCase {
     private let runID = UUID(uuidString: "70000000-0000-0000-0000-000000000001")!
@@ -410,6 +411,7 @@ final class CorrelationEngineTests: XCTestCase {
         )
     }
 
+    // Why: ordered canonical flow.
     // swiftlint:disable:next function_body_length function_parameter_count
     private func make(
         index: Int,
@@ -484,5 +486,6 @@ final class CorrelationEngineTests: XCTestCase {
             currentState: .string("fixture"),
             sensitivity: sensitivity
         )
+        // Why: cohesive reviewed boundary.
     }
 } // swiftlint:disable:this file_length

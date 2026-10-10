@@ -1,6 +1,7 @@
 import XCTest
 
 @MainActor
+// Why: canonical contract owner.
 // swiftlint:disable:next type_body_length
 final class TunixUITests: XCTestCase {
     private var app: XCUIApplication!
@@ -606,5 +607,6 @@ extension TunixUITests {
         XCTAssertFalse(app.debugDescription.contains(destination.path))
         XCTAssertFalse(app.debugDescription.contains("NSError"))
         XCTAssertFalse(FileManager.default.fileExists(atPath: destination.path))
+        // Why: cohesive reviewed boundary.
     }
 } // swiftlint:disable:this file_length

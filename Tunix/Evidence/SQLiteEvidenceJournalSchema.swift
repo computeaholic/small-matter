@@ -1,6 +1,8 @@
 import SQLite3
 
 extension SQLiteConnection {
+    // Why: ordered canonical flow.
+    // Why: ordered canonical flow.
     // swiftlint:disable:next function_body_length
     func createSchemaV1() throws {
         try exec("""

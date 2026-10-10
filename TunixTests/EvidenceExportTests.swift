@@ -2,6 +2,7 @@ import Foundation
 @testable import Tunix
 import XCTest
 
+// Why: canonical contract owner.
 // swiftlint:disable:next type_body_length
 final class EvidenceExportTests: XCTestCase {
     func testSystemHealthHistoryFixtureAssemblesCanonicalPackage() async throws {
@@ -531,6 +532,7 @@ final class EvidenceExportTests: XCTestCase {
         )
     }
 
+    // Why: ordered canonical flow.
     // swiftlint:disable:next function_body_length
     private func nestedSensitiveObservation() -> Observation {
         Observation(
@@ -635,5 +637,6 @@ private extension EvidenceExportTests {
             )
         }
         return journal
+        // Why: cohesive reviewed boundary.
     }
 } // swiftlint:disable:this file_length

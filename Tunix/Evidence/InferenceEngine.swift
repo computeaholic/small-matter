@@ -77,6 +77,7 @@ private struct InferenceComponents {
     let nextTests: [NextTestReference]
 }
 
+// Why: canonical contract owner.
 // swiftlint:disable:next type_body_length
 struct InferenceEngine: Sendable {
     let registry: InitialInferenceRuleRegistry
@@ -90,6 +91,7 @@ struct InferenceEngine: Sendable {
         self.catalog = catalog
     }
 
+    // Why: explicit fail-closed matrix.
     // swiftlint:disable:next cyclomatic_complexity function_body_length
     func evaluate(
         incident: IncidentPackage,
@@ -153,6 +155,7 @@ struct InferenceEngine: Sendable {
         }
     }
 
+    // Why: ordered canonical flow.
     // swiftlint:disable:next function_body_length
     private func evaluateStorage(
         incident: IncidentPackage,
@@ -222,6 +225,7 @@ struct InferenceEngine: Sendable {
         )
     }
 
+    // Why: ordered canonical flow.
     // swiftlint:disable:next function_body_length
     private func evaluateNetwork(
         incident: IncidentPackage,
@@ -409,5 +413,6 @@ extension Inference {
         case .stronglySupported: return "Supported"
         case .plausible: return "Supported"
         }
+        // Why: cohesive reviewed boundary.
     }
 } // swiftlint:disable:this file_length

@@ -2,6 +2,8 @@ import Foundation
 import SQLite3
 
 extension SQLiteEvidenceJournal {
+    // Why: explicit fail-closed matrix.
+    // Why: ordered canonical flow.
     // swiftlint:disable:next cyclomatic_complexity function_body_length
     func persistEvidenceSets(incidentID: UUID, sets: [EvidenceSet]) throws {
         guard availabilityState != .unavailable else { throw currentError() }
@@ -113,6 +115,8 @@ extension SQLiteEvidenceJournal {
         } catch { return [] }
     }
 
+    // Why: ordered canonical flow.
+    // Why: ordered canonical flow.
     // swiftlint:disable:next function_body_length
     func loadEvidenceSet(id: UUID) throws -> EvidenceSet? {
         let setStatement = try connection

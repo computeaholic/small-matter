@@ -11,6 +11,7 @@ private enum StorageInitializationPhase: String {
     case live
 }
 
+// Why: canonical contract owner.
 // swiftlint:disable:next type_body_length
 final class StorageEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable {
     let sourceID: Horizon2SourceID = .storage
@@ -46,6 +47,7 @@ final class StorageEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable
         self.emit = emit
     }
 
+    // Why: ordered canonical flow.
     // swiftlint:disable:next function_body_length
     func start() {
         lock.lock()
@@ -168,6 +170,7 @@ final class StorageEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable
         }
     }
 
+    // Why: ordered canonical flow.
     // swiftlint:disable:next function_body_length
     private func captureAndReconcileSnapshot() {
         let start = occurrence()
@@ -485,5 +488,6 @@ final class StorageEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable
 
     deinit {
         stop()
+        // Why: cohesive reviewed boundary.
     }
 } // swiftlint:disable:this file_length

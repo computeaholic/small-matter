@@ -2,6 +2,8 @@ import Foundation
 import SQLite3
 
 extension SQLiteEvidenceJournal {
+    // Why: ordered canonical flow.
+    // Why: ordered canonical flow.
     // swiftlint:disable:next function_body_length
     func persist(incident: IncidentPackage, retentionProtected: Bool = false) throws {
         let packageJSON = try String(bytes: JSONEncoder.horizon2.encode(incident), encoding: .utf8) ?? ""

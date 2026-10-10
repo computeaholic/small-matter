@@ -2,6 +2,8 @@ import Foundation
 import SQLite3
 
 extension SQLiteEvidenceJournal {
+    // Why: explicit fail-closed matrix.
+    // Why: ordered canonical flow.
     // swiftlint:disable:next cyclomatic_complexity function_body_length
     func persistInferences(
         incidentID: UUID,

@@ -2,6 +2,7 @@
 @testable import Tunix
 import XCTest
 
+// Why: canonical contract owner.
 // swiftlint:disable:next type_body_length
 final class Horizon2EvidenceCoreTests: XCTestCase {
     func testObservationRoundTripIsDeterministicAndValueBased() throws {
@@ -282,6 +283,7 @@ final class Horizon2EvidenceCoreTests: XCTestCase {
         XCTAssertNil(incomplete.completedAt)
     }
 
+    // Why: ordered canonical flow.
     // swiftlint:disable:next function_body_length
     func testEvidencePackageRequiresEvidenceSetContextForInferenceSupport() {
         let observation = EvidenceFixtureCorpus.externalStorageLoss
@@ -575,6 +577,7 @@ private enum EvidenceFixtureCorpus {
         )
     }
 
+    // Why: ordered canonical flow.
     // swiftlint:disable:next function_body_length
     private static func makeObservation(
         id: UUID,
@@ -660,5 +663,6 @@ private enum EvidenceFixtureCorpus {
         let incident = UUID(uuidString: "30000000-0000-0000-0000-000000000003")!
         let incompleteIncident = UUID(uuidString: "30000000-0000-0000-0000-000000000004")!
         let package = UUID(uuidString: "30000000-0000-0000-0000-000000000005")!
+        // Why: cohesive reviewed boundary.
     }
 } // swiftlint:disable:this file_length

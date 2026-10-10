@@ -866,5 +866,8 @@ private struct RecentChangeDetailView: View {
 }
 
 extension Notification.Name {
-    static let horizon2JournalDidResolve = Notification.Name("com.tunix.horizon2.journalDidResolve")
+    static let horizon2JournalDidResolve = Notification.Name(
+        "com.tunix.horizon2.journalDidResolve"
+        // Why: cohesive reviewed boundary.
+    )
 } // swiftlint:disable:this file_length

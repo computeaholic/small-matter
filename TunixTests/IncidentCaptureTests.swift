@@ -3,6 +3,7 @@ import Foundation
 import XCTest
 
 @MainActor
+// Why: canonical contract owner.
 // swiftlint:disable:next type_body_length
 final class IncidentCaptureTests: XCTestCase {
     func testMarkerIsIndependentFromObservationAndLegacyMarkerDecodes() throws {

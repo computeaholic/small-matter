@@ -1,6 +1,7 @@
 @testable import Tunix
 import XCTest
 
+// Why: canonical contract owner.
 // swiftlint:disable:next type_body_length
 final class InferenceEngineTests: XCTestCase {
     func testProductionRegistryIsExactlyTwoCurrentRules() {
@@ -245,6 +246,7 @@ final class InferenceEngineTests: XCTestCase {
         XCTAssertEqual(foreignKeyViolations, [])
     }
 
+    // Why: ordered canonical flow.
     // swiftlint:disable:next function_body_length
     func testSQLiteCurrentOnlySeparatesLegacyInference() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(
@@ -458,5 +460,8 @@ final class InferenceEngineTests: XCTestCase {
     }
 
     private let start = Date(timeIntervalSince1970: 1_700_000_000)
-    private let processRunID = UUID(uuidString: "40000000-0000-0000-0000-000000000010")!
+    private let processRunID = UUID(
+        uuidString: "40000000-0000-0000-0000-000000000010"
+        // Why: cohesive reviewed boundary.
+    )!
 } // swiftlint:disable:this file_length

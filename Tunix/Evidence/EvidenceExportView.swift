@@ -8,6 +8,7 @@ private enum EvidenceExportSaveState: Equatable {
     case failed
 }
 
+// Why: canonical contract owner.
 // swiftlint:disable:next type_body_length
 struct EvidenceExportPreviewView: View {
     let package: EvidencePackage

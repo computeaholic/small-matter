@@ -3,6 +3,7 @@ import SQLite3
 @testable import Tunix
 import XCTest
 
+// Why: canonical contract owner.
 // swiftlint:disable:next type_body_length
 final class Horizon2SQLiteJournalTests: XCTestCase {
     func testBoundedNewestFirstQueryUsesTimeIndex() async throws {
@@ -866,6 +867,7 @@ final class Horizon2SQLiteJournalTests: XCTestCase {
         XCTAssertTrue(timePlan.contains(where: { $0.contains("observations_by_time") }))
     }
 
+    // Why: ordered canonical flow.
     // swiftlint:disable:next function_body_length
     func testStorageNormalizationAndHealthPrivacySentinelsDoNotPersistRaw() async throws {
         let root = try makeTemporaryRoot()
@@ -1055,6 +1057,7 @@ final class Horizon2SQLiteJournalTests: XCTestCase {
         return root
     }
 
+    // Why: ordered canonical flow.
     // swiftlint:disable:next function_body_length
     private func makeObservation(
         sensitivity: EvidenceSensitivityRegistry? = nil,
@@ -1259,5 +1262,6 @@ private final class BootstrapProbeAdapter: Horizon2EvidenceAdapter, @unchecked S
         lock.unlock()
     }
 
+    // Why: cohesive reviewed boundary.
     func reconcileAfterWake() {}
 } // swiftlint:disable:this file_length

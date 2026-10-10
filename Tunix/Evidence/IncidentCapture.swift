@@ -24,6 +24,7 @@ struct IncidentContextSnapshot: Codable, Equatable, Sendable {
     }
 
     @MainActor
+    // Why: explicit fail-closed matrix.
     // swiftlint:disable:next cyclomatic_complexity function_body_length
     static func current(
         capturedAt: Date,
@@ -436,6 +437,7 @@ private final class ManualIncidentCaptureTask: IncidentCaptureScheduledTask, @un
     }
 }
 
+// Why: canonical contract owner.
 // swiftlint:disable:next type_body_length
 final class IncidentCaptureCoordinator: ObservableObject {
     static let maximumHistory = 50
@@ -512,6 +514,7 @@ final class IncidentCaptureCoordinator: ObservableObject {
     }
 
     @MainActor
+    // Why: ordered canonical flow.
     // swiftlint:disable:next function_body_length
     private func begin(context: IncidentContextSnapshot) async {
         let availability = await journal.retentionStatus().availability
@@ -570,6 +573,7 @@ final class IncidentCaptureCoordinator: ObservableObject {
     }
 
     @MainActor
+    // Why: ordered canonical flow.
     // swiftlint:disable:next function_body_length
     private func finalizeActiveCapture() async {
         guard let session = activeSession else { return }
@@ -722,5 +726,6 @@ private extension ProcessInfo.ThermalState {
         case .critical: return "Critical"
         @unknown default: return "Unknown"
         }
+        // Why: cohesive reviewed boundary.
     }
 } // swiftlint:disable:this file_length

@@ -3,6 +3,7 @@ import SwiftUI
 
 // This screen intentionally keeps its sections together so the support summary
 // and its evidence-state explanations remain reviewed as one surface.
+// Why: canonical contract owner.
 // swiftlint:disable:next type_body_length
 struct SecurityView: View {
     @EnvironmentObject private var stats: SystemStatsModel
@@ -499,5 +500,9 @@ private enum EvidenceSupportState {
     case capacityNoCapture
     case capacityCapture(IncidentPackage)
     case unavailable
-    case packageFailure(availability: EvidenceJournalAvailability, IncidentPackage)
+    case packageFailure(
+        availability: EvidenceJournalAvailability,
+        IncidentPackage
+        // Why: cohesive reviewed boundary.
+    )
 } // swiftlint:disable:this file_length

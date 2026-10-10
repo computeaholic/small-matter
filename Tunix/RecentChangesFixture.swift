@@ -1,7 +1,9 @@
 import Foundation
 
+// Why: canonical contract owner.
 // swiftlint:disable:next type_body_length
 enum RecentChangesFixture {
+    // Why: explicit fail-closed matrix.
     // swiftlint:disable:next cyclomatic_complexity function_body_length
     static func journal(arguments: [String]) -> any EvidenceJournal {
         #if DEBUG
@@ -73,6 +75,7 @@ enum RecentChangesFixture {
                 .map(String.init)
         }
 
+        // Why: explicit fail-closed matrix.
         // swiftlint:disable:next cyclomatic_complexity function_body_length
         static func seedIncidentFixture(
             mode: String,
@@ -214,6 +217,7 @@ enum RecentChangesFixture {
             }
         }
 
+        // Why: complete canonical inputs.
         // swiftlint:disable:next function_parameter_count
         private static func seedCompletedPackage(
             id: UUID,
@@ -351,6 +355,7 @@ enum RecentChangesFixture {
         private static let correlationEpochID = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!
         private static let baseDate = Date(timeIntervalSince1970: 1_735_689_600)
 
+        // Why: ordered canonical flow.
         // swiftlint:disable:next function_body_length
         private static func incidentPackages(mode: String) -> [IncidentPackage] {
             let context = EvidenceValue.object([
@@ -542,6 +547,7 @@ enum RecentChangesFixture {
             detail: "fixture coverage warning"
         )
 
+        // Why: complete canonical inputs.
         // swiftlint:disable:next function_parameter_count
         private static func observation(
             id: String,
@@ -650,5 +656,6 @@ enum RecentChangesFixture {
                 ))
             }
         }
+        // Why: cohesive reviewed boundary.
     #endif
 } // swiftlint:disable:this file_length

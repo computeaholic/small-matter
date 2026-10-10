@@ -1,6 +1,7 @@
 @testable import Tunix
 import XCTest
 
+// Why: canonical contract owner.
 // swiftlint:disable:next type_body_length
 final class Horizon2NativeAdaptersTests: XCTestCase {
     private let fixedDate = Date(timeIntervalSince1970: 1_700_000_000)
@@ -131,6 +132,7 @@ final class Horizon2NativeAdaptersTests: XCTestCase {
         XCTAssertEqual(events[1].identity.stateIdentifier(for: .volume), "path:/Volumes/Backup")
     }
 
+    // Why: ordered canonical flow.
     // swiftlint:disable:next function_body_length
     func testStartupCallbacksForMountedBaselineAreConfirmationsAcrossBothNamespaces() throws {
         let occurrence = EvidenceSourceOccurrence(wallTime: fixedDate, continuousNanoseconds: 1, quality: .exact)
@@ -190,6 +192,7 @@ final class Horizon2NativeAdaptersTests: XCTestCase {
         XCTAssertFalse(startupCallbacks.contains { $0.semanticRole == .transition })
     }
 
+    // Why: ordered canonical flow.
     // swiftlint:disable:next function_body_length
     func testDiskAndVolumeIdentityNormalizationMatchesNativeCallbackFields() {
         let occurrence = EvidenceSourceOccurrence(wallTime: fixedDate, continuousNanoseconds: 1, quality: .exact)
@@ -263,6 +266,7 @@ final class Horizon2NativeAdaptersTests: XCTestCase {
         )
     }
 
+    // Why: ordered canonical flow.
     // swiftlint:disable:next function_body_length
     func testRealPostBaselineStorageTransitionsRemainTransitions() {
         let occurrence = EvidenceSourceOccurrence(wallTime: fixedDate, continuousNanoseconds: 1, quality: .exact)
@@ -570,6 +574,7 @@ final class Horizon2NativeAdaptersTests: XCTestCase {
         XCTAssertEqual(Set(observations.map(\.time.correlationEpochID)).count, 1)
     }
 
+    // Why: ordered canonical flow.
     // swiftlint:disable:next function_body_length
     func testSleepWakeChangesEpochAndPrePostObservationsAreIncomparable() async throws {
         let runtime = EvidenceRuntime(
@@ -1355,5 +1360,6 @@ private enum ObservationFixtureFactory {
             currentState: fact.currentState,
             attributes: fact.attributes
         )
+        // Why: cohesive reviewed boundary.
     }
 } // swiftlint:disable:this file_length

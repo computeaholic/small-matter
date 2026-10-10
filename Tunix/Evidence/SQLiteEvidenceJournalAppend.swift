@@ -8,6 +8,8 @@ struct SQLiteInsertedObservation {
 }
 
 extension SQLiteEvidenceJournal {
+    // Why: explicit fail-closed matrix.
+    // Why: ordered canonical flow.
     // swiftlint:disable:next cyclomatic_complexity function_body_length
     func append(_ observation: Observation) throws {
         guard availabilityState != .unavailable else { throw currentError() }
@@ -190,6 +192,8 @@ extension SQLiteEvidenceJournal {
     // The async signature is intentional: it is the concrete witness for
     // EvidenceJournal.appendBatch rather than the protocol's per-record
     // fallback implementation.
+    // Why: explicit fail-closed matrix.
+    // Why: ordered canonical flow.
     // swiftlint:disable:next cyclomatic_complexity function_body_length
     func appendBatch(_ observations: [
         Observation

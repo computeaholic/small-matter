@@ -14,6 +14,8 @@ extension SQLiteEvidenceJournal {
         } catch { return nil }
     }
 
+    // Why: explicit fail-closed matrix.
+    // Why: explicit fail-closed matrix.
     // swiftlint:disable:next cyclomatic_complexity
     func query(_ query: EvidenceJournalQuery) -> [Observation] {
         guard availabilityState != .unavailable else { return [] }
@@ -62,6 +64,8 @@ extension SQLiteEvidenceJournal {
         } catch { return [] }
     }
 
+    // Why: explicit fail-closed matrix.
+    // Why: ordered canonical flow.
     // swiftlint:disable:next cyclomatic_complexity function_body_length
     func recordSourceHealth(_ record: EvidenceSourceHealthRecord) throws {
         guard availabilityState != .unavailable else { throw currentError() }

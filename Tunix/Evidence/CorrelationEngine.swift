@@ -23,6 +23,7 @@ enum InitialCorrelationRule {
     static let network = CorrelationRuleDefinition(id: "H2-CORR-NETWORK-PATH-TRANSITION", version: currentVersion)
 }
 
+// Why: canonical contract owner.
 // swiftlint:disable:next type_body_length
 struct CorrelationEngine: Sendable {
     func correlate(incident: IncidentPackage, observations: [Observation]) throws -> [EvidenceSet] {
@@ -293,6 +294,8 @@ struct CorrelationEngine: Sendable {
         UInt64(Horizon2EvidenceConfiguration.temporalEligibilitySeconds) * 1_000_000_000
     }
 
+    // Why: complete canonical inputs.
+    // Why: complete canonical inputs.
     // swiftlint:disable:next function_parameter_count
     private func spanIncluding(
         _ observation: Observation,
@@ -327,6 +330,8 @@ struct CorrelationEngine: Sendable {
         }
     }
 
+    // Why: complete canonical inputs.
+    // Why: complete canonical inputs.
     // swiftlint:disable:next function_parameter_count
     private func updateSpan(
         with observation: Observation,

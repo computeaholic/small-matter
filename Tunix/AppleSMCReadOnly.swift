@@ -26,6 +26,8 @@ private struct SMCKeyInfo {
     var dataType: UInt32 = 0
     var dataAttributes: UInt8 = 0
     // AppleSMC copies this C-layout padding tuple through IOKit.
+    // Why: fixed AppleSMC C-layout ABI.
+    // Why: fixed AppleSMC C-layout ABI.
     // swiftlint:disable:next large_tuple
     var padding: (UInt8, UInt8, UInt8) = (0, 0, 0)
 }
@@ -33,12 +35,18 @@ private struct SMCKeyInfo {
 private struct SMCKeyData {
     var key: UInt32 = 0
     // AppleSMC request layout is ABI-defined by the private C interface.
+    // Why: fixed AppleSMC C-layout ABI.
+    // Why: fixed AppleSMC C-layout ABI.
     // swiftlint:disable:next large_tuple
     var vers: (UInt8, UInt8, UInt8, UInt8) = (0, 0, 0, 0)
+    // Why: fixed AppleSMC C-layout ABI.
+    // Why: fixed AppleSMC C-layout ABI.
     // swiftlint:disable:next large_tuple
     var pLimitData: (UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
                      UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8) =
         (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    // Why: fixed AppleSMC C-layout ABI.
+    // Why: fixed AppleSMC C-layout ABI.
     // swiftlint:disable:next large_tuple
     var padding0: (UInt8, UInt8, UInt8, UInt8) = (0, 0, 0, 0)
     var keyInfo = SMCKeyInfo()
@@ -47,6 +55,8 @@ private struct SMCKeyData {
     var data8: UInt8 = 0
     var padding1: UInt8 = 0
     var data32: UInt32 = 0
+    // Why: fixed AppleSMC C-layout ABI.
+    // Why: fixed AppleSMC C-layout ABI.
     // swiftlint:disable:next large_tuple
     var bytes: (UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
                 UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,

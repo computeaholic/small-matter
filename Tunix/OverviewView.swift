@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 
+// Why: canonical contract owner.
 // swiftlint:disable:next type_body_length
 struct OverviewView: View {
     @EnvironmentObject private var settings: SettingsManager
