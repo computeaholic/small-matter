@@ -1,4 +1,3 @@
-// swiftlint:disable file_length line_length trailing_comma
 import AppKit
 import DiskArbitration
 import Foundation
@@ -73,12 +72,16 @@ final class StorageEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable
         }
         let center = NSWorkspace.shared.notificationCenter
         notificationTokens = [
-            center.addObserver(forName: NSWorkspace.didMountNotification, object: nil, queue: nil) { [weak self] notification in
-                self?.handleWorkspaceNotification(notification, kind: .volumeMounted)
-            },
-            center.addObserver(forName: NSWorkspace.didUnmountNotification, object: nil, queue: nil) { [weak self] notification in
-                self?.handleWorkspaceNotification(notification, kind: .volumeUnmounted)
-            },
+            center
+                .addObserver(forName: NSWorkspace.didMountNotification, object: nil,
+                             queue: nil) { [weak self] notification in
+                    self?.handleWorkspaceNotification(notification, kind: .volumeMounted)
+                },
+            center
+                .addObserver(forName: NSWorkspace.didUnmountNotification, object: nil,
+                             queue: nil) { [weak self] notification in
+                    self?.handleWorkspaceNotification(notification, kind: .volumeUnmounted)
+                }
         ]
         lock.unlock()
 
@@ -86,7 +89,8 @@ final class StorageEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable
             emit(.health(health(
                 event: .startupFailure,
                 reason: .permissionOrAPIUnavailable,
-                detail: "DASessionCreate failed; native inventory and mounted-volume evidence remain bounded and uncertain"
+                detail: "DASessionCreate failed; native inventory and mounted-volume evidence " +
+                    "remain bounded and uncertain"
             )))
         }
         emit(.health(health(
@@ -121,8 +125,16 @@ final class StorageEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable
         tokens.forEach(NSWorkspace.shared.notificationCenter.removeObserver)
         if let oldSession {
             DASessionSetDispatchQueue(oldSession, nil)
-            DAUnregisterCallback(oldSession, unsafeBitCast(Self.diskAppeared, to: UnsafeMutableRawPointer.self), Unmanaged.passUnretained(self).toOpaque())
-            DAUnregisterCallback(oldSession, unsafeBitCast(Self.diskDisappeared, to: UnsafeMutableRawPointer.self), Unmanaged.passUnretained(self).toOpaque())
+            DAUnregisterCallback(
+                oldSession,
+                unsafeBitCast(Self.diskAppeared, to: UnsafeMutableRawPointer.self),
+                Unmanaged.passUnretained(self).toOpaque()
+            )
+            DAUnregisterCallback(
+                oldSession,
+                unsafeBitCast(Self.diskDisappeared, to: UnsafeMutableRawPointer.self),
+                Unmanaged.passUnretained(self).toOpaque()
+            )
         }
         emit(.health(health(event: .stopped, reason: .notObserved, detail: "Storage observers removed")))
     }
@@ -156,6 +168,7 @@ final class StorageEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable
         }
     }
 
+    // swiftlint:disable:next function_body_length
     private func captureAndReconcileSnapshot() {
         let start = occurrence()
         lock.lock()
@@ -191,18 +204,22 @@ final class StorageEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable
         lock.lock()
         let capturedBufferHighWaterMark = bufferHighWaterMark
         lock.unlock()
-        let inventoryDetail = "\(snapshot.metrics.diskCount) disks, \(snapshot.metrics.mountedVolumeCount) mounted volumes, buffer high-water \(capturedBufferHighWaterMark), \(metricDetail)"
+        let inventoryDetail = "\(snapshot.metrics.diskCount) disks, " +
+            "\(snapshot.metrics.mountedVolumeCount) mounted volumes, " +
+            "buffer high-water \(capturedBufferHighWaterMark), \(metricDetail)"
         if let failure = snapshot.failure {
             emit(.health(health(
                 event: .sourceUnavailable,
                 reason: .sourceUnavailable,
-                detail: "Native storage inventory unavailable or partial: \(failure.detail); callbacks retained as uncertain; \(inventoryDetail)"
+                detail: "Native storage inventory unavailable or partial: \(failure.detail); " +
+                    "callbacks retained as uncertain; \(inventoryDetail)"
             )))
         } else {
             emit(.health(health(
                 event: .reconciliationCompleted,
                 reason: .notObserved,
-                detail: "Current storage baseline established from native inventory; \(snapshot.events.count) facts retained; \(inventoryDetail)"
+                detail: "Current storage baseline established from native inventory; " +
+                    "\(snapshot.events.count) facts retained; \(inventoryDetail)"
             )))
         }
         lock.lock()
@@ -250,7 +267,8 @@ final class StorageEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable
                         event: .reconciliationFailure,
                         reason: .incompleteCapture,
                         suppressedCount: dropped,
-                        detail: "Native storage initialization buffer reached its hard bound; dropped callbacks remain explicitly incomplete"
+                        detail: "Native storage initialization buffer reached its hard bound; " +
+                            "dropped callbacks remain explicitly incomplete"
                     )))
                 }
                 return
@@ -281,7 +299,15 @@ final class StorageEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable
             currentSession.flatMap { DADiskCreateFromVolumePath(kCFAllocatorDefault, $0, url as CFURL) }
         }
         let identity = volumeURL.map { NativeStorageIdentityNormalizer.identity(forVolumeURL: $0, disk: disk) }
-            ?? StorageRawIdentity(volumeName: nil, filesystemPath: nil, serialNumber: nil, hardwareUUID: nil, mediaUUID: nil, bsdName: nil, isWholeDisk: false)
+            ?? StorageRawIdentity(
+                volumeName: nil,
+                filesystemPath: nil,
+                serialNumber: nil,
+                hardwareUUID: nil,
+                mediaUUID: nil,
+                bsdName: nil,
+                isWholeDisk: false
+            )
         receive(StorageRawEvent(
             kind: kind,
             identity: identity,
@@ -317,7 +343,12 @@ final class StorageEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable
         lock.unlock()
 
         if suppressed {
-            emit(.health(health(event: .duplicateSuppressed, reason: .notObserved, suppressedCount: 1, detail: "Exact higher-level storage callback delivery")))
+            emit(.health(health(
+                event: .duplicateSuppressed,
+                reason: .notObserved,
+                suppressedCount: 1,
+                detail: "Exact higher-level storage callback delivery"
+            )))
         } else {
             emitRaw(raw.assigningSemanticRole(role))
         }
@@ -349,7 +380,14 @@ final class StorageEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable
         suppressedCount: Int = 0,
         detail: String?
     ) -> EvidenceSourceHealthUpdate {
-        EvidenceSourceHealthUpdate(sourceID: .storage, event: event, reason: reason, suppressedCount: suppressedCount, observedAt: clock.reading().wallTime, detail: detail)
+        EvidenceSourceHealthUpdate(
+            sourceID: .storage,
+            event: event,
+            reason: reason,
+            suppressedCount: suppressedCount,
+            observedAt: clock.reading().wallTime,
+            detail: detail
+        )
     }
 
     var isReconciledForTesting: Bool {
@@ -376,7 +414,6 @@ final class StorageEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable
         receive(raw)
     }
 
-    // swiftlint:disable:next function_body_length
     static func parseInventoryFixture(data: Data, occurrence: EvidenceSourceOccurrence) -> StorageInventorySnapshot {
         guard let plist = try? PropertyListSerialization.propertyList(
             from: data,
@@ -390,11 +427,9 @@ final class StorageEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable
         var seen: Set<String> = []
 
         func visit(_ value: Any) {
-            // swiftlint:disable opening_brace
             if let dictionary = value as? [String: Any],
                let bsdName = dictionary["DeviceIdentifier"] as? String,
-               !bsdName.isEmpty
-            {
+               !bsdName.isEmpty {
                 let volumeName = dictionary["VolumeName"] as? String
                 let filesystemPath = dictionary["MountPoint"] as? String
                 let mediaUUID = dictionary["VolumeUUID"] as? String ?? dictionary["DiskUUID"] as? String
@@ -424,7 +459,6 @@ final class StorageEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable
                     }
                 }
             }
-            // swiftlint:enable opening_brace
             if let dictionary = value as? [String: Any] {
                 dictionary.values.forEach(visit)
             } else if let array = value as? [Any] {
@@ -443,12 +477,13 @@ final class StorageEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable
 
     private static let diskDisappeared: DADiskDisappearedCallback = { disk, context in
         guard let context else { return }
-        Unmanaged<StorageEvidenceAdapter>.fromOpaque(context).takeUnretainedValue().emitDisk(disk, kind: .diskDisappeared)
+        Unmanaged<StorageEvidenceAdapter>.fromOpaque(context).takeUnretainedValue().emitDisk(
+            disk,
+            kind: .diskDisappeared
+        )
     }
 
     deinit {
         stop()
     }
-}
-
-// swiftlint:enable line_length trailing_comma
+} // swiftlint:disable:this file_length

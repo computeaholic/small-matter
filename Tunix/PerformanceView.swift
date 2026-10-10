@@ -1,4 +1,3 @@
-// swiftlint:disable trailing_comma
 import Charts
 import SwiftUI
 
@@ -93,7 +92,7 @@ struct PerformanceView: View {
                     ("User", stats.cpuUserText),
                     ("System", stats.cpuSystemText),
                     ("Idle", stats.cpuIdleText),
-                    ("Logical CPUs", stats.logicalCPUText),
+                    ("Logical CPUs", stats.logicalCPUText)
                 ])
             }
         }
@@ -151,7 +150,7 @@ struct PerformanceView: View {
                     ("Compressed", stats.memoryCompressedText),
                     ("Cached", stats.memoryCachedText),
                     ("Swap", stats.memorySwapText),
-                    ("Physical", stats.memoryPhysicalText),
+                    ("Physical", stats.memoryPhysicalText)
                 ])
             }
         }
@@ -257,5 +256,3 @@ struct PerformanceView: View {
         }
     }
 }
-
-// swiftlint:enable trailing_comma

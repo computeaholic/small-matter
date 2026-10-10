@@ -3,7 +3,6 @@ import Foundation
 import XCTest
 
 // swiftformat:disable trailingCommas
-// swiftlint:disable file_length
 // swiftlint:disable:next type_body_length
 final class CorrelationEngineTests: XCTestCase {
     private let runID = UUID(uuidString: "70000000-0000-0000-0000-000000000001")!
@@ -486,4 +485,4 @@ final class CorrelationEngineTests: XCTestCase {
             sensitivity: sensitivity
         )
     }
-}
+} // swiftlint:disable:this file_length

@@ -621,6 +621,4 @@ extension SystemStatsModel {
         formatter.allowedUnits = [.useKB, .useMB, .useGB]
         return formatter
     }()
-
-    // swiftlint:disable:next file_length
-}
+} // swiftlint:disable:this file_length

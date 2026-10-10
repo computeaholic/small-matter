@@ -1,4 +1,3 @@
-// swiftlint:disable line_length file_length
 import SwiftUI
 
 struct RecentChangesView: View {
@@ -69,8 +68,9 @@ struct RecentChangesView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(
-                "This removes ordinary unprotected Recent Changes that are not part of a capture, evidence set, or inference. " +
-                    "Completed captures and protected evidence remain. Existing history is not reported as lost until you confirm."
+                "This removes ordinary unprotected Recent Changes that are not part of a capture, evidence " +
+                    "set, or inference. Completed captures and protected evidence remain. Existing history " +
+                    "is not reported as lost until you confirm."
             )
         }
         .alert("Evidence storage recovery", isPresented: Binding(
@@ -136,7 +136,8 @@ struct RecentChangesView: View {
                 incidentCapturePanel
                 stateMessage(
                     title: "Recent changes may not be saved because local evidence storage is full.",
-                    detail: "Capture is disabled until safe unprotected evidence is removed. Existing history has not been reported as lost.",
+                    detail: "Capture is disabled until safe unprotected evidence is removed. Existing history " +
+                        "has not been reported as lost.",
                     identifier: "recent-changes-capacity-state"
                 )
             }
@@ -215,7 +216,10 @@ private struct IncidentCapturePanel: View {
                     Button("Free Safe Storage…", action: onRecoverCapacity)
                         .buttonStyle(.bordered)
                         .accessibilityIdentifier("incident-capture-capacity-recovery")
-                        .accessibilityHint("Remove only unprotected evidence after confirmation; completed captures and protected evidence remain.")
+                        .accessibilityHint(
+                            "Remove only unprotected evidence after confirmation; completed captures and " +
+                                "protected evidence remain."
+                        )
                 }
             }
 
@@ -282,7 +286,8 @@ private struct IncidentCapturePanel: View {
         .accessibilityIdentifier("incident-capture-start")
         .accessibilityHint(
             journalUnavailable
-                ? "Capture is unavailable because local evidence storage is full or unavailable. Use Free Safe Storage when offered."
+                ? "Capture is unavailable because local evidence storage is full or unavailable. " +
+                "Use Free Safe Storage when offered."
                 : "Capture 60 seconds before now and 2 minutes after"
         )
         .help("Capture 60 seconds before now and 2 minutes after")
@@ -398,7 +403,8 @@ private struct IncidentSummaryView: View {
                 var snapshots: [UUID: [NextTestCatalogEntry]] = [:]
                 for inference in inferences {
                     support[inference.id] = inference.supportingObservationIDs.compactMap { observationsByID[$0] }
-                    contradictions[inference.id] = inference.contradictingObservationIDs.compactMap { observationsByID[$0] }
+                    contradictions[inference.id] = inference.contradictingObservationIDs
+                        .compactMap { observationsByID[$0] }
                     snapshots[inference.id] = await journal.nextTestSnapshots(inferenceID: inference.id)
                 }
                 supportingObservations = support
@@ -451,7 +457,8 @@ private struct IncidentWindowSummaryView: View {
                 if let coveredStart = date("coveredStart"), let coveredEnd = date("coveredEnd") {
                     summaryRow(
                         "Covered",
-                        "\(DateFormatter.recentChanges.string(from: coveredStart)) – \(DateFormatter.recentChanges.string(from: coveredEnd))"
+                        "\(DateFormatter.recentChanges.string(from: coveredStart)) – " +
+                            "\(DateFormatter.recentChanges.string(from: coveredEnd))"
                     )
                 }
                 metricRow("CPU mean", key: "cpuUtilizationPercent")
@@ -650,16 +657,16 @@ private struct IncidentInferenceView: View {
     }
 
     private var summary: String {
-        guard inference.evidenceClass == .supported else { return "The captured evidence is insufficient for a supported interpretation." }
+        guard inference.evidenceClass == .supported
+        else { return "The captured evidence is insufficient for a supported interpretation." }
         if case let .object(values) = inference.hypothesis,
-           case let .string(kind)? = values["kind"]
-        // swiftlint:disable:next opening_brace
-        {
+           case let .string(kind)? = values["kind"] {
             switch kind {
             case "EXTERNAL_STORAGE_LIFECYCLE":
                 let subject = storageSubjectLabel(values["subjectType"])
                 return "Captured evidence supports a \(subject) lifecycle change."
-            case "NETWORK_PATH_TRANSITION": return "Captured evidence supports a network path/interface availability change."
+            case "NETWORK_PATH_TRANSITION":
+                return "Captured evidence supports a network path/interface availability change."
             default: break
             }
         }
@@ -853,12 +860,11 @@ private struct RecentChangeDetailView: View {
             Text(value)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityIdentifier(identifier ?? "recent-change-field-\(label.lowercased().replacingOccurrences(of: " ", with: "-"))")
+        .accessibilityIdentifier(identifier ??
+            "recent-change-field-\(label.lowercased().replacingOccurrences(of: " ", with: "-"))")
     }
 }
 
 extension Notification.Name {
     static let horizon2JournalDidResolve = Notification.Name("com.tunix.horizon2.journalDidResolve")
-}
-
-// swiftlint:enable line_length
+} // swiftlint:disable:this file_length

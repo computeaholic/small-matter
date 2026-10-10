@@ -1,4 +1,3 @@
-// swiftlint:disable line_length
 import Foundation
 import IOKit
 import IOKit.ps
@@ -28,10 +27,17 @@ final class PowerEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable {
             return
         }
         running = true
-        guard let source = IOPSNotificationCreateRunLoopSource(Self.powerChanged, Unmanaged.passUnretained(self).toOpaque())?.takeRetainedValue() else {
+        guard let source = IOPSNotificationCreateRunLoopSource(
+            Self.powerChanged,
+            Unmanaged.passUnretained(self).toOpaque()
+        )?.takeRetainedValue() else {
             running = false
             lock.unlock()
-            emit(.health(health(event: .startupFailure, reason: .permissionOrAPIUnavailable, detail: "IOPSNotificationCreateRunLoopSource failed")))
+            emit(.health(health(
+                event: .startupFailure,
+                reason: .permissionOrAPIUnavailable,
+                detail: "IOPSNotificationCreateRunLoopSource failed"
+            )))
             return
         }
         notificationSource = source
@@ -63,7 +69,11 @@ final class PowerEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable {
     func reconcileAfterWake() {
         guard isRunning else { return }
         guard let state = readCurrentState() else {
-            emit(.health(health(event: .reconciliationFailure, reason: .sourceUnavailable, detail: "IOPowerSources read unavailable after wake")))
+            emit(.health(health(
+                event: .reconciliationFailure,
+                reason: .sourceUnavailable,
+                detail: "IOPowerSources read unavailable after wake"
+            )))
             return
         }
         lock.lock()
@@ -74,7 +84,11 @@ final class PowerEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable {
     private func handlePowerChanged() {
         guard isRunning, let current = readCurrentState() else {
             if isRunning {
-                emit(.health(health(event: .sourceUnavailable, reason: .sourceUnavailable, detail: "IOPowerSources callback read unavailable")))
+                emit(.health(health(
+                    event: .sourceUnavailable,
+                    reason: .sourceUnavailable,
+                    detail: "IOPowerSources callback read unavailable"
+                )))
             }
             return
         }
@@ -86,7 +100,12 @@ final class PowerEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable {
         guard let previous else { return }
         let raw = PowerRawTransition(previous: previous, current: current, occurrence: occurrence())
         guard PowerTransitionNormalizer.normalize(raw) != nil else {
-            emit(.health(health(event: .duplicateSuppressed, reason: .notObserved, suppressedCount: 1, detail: "Unchanged or coalesced power callback")))
+            emit(.health(health(
+                event: .duplicateSuppressed,
+                reason: .notObserved,
+                suppressedCount: 1,
+                detail: "Unchanged or coalesced power callback"
+            )))
             return
         }
         emit(.raw(.power(raw)))
@@ -98,7 +117,7 @@ final class PowerEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable {
         let sourceString = sourceType as String
         let source: PowerSourceKind
         if sourceString == kIOPMACPowerKey {
-            source = .ac
+            source = .acPower
         } else if sourceString == kIOPMBatteryPowerKey {
             source = .battery
         } else {
@@ -115,7 +134,7 @@ final class PowerEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable {
         let currentCapacity = (description?[kIOPSCurrentCapacityKey] as? NSNumber)?.intValue
         let maximumCapacity = (description?[kIOPSMaxCapacityKey] as? NSNumber)?.intValue
         return PowerRawState(
-            externalPowerConnected: source == .ac,
+            externalPowerConnected: source == .acPower,
             source: source,
             charging: charging,
             currentCapacity: currentCapacity,
@@ -144,7 +163,14 @@ final class PowerEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable {
         suppressedCount: Int = 0,
         detail: String?
     ) -> EvidenceSourceHealthUpdate {
-        EvidenceSourceHealthUpdate(sourceID: .power, event: event, reason: reason, suppressedCount: suppressedCount, observedAt: clock.reading().wallTime, detail: detail)
+        EvidenceSourceHealthUpdate(
+            sourceID: .power,
+            event: event,
+            reason: reason,
+            suppressedCount: suppressedCount,
+            observedAt: clock.reading().wallTime,
+            detail: detail
+        )
     }
 
     private static let powerChanged: IOPowerSourceCallbackType = { context in
@@ -156,5 +182,3 @@ final class PowerEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable {
         stop()
     }
 }
-
-// swiftlint:enable line_length

@@ -28,7 +28,7 @@ if [[ "$fresh_derived_data" == "1" ]]; then
 fi
 
 cd "$repo_root"
-xcodebuild \
+exec xcodebuild \
     -project Tunix.xcodeproj \
     -scheme Tunix \
     -destination "$destination" \

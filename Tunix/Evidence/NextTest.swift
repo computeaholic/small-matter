@@ -177,10 +177,11 @@ enum Horizon2NextTestCatalog {
                 actionKind: .inspect,
                 userAction: "Inspect the current Network interface and path state in macOS.",
                 stoppingCondition: "Stop when the current interface and path state is recorded.",
-                expectedObservations: "The path is available, unavailable, or an interface availability state is shown.",
+                expectedObservations: "The path is available, unavailable, or an interface availability " +
+                    "state is shown.",
                 safetyWarning: "Small Matter does not ping, connect to, or modify the network.",
                 catalogProvenance: "Horizon 2 I7 production catalog"
-            ),
+            )
         ]
     )
 }

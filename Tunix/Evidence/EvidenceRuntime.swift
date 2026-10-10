@@ -1,8 +1,6 @@
 import Combine
 import Foundation
 
-// swiftlint:disable trailing_comma
-
 final class EvidenceRuntime: ObservableObject, @unchecked Sendable {
     typealias AdapterFactory = @Sendable (
         @escaping @Sendable (EvidenceAdapterEmission) -> Void
@@ -164,7 +162,7 @@ final class EvidenceRuntime: ObservableObject, @unchecked Sendable {
                 StorageEvidenceAdapter(clock: clock, emit: emit),
                 PowerEvidenceAdapter(clock: clock, emit: emit),
                 NetworkEvidenceAdapter(clock: clock, emit: emit),
-                SleepWakeBoundaryAdapter(clock: clock, emit: emit),
+                SleepWakeBoundaryAdapter(clock: clock, emit: emit)
             ]
         }
     }
@@ -173,5 +171,3 @@ final class EvidenceRuntime: ObservableObject, @unchecked Sendable {
         stop()
     }
 }
-
-// swiftlint:enable trailing_comma

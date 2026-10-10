@@ -1,5 +1,3 @@
-// swiftlint:disable line_length function_body_length cyclomatic_complexity trailing_comma
-
 import Combine
 import Foundation
 
@@ -26,6 +24,7 @@ struct IncidentContextSnapshot: Codable, Equatable, Sendable {
     }
 
     @MainActor
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     static func current(
         capturedAt: Date,
         systemStats: SystemStatsModel,
@@ -37,13 +36,21 @@ struct IncidentContextSnapshot: Codable, Equatable, Sendable {
         let telemetry = systemStats.telemetrySnapshot
 
         if telemetry.cpu.freshness == .unavailable {
-            unknowns.append(EvidenceMissing(sourceID: nil, reason: .sourceUnavailable, explanation: "CPU context was unavailable at the marker."))
+            unknowns.append(EvidenceMissing(
+                sourceID: nil,
+                reason: .sourceUnavailable,
+                explanation: "CPU context was unavailable at the marker."
+            ))
         } else {
             system["cpuUtilizationPercent"] = .decimal(String(format: "%.2f", telemetry.cpu.totalUtilization))
         }
 
         if telemetry.memory.freshness == .unavailable {
-            unknowns.append(EvidenceMissing(sourceID: nil, reason: .sourceUnavailable, explanation: "Memory context was unavailable at the marker."))
+            unknowns.append(EvidenceMissing(
+                sourceID: nil,
+                reason: .sourceUnavailable,
+                explanation: "Memory context was unavailable at the marker."
+            ))
         } else {
             system["memoryPressure"] = .string(telemetry.memory.telemetry.pressure.rawValue)
             system["memoryUsedBytes"] = .unsigned(telemetry.memory.telemetry.usedBytes)
@@ -61,12 +68,20 @@ struct IncidentContextSnapshot: Codable, Equatable, Sendable {
                 system["rootStorageTotalBytes"] = .unsigned(total)
             }
         } else {
-            unknowns.append(EvidenceMissing(sourceID: nil, reason: .sourceUnavailable, explanation: "Root storage context was unavailable at the marker."))
+            unknowns.append(EvidenceMissing(
+                sourceID: nil,
+                reason: .sourceUnavailable,
+                explanation: "Root storage context was unavailable at the marker."
+            ))
         }
 
         var network: [String: EvidenceValue] = [:]
         if telemetry.network.freshness == .unavailable {
-            unknowns.append(EvidenceMissing(sourceID: .network, reason: .sourceUnavailable, explanation: "Network context was unavailable at the marker."))
+            unknowns.append(EvidenceMissing(
+                sourceID: .network,
+                reason: .sourceUnavailable,
+                explanation: "Network context was unavailable at the marker."
+            ))
         } else {
             if let sent = telemetry.network.sentBytes {
                 network["sentBytes"] = .unsigned(sent)
@@ -88,13 +103,17 @@ struct IncidentContextSnapshot: Codable, Equatable, Sendable {
         var batteryValues: [String: EvidenceValue] = [
             "present": .boolean(battery.snapshot.present),
             "acConnected": .boolean(battery.snapshot.isACConnected),
-            "charging": .boolean(battery.snapshot.isCharging),
+            "charging": .boolean(battery.snapshot.isCharging)
         ]
         if let charge = battery.snapshot.stateOfChargePercent {
             batteryValues["stateOfChargePercent"] = .decimal(String(format: "%.2f", charge))
         }
         if battery.snapshot.availability == .unavailable {
-            unknowns.append(EvidenceMissing(sourceID: .power, reason: .sourceUnavailable, explanation: "Battery context was unavailable at the marker."))
+            unknowns.append(EvidenceMissing(
+                sourceID: .power,
+                reason: .sourceUnavailable,
+                explanation: "Battery context was unavailable at the marker."
+            ))
         }
 
         var coolingValues: [String: EvidenceValue] = [:]
@@ -105,7 +124,11 @@ struct IncidentContextSnapshot: Codable, Equatable, Sendable {
             coolingValues["primaryTemperatureCelsius"] = .decimal(String(format: "%.2f", temperature.valueCelsius))
         }
         if cooling.snapshot.freshness == .unavailable {
-            unknowns.append(EvidenceMissing(sourceID: nil, reason: .sourceUnavailable, explanation: "Cooling context was unavailable at the marker."))
+            unknowns.append(EvidenceMissing(
+                sourceID: nil,
+                reason: .sourceUnavailable,
+                explanation: "Cooling context was unavailable at the marker."
+            ))
         }
 
         return IncidentContextSnapshot(
@@ -114,7 +137,7 @@ struct IncidentContextSnapshot: Codable, Equatable, Sendable {
                 "system": .object(system),
                 "network": .object(network),
                 "battery": .object(batteryValues),
-                "cooling": .object(coolingValues),
+                "cooling": .object(coolingValues)
             ]),
             unknowns: unknowns
         )
@@ -138,7 +161,7 @@ struct IncidentWindowMetric: Equatable, Sendable {
             "sampleCount": .unsigned(UInt64(sampleCount)),
             "minimum": .decimal(Self.decimal(minimum)),
             "maximum": .decimal(Self.decimal(maximum)),
-            "mean": .decimal(Self.decimal(mean)),
+            "mean": .decimal(Self.decimal(mean))
         ])
     }
 
@@ -164,7 +187,7 @@ struct IncidentWindowSummary: Equatable, Sendable {
             "coveredStart": coveredStart.map(EvidenceValue.date) ?? .null,
             "coveredEnd": coveredEnd.map(EvidenceValue.date) ?? .null,
             "sampleCount": .unsigned(UInt64(sampleCount)),
-            "coverage": .string(coverage.rawValue),
+            "coverage": .string(coverage.rawValue)
         ]
         for key in metrics.keys.sorted() {
             let metric = metrics[key]!
@@ -268,7 +291,7 @@ final class IncidentContextHistory: ObservableObject {
         ("networkDownloadBytesPerSecond", ["network", "downloadBytesPerSecond"]),
         ("stateOfChargePercent", ["battery", "stateOfChargePercent"]),
         ("primaryFanRPM", ["cooling", "primaryFanRPM"]),
-        ("primaryTemperatureCelsius", ["cooling", "primaryTemperatureCelsius"]),
+        ("primaryTemperatureCelsius", ["cooling", "primaryTemperatureCelsius"])
     ]
 
     private static let statePaths: [(String, [String])] = [
@@ -277,7 +300,7 @@ final class IncidentContextHistory: ObservableObject {
         ("lowPowerMode", ["system", "lowPowerMode"]),
         ("batteryPresent", ["battery", "present"]),
         ("batteryACConnected", ["battery", "acConnected"]),
-        ("batteryCharging", ["battery", "charging"]),
+        ("batteryCharging", ["battery", "charging"])
     ]
 
     private static func metrics(from samples: [IncidentContextSample]) -> [String: IncidentWindowMetric] {
@@ -308,7 +331,8 @@ final class IncidentContextHistory: ObservableObject {
     }
 
     private static func value(at path: [String], in root: EvidenceValue) -> EvidenceValue? {
-        guard let first = path.first, case let .object(fields) = root, let fieldValue = fields[first] else { return nil }
+        guard let first = path.first, case let .object(fields) = root,
+              let fieldValue = fields[first] else { return nil }
         if path.count == 1 {
             return fieldValue
         }
@@ -341,7 +365,8 @@ protocol IncidentCaptureScheduledTask: AnyObject, Sendable {
 
 protocol IncidentCaptureScheduler: AnyObject, Sendable {
     @discardableResult
-    func schedule(after interval: TimeInterval, operation: @escaping @Sendable () -> Void) -> any IncidentCaptureScheduledTask
+    func schedule(after interval: TimeInterval, operation: @escaping @Sendable () -> Void)
+        -> any IncidentCaptureScheduledTask
 }
 
 private final class DispatchIncidentCaptureTask: IncidentCaptureScheduledTask, @unchecked Sendable {
@@ -357,7 +382,8 @@ private final class DispatchIncidentCaptureTask: IncidentCaptureScheduledTask, @
 }
 
 final class DispatchIncidentCaptureScheduler: IncidentCaptureScheduler, @unchecked Sendable {
-    func schedule(after interval: TimeInterval, operation: @escaping @Sendable () -> Void) -> any IncidentCaptureScheduledTask {
+    func schedule(after interval: TimeInterval,
+                  operation: @escaping @Sendable () -> Void) -> any IncidentCaptureScheduledTask {
         let item = DispatchWorkItem(block: operation)
         DispatchQueue.main.asyncAfter(deadline: .now() + max(0, interval), execute: item)
         return DispatchIncidentCaptureTask(item: item)
@@ -375,7 +401,8 @@ final class ManualIncidentCaptureScheduler: IncidentCaptureScheduler, @unchecked
     private var entries: [UUID: Entry] = [:]
 
     @discardableResult
-    func schedule(after interval: TimeInterval, operation: @escaping @Sendable () -> Void) -> any IncidentCaptureScheduledTask {
+    func schedule(after interval: TimeInterval,
+                  operation: @escaping @Sendable () -> Void) -> any IncidentCaptureScheduledTask {
         let id = UUID()
         lock.lock()
         entries[id] = Entry(deadline: now + max(0, interval), operation: operation)
@@ -409,6 +436,7 @@ private final class ManualIncidentCaptureTask: IncidentCaptureScheduledTask, @un
     }
 }
 
+// swiftlint:disable:next type_body_length
 final class IncidentCaptureCoordinator: ObservableObject {
     static let maximumHistory = 50
 
@@ -484,6 +512,7 @@ final class IncidentCaptureCoordinator: ObservableObject {
     }
 
     @MainActor
+    // swiftlint:disable:next function_body_length
     private func begin(context: IncidentContextSnapshot) async {
         let availability = await journal.retentionStatus().availability
         guard availability == .available else {
@@ -500,8 +529,13 @@ final class IncidentCaptureCoordinator: ObservableObject {
             localSequence: nil,
             observationID: nil
         )
-        let preStart = reading.wallTime.addingTimeInterval(-Double(Horizon2EvidenceConfiguration.incidentPreWindowSeconds))
-        let preObservations = await journal.query(EvidenceJournalQuery(start: preStart, end: reading.wallTime, newestFirst: false))
+        let preStart = reading.wallTime
+            .addingTimeInterval(-Double(Horizon2EvidenceConfiguration.incidentPreWindowSeconds))
+        let preObservations = await journal.query(EvidenceJournalQuery(
+            start: preStart,
+            end: reading.wallTime,
+            newestFirst: false
+        ))
         let session = IncidentCaptureSession(
             id: UUID(),
             marker: marker,
@@ -536,6 +570,7 @@ final class IncidentCaptureCoordinator: ObservableObject {
     }
 
     @MainActor
+    // swiftlint:disable:next function_body_length
     private func finalizeActiveCapture() async {
         guard let session = activeSession else { return }
         state = .finalizing
@@ -545,18 +580,36 @@ final class IncidentCaptureCoordinator: ObservableObject {
             start: session.marker.wallTime.addingTimeInterval(-Double(session.preWindowSeconds)),
             end: postEnd
         )
-        let observations = await journal.query(EvidenceJournalQuery(start: interval.start, end: interval.end, newestFirst: false))
+        let observations = await journal.query(EvidenceJournalQuery(
+            start: interval.start,
+            end: interval.end,
+            newestFirst: false
+        ))
         var unknowns = session.unknowns
         let health = await journal.sourceHealth(in: interval)
-        for record in health where record.event == .sourceUnavailable || record.event == .reconciliationFailure || record.reason == .incompleteCapture || record.reason == .journalCapacityUnavailable {
-            unknowns.append(EvidenceMissing(sourceID: record.sourceID, reason: record.reason, explanation: "\(record.sourceID.rawValue) reported \(record.event.rawValue) during the capture window."))
+        for record in health
+            where record.event == .sourceUnavailable || record.event == .reconciliationFailure || record
+            .reason == .incompleteCapture || record.reason == .journalCapacityUnavailable {
+            unknowns.append(EvidenceMissing(
+                sourceID: record.sourceID,
+                reason: record.reason,
+                explanation: "\(record.sourceID.rawValue) reported \(record.event.rawValue) during the capture window."
+            ))
         }
         if reading.wallTime < session.marker.wallTime {
-            unknowns.append(EvidenceMissing(sourceID: nil, reason: .wallClockDiscontinuity, explanation: "Wall time moved before the capture marker."))
+            unknowns.append(EvidenceMissing(
+                sourceID: nil,
+                reason: .wallClockDiscontinuity,
+                explanation: "Wall time moved before the capture marker."
+            ))
         }
         let availability = await journal.retentionStatus().availability
         if availability != .available {
-            unknowns.append(EvidenceMissing(sourceID: nil, reason: .journalCapacityUnavailable, explanation: "Local evidence storage was unavailable while finalizing the capture."))
+            unknowns.append(EvidenceMissing(
+                sourceID: nil,
+                reason: .journalCapacityUnavailable,
+                explanation: "Local evidence storage was unavailable while finalizing the capture."
+            ))
         }
         var materializedContext = session.materializedContext
         if let contextHistory {
@@ -571,7 +624,8 @@ final class IncidentCaptureCoordinator: ObservableObject {
                 unknowns.append(EvidenceMissing(
                     sourceID: nil,
                     reason: .sourceCoverageGap,
-                    explanation: "Telemetry context covered \(summary.sampleCount) \(sampleWord) from \(summary.coverage.rawValue.lowercased()) window coverage."
+                    explanation: "Telemetry context covered \(summary.sampleCount) \(sampleWord) from " +
+                        "\(summary.coverage.rawValue.lowercased()) window coverage."
                 ))
             }
         }
@@ -606,7 +660,11 @@ final class IncidentCaptureCoordinator: ObservableObject {
         let sessions = await journal.activeIncidentCaptures()
         for session in sessions {
             if session.processRunID != processRunID {
-                let reason = EvidenceMissing(sourceID: nil, reason: .processInterrupted, explanation: "Small Matter was closed before the capture window finished.")
+                let reason = EvidenceMissing(
+                    sourceID: nil,
+                    reason: .processInterrupted,
+                    explanation: "Small Matter was closed before the capture window finished."
+                )
                 let package = IncidentPackage(
                     id: session.id,
                     marker: session.marker,
@@ -665,4 +723,4 @@ private extension ProcessInfo.ThermalState {
         @unknown default: return "Unknown"
         }
     }
-}
+} // swiftlint:disable:this file_length

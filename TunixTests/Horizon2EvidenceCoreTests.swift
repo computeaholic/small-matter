@@ -1,8 +1,8 @@
 // swiftformat:disable trailingCommas
-// swiftlint:disable file_length line_length trailing_comma type_body_length
 @testable import Tunix
 import XCTest
 
+// swiftlint:disable:next type_body_length
 final class Horizon2EvidenceCoreTests: XCTestCase {
     func testObservationRoundTripIsDeterministicAndValueBased() throws {
         let observation = EvidenceFixtureCorpus.externalStorageLoss
@@ -64,11 +64,17 @@ final class Horizon2EvidenceCoreTests: XCTestCase {
     }
 
     func testNamedFixtureCorpusUsesFixedIDsAndTypedStreams() throws {
-        XCTAssertEqual(EvidenceFixtureCorpus.unrelatedEvents.map(\.id), [EvidenceFixtureCorpus.ids.storageObservation, EvidenceFixtureCorpus.ids.networkObservation])
+        XCTAssertEqual(
+            EvidenceFixtureCorpus.unrelatedEvents.map(\.id),
+            [EvidenceFixtureCorpus.ids.storageObservation, EvidenceFixtureCorpus.ids.networkObservation]
+        )
         XCTAssertEqual(EvidenceFixtureCorpus.duplicateEvent[0], EvidenceFixtureCorpus.duplicateEvent[1])
         XCTAssertEqual(EvidenceFixtureCorpus.outOfOrderEvent.map(\.time.localSequence), [2, 1])
         XCTAssertEqual(EvidenceFixtureCorpus.contradictoryEvidence[1].availability, .unavailable(.sourceUnavailable))
-        XCTAssertEqual(try EvidenceFixtureCorpus.sleepWakeBoundary.deterministicData(), try EvidenceFixtureCorpus.sleepWakeBoundary.deterministicData())
+        XCTAssertEqual(
+            try EvidenceFixtureCorpus.sleepWakeBoundary.deterministicData(),
+            try EvidenceFixtureCorpus.sleepWakeBoundary.deterministicData()
+        )
     }
 
     func testOrderingUsesExplicitLocalAndContinuousBases() {
@@ -100,7 +106,11 @@ final class Horizon2EvidenceCoreTests: XCTestCase {
             bootSessionID: differentClock.bootSessionID,
             localSequence: differentClock.localSequence,
             sourceTimestampQuality: differentClock.sourceTimestampQuality,
-            orderingDomain: EvidenceOrderingDomain(sourceID: .network, processRunID: differentClock.processRunID, clockDomainID: "other-clock"),
+            orderingDomain: EvidenceOrderingDomain(
+                sourceID: .network,
+                processRunID: differentClock.processRunID,
+                clockDomainID: "other-clock"
+            ),
             sourceOccurrence: differentClock.sourceOccurrence
         )
         let differentClockResult = first.time.compare(to: differentClock)
@@ -156,15 +166,21 @@ final class Horizon2EvidenceCoreTests: XCTestCase {
                 path: EvidenceFieldPath("attributes.mount.volumeName"),
                 classification: .filesystemMetadata,
                 pseudonymization: .required(scope: "package")
-            ),
+            )
         ])
-        XCTAssertEqual(registry.classification(for: EvidenceFieldPath("attributes.interfaces[*].name")), .networkMetadata)
-        XCTAssertEqual(registry.metadata(for: EvidenceFieldPath("attributes.mount.volumeName"))?.pseudonymization, .required(scope: "package"))
+        XCTAssertEqual(
+            registry.classification(for: EvidenceFieldPath("attributes.interfaces[*].name")),
+            .networkMetadata
+        )
+        XCTAssertEqual(
+            registry.metadata(for: EvidenceFieldPath("attributes.mount.volumeName"))?.pseudonymization,
+            .required(scope: "package")
+        )
         XCTAssertNil(registry.classification(for: EvidenceFieldPath("attributes.unknown")))
 
         let value: EvidenceValue = .object([
             "interfaces": .array([.object(["name": .string("en0")])]),
-            "optional": .null,
+            "optional": .null
         ])
         XCTAssertFalse(try value.deterministicData().isEmpty)
     }
@@ -177,7 +193,10 @@ final class Horizon2EvidenceCoreTests: XCTestCase {
             members: [EvidenceMembership(observationID: observation.id, reasons: [.sameSubject])],
             ruleID: "EXTERNAL_STORAGE_LIFECYCLE",
             ruleVersion: "1.0.0",
-            temporalBounds: EvidenceTimeBounds(start: observation.time.observedWallTime, end: observation.time.observedWallTime),
+            temporalBounds: EvidenceTimeBounds(
+                start: observation.time.observedWallTime,
+                end: observation.time.observedWallTime
+            ),
             orderingQuality: .totalWithinDomain,
             schemaVersion: Observation.currentSchemaVersion
         )
@@ -206,7 +225,10 @@ final class Horizon2EvidenceCoreTests: XCTestCase {
     func testNextTestSafetyValidationAcceptsSafeAndRejectsUnsafeEntries() throws {
         let safe = EvidenceFixtureCorpus.safeNextTest
         XCTAssertEqual(try safe.validatedReference().testID, "OBSERVE_STORAGE_RECONNECT")
-        XCTAssertEqual(try EvidenceFixtureCorpus.safeStorageDisconnect.validatedReference().testID, "SAFE_STORAGE_DISCONNECT")
+        XCTAssertEqual(
+            try EvidenceFixtureCorpus.safeStorageDisconnect.validatedReference().testID,
+            "SAFE_STORAGE_DISCONNECT"
+        )
 
         for entry in [
             EvidenceFixtureCorpus.storageDisconnectOnlyUnmounted,
@@ -222,7 +244,7 @@ final class Horizon2EvidenceCoreTests: XCTestCase {
         for entry in [
             EvidenceFixtureCorpus.privilegedNextTest,
             EvidenceFixtureCorpus.hardwareWriteNextTest,
-            EvidenceFixtureCorpus.hiddenNetworkNextTest,
+            EvidenceFixtureCorpus.hiddenNetworkNextTest
         ] {
             XCTAssertThrowsError(try entry.validatedReference())
         }
@@ -249,13 +271,18 @@ final class Horizon2EvidenceCoreTests: XCTestCase {
             completedAt: nil,
             materializedContext: .object([:]),
             observationIDs: [],
-            unknowns: [EvidenceMissing(sourceID: .network, reason: .incompleteCapture, explanation: "Source ended during capture.")],
+            unknowns: [EvidenceMissing(
+                sourceID: .network,
+                reason: .incompleteCapture,
+                explanation: "Source ended during capture."
+            )],
             failureReason: .incompleteCapture
         )
         XCTAssertNotEqual(complete.status, incomplete.status)
         XCTAssertNil(incomplete.completedAt)
     }
 
+    // swiftlint:disable:next function_body_length
     func testEvidencePackageRequiresEvidenceSetContextForInferenceSupport() {
         let observation = EvidenceFixtureCorpus.externalStorageLoss
         let evidenceSet = EvidenceSet(
@@ -263,7 +290,10 @@ final class Horizon2EvidenceCoreTests: XCTestCase {
             members: [EvidenceMembership(observationID: observation.id, reasons: [.temporalEligibility(seconds: 15)])],
             ruleID: "EXTERNAL_STORAGE_LIFECYCLE",
             ruleVersion: "1.0.0",
-            temporalBounds: EvidenceTimeBounds(start: observation.time.observedWallTime, end: observation.time.observedWallTime),
+            temporalBounds: EvidenceTimeBounds(
+                start: observation.time.observedWallTime,
+                end: observation.time.observedWallTime
+            ),
             orderingQuality: .totalWithinDomain,
             schemaVersion: Observation.currentSchemaVersion
         )
@@ -272,7 +302,10 @@ final class Horizon2EvidenceCoreTests: XCTestCase {
             schemaVersion: 1,
             productIdentity: "Small Matter",
             systemMetadata: .object([:]),
-            captureWindow: EvidenceTimeBounds(start: observation.time.observedWallTime, end: observation.time.observedWallTime),
+            captureWindow: EvidenceTimeBounds(
+                start: observation.time.observedWallTime,
+                end: observation.time.observedWallTime
+            ),
             currentState: nil,
             observations: [observation],
             evidenceSets: [evidenceSet],
@@ -295,7 +328,11 @@ final class Horizon2EvidenceCoreTests: XCTestCase {
             unknowns: [],
             nextTests: [],
             sourceManifest: Horizon2SourceID.allCases.map {
-                EvidenceSourceManifestEntry(sourceID: $0, disposition: Horizon2EvidenceConfiguration.sourceDispositions[$0]!, userFacingEvidenceAllowed: Horizon2SourceCapability.canProvideUserFacingEvidence($0))
+                EvidenceSourceManifestEntry(
+                    sourceID: $0,
+                    disposition: Horizon2EvidenceConfiguration.sourceDispositions[$0]!,
+                    userFacingEvidenceAllowed: Horizon2SourceCapability.canProvideUserFacingEvidence($0)
+                )
             },
             redactionManifest: [],
             exportPolicyVersion: "1.0.0"
@@ -313,7 +350,10 @@ final class Horizon2EvidenceCoreTests: XCTestCase {
         )
         let data = try Data(contentsOf: manifestURL)
         let manifest = try JSONDecoder().decode(ManifestDocument.self, from: data)
-        let expected = Dictionary(uniqueKeysWithValues: Horizon2EvidenceConfiguration.sourceDispositions.map { ($0.key.rawValue, $0.value.rawValue) })
+        let expected = Dictionary(uniqueKeysWithValues: Horizon2EvidenceConfiguration.sourceDispositions.map { (
+            $0.key.rawValue,
+            $0.value.rawValue
+        ) })
         XCTAssertEqual(manifest.sourceDispositions, expected)
         XCTAssertFalse(manifest.implementationAuthorized)
         XCTAssertEqual(manifest.specVersion, Horizon2EvidenceConfiguration.specificationVersion)
@@ -375,9 +415,6 @@ final class Horizon2EvidenceCoreTests: XCTestCase {
     }
 }
 
-// swiftlint:enable line_length trailing_comma type_body_length
-// swiftlint:disable line_length
-
 private struct ManifestDocument: Decodable {
     let specVersion: String
     let sourceDispositions: [String: String]
@@ -411,7 +448,11 @@ private enum EvidenceFixtureCorpus {
         sequence: 1,
         currentState: .integer(0),
         attributes: .object(["mount": .object(["volumeName": .string("fixture-volume")])]),
-        sensitivity: EvidenceSensitivityRegistry(fields: [EvidenceFieldSensitivity(path: EvidenceFieldPath("attributes.mount.volumeName"), classification: .filesystemMetadata, pseudonymization: .required(scope: "package"))])
+        sensitivity: EvidenceSensitivityRegistry(fields: [EvidenceFieldSensitivity(
+            path: EvidenceFieldPath("attributes.mount.volumeName"),
+            classification: .filesystemMetadata,
+            pseudonymization: .required(scope: "package")
+        )])
     )
 
     static let networkPathTransition = makeObservation(
@@ -458,10 +499,19 @@ private enum EvidenceFixtureCorpus {
         lifecycleBoundary: .sleepWake
     )
 
-    static let marker = IncidentMarker(observationID: externalStorageLoss.id, wallTime: externalStorageLoss.time.observedWallTime, localSequence: externalStorageLoss.time.localSequence)
+    static let marker = IncidentMarker(
+        observationID: externalStorageLoss.id,
+        wallTime: externalStorageLoss.time.observedWallTime,
+        localSequence: externalStorageLoss.time.localSequence
+    )
 
     static let safeNextTest = NextTestCatalogEntry(
-        reference: NextTestReference(testID: "OBSERVE_STORAGE_RECONNECT", catalogVersion: "1.0.0", purpose: "Observe a reconnect", evidenceExpected: "A mount lifecycle fact"),
+        reference: NextTestReference(
+            testID: "OBSERVE_STORAGE_RECONNECT",
+            catalogVersion: "1.0.0",
+            purpose: "Observe a reconnect",
+            evidenceExpected: "A mount lifecycle fact"
+        ),
         prerequisites: [],
         prerequisiteExplanation: "No mounted volume is actively being written.",
         riskClass: .safe,
@@ -479,12 +529,21 @@ private enum EvidenceFixtureCorpus {
     static let safeStorageDisconnect = storageDisconnect([.storageSafelyUnmounted, .noActiveWrites])
     static let storageDisconnectOnlyUnmounted = storageDisconnect([.storageSafelyUnmounted])
     static let storageDisconnectOnlyNoWrites = storageDisconnect([.noActiveWrites])
-    static let textOnlyStorageDisconnect = storageDisconnect([], explanation: "The storage is safely unmounted and no writes are active.")
+    static let textOnlyStorageDisconnect = storageDisconnect(
+        [],
+        explanation: "The storage is safely unmounted and no writes are active."
+    )
     static let unsafeStorageDisconnect = storageDisconnect([])
 
-    private static func storageDisconnect(_ prerequisites: [NextTestPrerequisite], explanation: String? = nil) -> NextTestCatalogEntry {
+    private static func storageDisconnect(_ prerequisites: [NextTestPrerequisite],
+                                          explanation: String? = nil) -> NextTestCatalogEntry {
         NextTestCatalogEntry(
-            reference: NextTestReference(testID: prerequisites.count == 2 ? "SAFE_STORAGE_DISCONNECT" : "UNSAFE_STORAGE_DISCONNECT", catalogVersion: "1.0.0", purpose: "Disconnect storage", evidenceExpected: "A storage lifecycle fact"),
+            reference: NextTestReference(
+                testID: prerequisites.count == 2 ? "SAFE_STORAGE_DISCONNECT" : "UNSAFE_STORAGE_DISCONNECT",
+                catalogVersion: "1.0.0",
+                purpose: "Disconnect storage",
+                evidenceExpected: "A storage lifecycle fact"
+            ),
             prerequisites: prerequisites,
             prerequisiteExplanation: explanation,
             riskClass: .caution,
@@ -499,7 +558,12 @@ private enum EvidenceFixtureCorpus {
 
     private static func unsafeNextTest(_ actionKind: NextTestActionKind) -> NextTestCatalogEntry {
         NextTestCatalogEntry(
-            reference: NextTestReference(testID: "UNSAFE", catalogVersion: "1.0.0", purpose: "Unsafe fixture", evidenceExpected: "None"),
+            reference: NextTestReference(
+                testID: "UNSAFE",
+                catalogVersion: "1.0.0",
+                purpose: "Unsafe fixture",
+                evidenceExpected: "None"
+            ),
             prerequisites: [],
             riskClass: .caution,
             actionKind: actionKind,
@@ -511,6 +575,7 @@ private enum EvidenceFixtureCorpus {
         )
     }
 
+    // swiftlint:disable:next function_body_length
     private static func makeObservation(
         id: UUID,
         sourceID: Horizon2SourceID,
@@ -522,19 +587,66 @@ private enum EvidenceFixtureCorpus {
         currentState: EvidenceValue? = nil,
         attributes: EvidenceValue? = nil,
         sensitivity: EvidenceSensitivityRegistry = .init(),
-        sourceOccurrence: EvidenceSourceOccurrence? = EvidenceSourceOccurrence(wallTime: start, continuousNanoseconds: 1_000_000, quality: .exact),
+        sourceOccurrence: EvidenceSourceOccurrence? = EvidenceSourceOccurrence(
+            wallTime: start,
+            continuousNanoseconds: 1_000_000,
+            quality: .exact
+        ),
         lifecycleBoundary: EvidenceLifecycleBoundary = .none
     ) -> Observation {
-        let subject = EvidenceSubject(type: sourceID == .storage ? .storageDisk : .systemContext, identityDigest: "fixture-\(sourceID.rawValue)", quality: .qualified, safeDisplayLabel: "Fixture")
-        let provenance = EvidenceProvenance(sourceID: sourceID, apiName: "Fixture API", apiVersion: "1", captureChannel: "I1_FIXTURE", sourceTimestampQuality: sourceOccurrence?.quality ?? .unavailable, normalizationRuleID: "FIXTURE_NORMALIZE", normalizationRuleVersion: "1.0.0", hostScope: .provenOnTestedHost, rawReferenceDigest: nil)
-        let time = EvidenceTime(observedWallTime: start.addingTimeInterval(Double(sequence)), continuousNanoseconds: UInt64(sequence) * 1_000_000, processUptimeNanoseconds: UInt64(sequence) * 1_000_000, processRunID: processRunID, bootSessionID: bootSession, localSequence: sequence, sourceTimestampQuality: sourceOccurrence?.quality ?? .unavailable, orderingDomain: EvidenceOrderingDomain(sourceID: sourceID, processRunID: processRunID, clockDomainID: "fixture-clock"), sourceOccurrence: sourceOccurrence, lifecycleBoundary: lifecycleBoundary)
+        let subject = EvidenceSubject(
+            type: sourceID == .storage ? .storageDisk : .systemContext,
+            identityDigest: "fixture-\(sourceID.rawValue)",
+            quality: .qualified,
+            safeDisplayLabel: "Fixture"
+        )
+        let provenance = EvidenceProvenance(
+            sourceID: sourceID,
+            apiName: "Fixture API",
+            apiVersion: "1",
+            captureChannel: "I1_FIXTURE",
+            sourceTimestampQuality: sourceOccurrence?.quality ?? .unavailable,
+            normalizationRuleID: "FIXTURE_NORMALIZE",
+            normalizationRuleVersion: "1.0.0",
+            hostScope: .provenOnTestedHost,
+            rawReferenceDigest: nil
+        )
+        let time = EvidenceTime(
+            observedWallTime: start.addingTimeInterval(Double(sequence)),
+            continuousNanoseconds: UInt64(sequence) * 1_000_000,
+            processUptimeNanoseconds: UInt64(sequence) * 1_000_000,
+            processRunID: processRunID,
+            bootSessionID: bootSession,
+            localSequence: sequence,
+            sourceTimestampQuality: sourceOccurrence?.quality ?? .unavailable,
+            orderingDomain: EvidenceOrderingDomain(
+                sourceID: sourceID,
+                processRunID: processRunID,
+                clockDomainID: "fixture-clock"
+            ),
+            sourceOccurrence: sourceOccurrence,
+            lifecycleBoundary: lifecycleBoundary
+        )
         var values: [String: EvidenceValue] = [:]
         if let attributes {
             if case let .object(object) = attributes {
                 values = object
             }
         }
-        return Observation(id: id, domain: domain, eventKind: eventKind, sourceID: sourceID, subject: subject, provenance: provenance, time: time, availability: availability, previousState: nil, currentState: currentState, attributes: values, sensitivity: sensitivity)
+        return Observation(
+            id: id,
+            domain: domain,
+            eventKind: eventKind,
+            sourceID: sourceID,
+            subject: subject,
+            provenance: provenance,
+            time: time,
+            availability: availability,
+            previousState: nil,
+            currentState: currentState,
+            attributes: values,
+            sensitivity: sensitivity
+        )
     }
 
     struct FixtureIDs {
@@ -549,6 +661,4 @@ private enum EvidenceFixtureCorpus {
         let incompleteIncident = UUID(uuidString: "30000000-0000-0000-0000-000000000004")!
         let package = UUID(uuidString: "30000000-0000-0000-0000-000000000005")!
     }
-}
-
-// swiftlint:enable line_length
+} // swiftlint:disable:this file_length

@@ -1,4 +1,3 @@
-// swiftlint:disable line_length
 import Foundation
 import Network
 
@@ -73,7 +72,12 @@ final class NetworkEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable
         guard let previous else { return }
         let raw = NetworkRawTransition(previous: previous, current: current, occurrence: occurrence())
         guard NetworkPathNormalizer.normalize(raw) != nil else {
-            emit(.health(health(event: .duplicateSuppressed, reason: .notObserved, suppressedCount: 1, detail: "Equivalent NWPath callback")))
+            emit(.health(health(
+                event: .duplicateSuppressed,
+                reason: .notObserved,
+                suppressedCount: 1,
+                detail: "Equivalent NWPath callback"
+            )))
             return
         }
         emit(.raw(.network(raw)))
@@ -121,12 +125,17 @@ final class NetworkEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable
         suppressedCount: Int = 0,
         detail: String?
     ) -> EvidenceSourceHealthUpdate {
-        EvidenceSourceHealthUpdate(sourceID: .network, event: event, reason: reason, suppressedCount: suppressedCount, observedAt: clock.reading().wallTime, detail: detail)
+        EvidenceSourceHealthUpdate(
+            sourceID: .network,
+            event: event,
+            reason: reason,
+            suppressedCount: suppressedCount,
+            observedAt: clock.reading().wallTime,
+            detail: detail
+        )
     }
 
     deinit {
         stop()
     }
 }
-
-// swiftlint:enable line_length

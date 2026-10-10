@@ -1,7 +1,9 @@
-// swiftlint:disable trailing_comma type_body_length
 import AppKit
 import SwiftUI
 
+// This screen intentionally keeps its sections together so the support summary
+// and its evidence-state explanations remain reviewed as one surface.
+// swiftlint:disable:next type_body_length
 struct SecurityView: View {
     @EnvironmentObject private var stats: SystemStatsModel
     @EnvironmentObject private var battery: BatteryManager
@@ -308,10 +310,13 @@ struct SecurityView: View {
                             .buttonStyle(.bordered)
                             .accessibilityIdentifier("system-health-copy-current-snapshot")
                             .help("Copy a privacy-preserving JSON diagnostic summary")
-                            Text("This is a point-in-time system summary. Captured diagnostic evidence is available from Recent Changes.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .accessibilityIdentifier("system-health-current-snapshot")
+                            Text(
+                                "This is a point-in-time system summary. Captured diagnostic evidence " +
+                                    "is available from Recent Changes."
+                            )
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("system-health-current-snapshot")
                         }
                         if let snapshotMessage {
                             Text(snapshotMessage)
@@ -390,12 +395,12 @@ struct SecurityView: View {
             "security": [
                 "executionModel": "unprivileged",
                 "privilegedHelper": false,
-                "hardwareWrites": false,
+                "hardwareWrites": false
             ],
             "policy": [
                 "thermalOwner": "macOS",
-                "batteryOwner": "macOS",
-            ],
+                "batteryOwner": "macOS"
+            ]
         ]
     }
 
@@ -406,7 +411,7 @@ struct SecurityView: View {
             "build": appBuild ?? "unknown",
             "os": ProcessInfo.processInfo.operatingSystemVersionString,
             "architecture": Self.architecture,
-            "keepAwake": keepAwake.statusLabel.lowercased(),
+            "keepAwake": keepAwake.statusLabel.lowercased()
         ]
     }
 
@@ -420,21 +425,21 @@ struct SecurityView: View {
             "network": statusInfo(stats.networkSnapshot.freshness, source: stats.networkSnapshot.source),
             "storage": statusInfo(stats.storageSnapshot.freshness, source: stats.storageSnapshot.source),
             "cooling": coolingInfo,
-            "battery": batteryInfo,
+            "battery": batteryInfo
         ]
     }
 
     private func statusInfo(_ freshness: TelemetryFreshness, source: TelemetrySource) -> [String: String] {
         [
             "status": freshnessValue(freshness),
-            "source": source.rawValue,
+            "source": source.rawValue
         ]
     }
 
     private var coolingInfo: [String: Any] {
         var info: [String: Any] = [
             "status": cooling.telemetryState.rawValue,
-            "source": cooling.snapshot.source.rawValue,
+            "source": cooling.snapshot.source.rawValue
         ]
         if let fanCount = cooling.snapshot.fanCount {
             info["fanCount"] = fanCount
@@ -448,7 +453,7 @@ struct SecurityView: View {
     private var batteryInfo: [String: Any] {
         var info: [String: Any] = [
             "status": freshnessValue(battery.snapshot.availability),
-            "source": battery.snapshot.source.rawValue,
+            "source": battery.snapshot.source.rawValue
         ]
         if let age = sampleAge(battery.lastSuccessfulSampleAt) {
             info["sampleAgeSeconds"] = age
@@ -495,6 +500,4 @@ private enum EvidenceSupportState {
     case capacityCapture(IncidentPackage)
     case unavailable
     case packageFailure(availability: EvidenceJournalAvailability, IncidentPackage)
-}
-
-// swiftlint:enable trailing_comma type_body_length
+} // swiftlint:disable:this file_length

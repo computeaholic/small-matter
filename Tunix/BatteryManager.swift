@@ -1,4 +1,3 @@
-// swiftlint:disable file_length
 import IOKit
 import IOKit.ps
 import SwiftUI
@@ -279,18 +278,14 @@ private extension NativeBatteryTelemetryReader {
     ) -> Double? {
         if let current = integer(powerSource?[kIOPSCurrentCapacityKey]),
            let maximum = integer(powerSource?[kIOPSMaxCapacityKey]),
-           maximum > 0
-        // swiftlint:disable:next opening_brace
-        {
+           maximum > 0 {
             return min(max(Double(current) / Double(maximum) * 100, 0), 100)
         }
         if let currentCapacityMAh, let maxCapacityMAh, maxCapacityMAh > 0 {
             return min(max(Double(currentCapacityMAh) / Double(maxCapacityMAh) * 100, 0), 100)
         }
         if let batteryData = registry?["BatteryData"] as? [String: Any],
-           let stateOfCharge = integer(batteryData["StateOfCharge"])
-        // swiftlint:disable:next opening_brace
-        {
+           let stateOfCharge = integer(batteryData["StateOfCharge"]) {
             return min(max(Double(stateOfCharge), 0), 100)
         }
         return nil
@@ -549,4 +544,4 @@ final class BatteryManager: ObservableObject {
         }
         return String(format: "%.0fs ago", age)
     }
-}
+} // swiftlint:disable:this file_length

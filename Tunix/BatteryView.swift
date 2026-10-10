@@ -1,4 +1,3 @@
-// swiftlint:disable trailing_comma
 import Charts
 import SwiftUI
 
@@ -141,7 +140,7 @@ private extension BatteryView {
                     ("Health", battery.healthPercentString),
                     ("Cycle count", battery.cycleCountText),
                     ("Maximum capacity", battery.maxCapacityDisplay),
-                    ("Design capacity", battery.designCapacityDisplay),
+                    ("Design capacity", battery.designCapacityDisplay)
                 ])
             }
         }
@@ -157,7 +156,7 @@ private extension BatteryView {
                     ("Current", battery.amperageDisplay),
                     ("Temperature", battery.temperatureDisplay(for: settings.settings.temperatureUnit)),
                     ("Time remaining", battery.timeToEmptyDisplay),
-                    ("Time to full", battery.timeToFullDisplay),
+                    ("Time to full", battery.timeToFullDisplay)
                 ])
             }
         }
@@ -201,5 +200,3 @@ private extension BatteryView {
         }
     }
 }
-
-// swiftlint:enable trailing_comma

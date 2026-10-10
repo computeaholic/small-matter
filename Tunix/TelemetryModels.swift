@@ -1,4 +1,3 @@
-// swiftlint:disable file_length
 import Foundation
 
 enum TelemetryFreshness: Equatable {
@@ -490,4 +489,4 @@ struct CoolingTelemetryHealth: Equatable {
         case .unavailable: return .unavailable
         }
     }
-}
+} // swiftlint:disable:this file_length

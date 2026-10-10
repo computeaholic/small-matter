@@ -1,4 +1,3 @@
-// swiftlint:disable file_length line_length opening_brace trailing_comma type_body_length
 import Combine
 import Foundation
 import SwiftUI
@@ -44,6 +43,7 @@ struct RecentChangeField: Identifiable, Equatable, Sendable {
 }
 
 @MainActor
+// swiftlint:disable:next type_body_length
 final class RecentChangesViewModel: ObservableObject {
     static let maximumRows = 200
 
@@ -60,11 +60,9 @@ final class RecentChangesViewModel: ObservableObject {
         self.journal = journal
     }
 
-    // swiftlint:disable:next function_body_length
     func refresh() async {
         if let deferred = journal as? DeferredEvidenceJournal,
-           !(await deferred.isResolved())
-        {
+           !(await deferred.isResolved()) {
             state = .loading
             rows = []
             detailsByID = [:]
@@ -126,10 +124,13 @@ final class RecentChangesViewModel: ObservableObject {
             let result = try await journal.clearUnprotectedHistory()
             await refresh()
             capacityRecoveryMessage = result.observationsDeleted == 0
-                ? "No unprotected observations were available to remove. Capture remains unavailable because protected or non-observation journal data still fills the bound."
-                : "Removed \(result.observationsDeleted) unprotected observations. Protected captures were preserved, and capture is available again if the journal reports available."
+                ? "No unprotected observations were available to remove. Capture remains unavailable " +
+                "because protected or non-observation journal data still fills the bound."
+                : "Removed \(result.observationsDeleted) unprotected observations. Protected captures " +
+                "were preserved, and capture is available again if the journal reports available."
         } catch {
-            capacityRecoveryMessage = "Safe evidence recovery could not complete. Existing history has not been reported as lost."
+            capacityRecoveryMessage = "Safe evidence recovery could not complete. Existing history has " +
+                "not been reported as lost."
         }
     }
 
@@ -156,14 +157,15 @@ final class RecentChangesViewModel: ObservableObject {
             RecentChangeField(label: "Source", value: row.sourceText),
             RecentChangeField(label: "Subject", value: row.subjectText),
             RecentChangeField(label: "Identity quality", value: row.identityQualityText),
-            RecentChangeField(label: "Change", value: changeText(for: observation)),
+            RecentChangeField(label: "Change", value: changeText(for: observation))
         ]
         if let attributesText = approvedAttributesText(for: observation) {
             fields.append(RecentChangeField(label: "Attributes", value: attributesText))
         }
         let availabilityText = availabilityText(for: observation.availability)
         let limitation = supplemental
-            ? "Supplemental network evidence describes path and interface facts; it does not identify hardware, router, or service failure."
+            ? "Supplemental network evidence describes path and interface facts; it does not identify " +
+            "hardware, router, or service failure."
             : nil
         return RecentChangeDetail(
             id: observation.id,
@@ -242,13 +244,11 @@ final class RecentChangesViewModel: ObservableObject {
         switch observation.eventKind {
         case .powerSourceTransition:
             if let previous = sourceState(from: observation.previousState),
-               let current = sourceState(from: observation.currentState)
-            {
+               let current = sourceState(from: observation.currentState) {
                 return "\(powerLabel(previous)) → \(powerLabel(current))"
             }
             if let previous = boolState(from: observation.previousState, key: "charging"),
-               let current = boolState(from: observation.currentState, key: "charging")
-            {
+               let current = boolState(from: observation.currentState, key: "charging") {
                 return "Charging \(previous ? "on" : "off") → \(current ? "on" : "off")"
             }
         case .networkPathTransition:
@@ -350,7 +350,8 @@ final class RecentChangesViewModel: ObservableObject {
         if let wholeDisk = boolValue(in: observation.attributes, key: "isWholeDisk") {
             values.append(wholeDisk ? "Whole disk fact" : "Mounted-volume fact")
         }
-        if let interfaceTypes = stringArrayValue(in: observation.attributes, key: "interfaceTypes"), !interfaceTypes.isEmpty {
+        if let interfaceTypes = stringArrayValue(in: observation.attributes, key: "interfaceTypes"),
+           !interfaceTypes.isEmpty {
             values.append("Interface: \(interfaceTypes.map(interfaceLabel).joined(separator: ", "))")
         }
         return values.isEmpty ? nil : values.joined(separator: " · ")
@@ -433,6 +434,4 @@ final class RecentChangesViewModel: ObservableObject {
         default: return "Other"
         }
     }
-}
-
-// swiftlint:enable line_length opening_brace trailing_comma type_body_length
+} // swiftlint:disable:this file_length

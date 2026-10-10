@@ -1,4 +1,3 @@
-// swiftlint:disable trailing_comma
 @testable import Tunix
 import XCTest
 
@@ -7,7 +6,7 @@ final class SettingsCompatibilityTests: XCTestCase {
         let plist: [String: Any] = [
             "fanMode": "custom",
             "chargeLimit": 80,
-            "refreshInterval": 5.0,
+            "refreshInterval": 5.0
         ]
         let data = try PropertyListSerialization.data(
             fromPropertyList: plist,
@@ -56,5 +55,3 @@ final class SettingsCompatibilityTests: XCTestCase {
         XCTAssertEqual(try PropertyListDecoder().decode(AppSettings.self, from: legacy).temperatureUnit, .system)
     }
 }
-
-// swiftlint:enable trailing_comma

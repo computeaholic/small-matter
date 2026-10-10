@@ -1,4 +1,3 @@
-// swiftlint:disable line_length trailing_comma identifier_name
 import CryptoKit
 import Foundation
 
@@ -88,7 +87,7 @@ enum EvidenceIdentityDigest {
             String(characters[8 ..< 12]),
             String(characters[12 ..< 16]),
             String(characters[16 ..< 20]),
-            String(characters[20 ..< 32]),
+            String(characters[20 ..< 32])
         ]
         return UUID(uuidString: groups.joined(separator: "-"))
     }
@@ -166,12 +165,12 @@ enum StorageEventNormalizer {
             : .storageDiskLifecycle
         let state = EvidenceValue.object([
             "lifecycle": .string(raw.kind.rawValue),
-            "identityQuality": .string(raw.identity.quality.rawValue),
+            "identityQuality": .string(raw.identity.quality.rawValue)
         ])
         let attributes: [String: EvidenceValue] = [
             "lifecycle": .string(raw.kind.rawValue),
             "identityQuality": .string(raw.identity.quality.rawValue),
-            "isWholeDisk": raw.identity.isWholeDisk.map(EvidenceValue.boolean) ?? .null,
+            "isWholeDisk": raw.identity.isWholeDisk.map(EvidenceValue.boolean) ?? .null
         ]
         return NormalizedEvidenceFact(
             sourceID: .storage,
@@ -185,9 +184,11 @@ enum StorageEventNormalizer {
             ),
             provenance: EvidenceProvenance(
                 sourceID: .storage,
-                apiName: raw.kind == .volumeMounted || raw.kind == .volumeUnmounted ? "NSWorkspace" : "Disk Arbitration",
+                apiName: raw.kind == .volumeMounted || raw
+                    .kind == .volumeUnmounted ? "NSWorkspace" : "Disk Arbitration",
                 apiVersion: nil,
-                captureChannel: raw.kind == .volumeMounted || raw.kind == .volumeUnmounted ? "NSWorkspace volume notification" : "Disk Arbitration callback",
+                captureChannel: raw.kind == .volumeMounted || raw
+                    .kind == .volumeUnmounted ? "NSWorkspace volume notification" : "Disk Arbitration callback",
                 sourceTimestampQuality: raw.occurrence.quality,
                 normalizationRuleID: "H2_STORAGE_LIFECYCLE_NORMALIZE",
                 normalizationRuleVersion: "1.0.0",
@@ -198,18 +199,54 @@ enum StorageEventNormalizer {
             previousState: nil,
             currentState: state,
             attributes: attributes.merging([
-                "semanticRole": .string(raw.semanticRole.rawValue),
+                "semanticRole": .string(raw.semanticRole.rawValue)
             ]) { current, _ in current },
             sensitivity: EvidenceSensitivityRegistry(fields: [
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("subject.identityDigest"), classification: .deviceMetadata, pseudonymization: .required(scope: "package")),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("provenance.rawReferenceDigest"), classification: .deviceMetadata, pseudonymization: .required(scope: "package")),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("currentState.lifecycle"), classification: .none, pseudonymization: .notApplicable),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("currentState.identityQuality"), classification: .none, pseudonymization: .notApplicable),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("currentState.isWholeDisk"), classification: .none, pseudonymization: .notApplicable),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("attributes.lifecycle"), classification: .none, pseudonymization: .notApplicable),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("attributes.identityQuality"), classification: .none, pseudonymization: .notApplicable),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("attributes.isWholeDisk"), classification: .none, pseudonymization: .notApplicable),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("attributes.semanticRole"), classification: .none, pseudonymization: .notApplicable),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("subject.identityDigest"),
+                    classification: .deviceMetadata,
+                    pseudonymization: .required(scope: "package")
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("provenance.rawReferenceDigest"),
+                    classification: .deviceMetadata,
+                    pseudonymization: .required(scope: "package")
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("currentState.lifecycle"),
+                    classification: .none,
+                    pseudonymization: .notApplicable
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("currentState.identityQuality"),
+                    classification: .none,
+                    pseudonymization: .notApplicable
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("currentState.isWholeDisk"),
+                    classification: .none,
+                    pseudonymization: .notApplicable
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("attributes.lifecycle"),
+                    classification: .none,
+                    pseudonymization: .notApplicable
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("attributes.identityQuality"),
+                    classification: .none,
+                    pseudonymization: .notApplicable
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("attributes.isWholeDisk"),
+                    classification: .none,
+                    pseudonymization: .notApplicable
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("attributes.semanticRole"),
+                    classification: .none,
+                    pseudonymization: .notApplicable
+                )
             ]),
             sourceOccurrence: raw.occurrence,
             lifecycleBoundary: .none
@@ -218,7 +255,7 @@ enum StorageEventNormalizer {
 }
 
 enum PowerSourceKind: String, Codable, Equatable, Sendable {
-    case ac = "AC"
+    case acPower = "AC"
     case battery = "BATTERY"
     case unknown = "UNKNOWN"
 }
@@ -236,7 +273,7 @@ struct PowerRawState: Codable, Equatable, Sendable {
             "source": .string(source.rawValue),
             "charging": charging.map(EvidenceValue.boolean) ?? .null,
             "currentCapacity": currentCapacity.map { .integer(Int64($0)) } ?? .null,
-            "maximumCapacity": maximumCapacity.map { .integer(Int64($0)) } ?? .null,
+            "maximumCapacity": maximumCapacity.map { .integer(Int64($0)) } ?? .null
         ])
     }
 }
@@ -248,6 +285,7 @@ struct PowerRawTransition: Equatable, Sendable {
 }
 
 enum PowerTransitionNormalizer {
+    // swiftlint:disable:next function_body_length
     static func normalize(_ raw: PowerRawTransition) -> NormalizedEvidenceFact? {
         let sourceChanged = raw.previous.source != raw.current.source
             || raw.previous.externalPowerConnected != raw.current.externalPowerConnected
@@ -257,7 +295,12 @@ enum PowerTransitionNormalizer {
             sourceID: .power,
             domain: .power,
             eventKind: .powerSourceTransition,
-            subject: EvidenceSubject(type: .powerSource, identityDigest: "power-source", quality: .provenStable, safeDisplayLabel: "Direct power source"),
+            subject: EvidenceSubject(
+                type: .powerSource,
+                identityDigest: "power-source",
+                quality: .provenStable,
+                safeDisplayLabel: "Direct power source"
+            ),
             provenance: EvidenceProvenance(
                 sourceID: .power,
                 apiName: "IOPowerSources",
@@ -273,21 +316,69 @@ enum PowerTransitionNormalizer {
             previousState: raw.previous.meaningfulState,
             currentState: raw.current.meaningfulState,
             attributes: [
-                "transition": .string(sourceChanged ? "POWER_SOURCE" : "CHARGING_STATE"),
+                "transition": .string(sourceChanged ? "POWER_SOURCE" : "CHARGING_STATE")
             ],
             sensitivity: EvidenceSensitivityRegistry(fields: [
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("subject.identityDigest"), classification: .deviceMetadata, pseudonymization: .required(scope: "package")),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("previousState.externalPowerConnected"), classification: .none, pseudonymization: .notApplicable),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("previousState.source"), classification: .none, pseudonymization: .notApplicable),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("previousState.charging"), classification: .none, pseudonymization: .notApplicable),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("previousState.currentCapacity"), classification: .deviceMetadata, pseudonymization: .notApplicable),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("previousState.maximumCapacity"), classification: .deviceMetadata, pseudonymization: .notApplicable),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("currentState.externalPowerConnected"), classification: .none, pseudonymization: .notApplicable),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("currentState.source"), classification: .none, pseudonymization: .notApplicable),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("currentState.charging"), classification: .none, pseudonymization: .notApplicable),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("currentState.currentCapacity"), classification: .deviceMetadata, pseudonymization: .notApplicable),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("currentState.maximumCapacity"), classification: .deviceMetadata, pseudonymization: .notApplicable),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("attributes.transition"), classification: .none, pseudonymization: .notApplicable),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("subject.identityDigest"),
+                    classification: .deviceMetadata,
+                    pseudonymization: .required(scope: "package")
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("previousState.externalPowerConnected"),
+                    classification: .none,
+                    pseudonymization: .notApplicable
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("previousState.source"),
+                    classification: .none,
+                    pseudonymization: .notApplicable
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("previousState.charging"),
+                    classification: .none,
+                    pseudonymization: .notApplicable
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("previousState.currentCapacity"),
+                    classification: .deviceMetadata,
+                    pseudonymization: .notApplicable
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("previousState.maximumCapacity"),
+                    classification: .deviceMetadata,
+                    pseudonymization: .notApplicable
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("currentState.externalPowerConnected"),
+                    classification: .none,
+                    pseudonymization: .notApplicable
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("currentState.source"),
+                    classification: .none,
+                    pseudonymization: .notApplicable
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("currentState.charging"),
+                    classification: .none,
+                    pseudonymization: .notApplicable
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("currentState.currentCapacity"),
+                    classification: .deviceMetadata,
+                    pseudonymization: .notApplicable
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("currentState.maximumCapacity"),
+                    classification: .deviceMetadata,
+                    pseudonymization: .notApplicable
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("attributes.transition"),
+                    classification: .none,
+                    pseudonymization: .notApplicable
+                )
             ]),
             sourceOccurrence: raw.occurrence,
             lifecycleBoundary: .none
@@ -321,6 +412,7 @@ struct NetworkRawTransition: Equatable, Sendable {
 }
 
 enum NetworkPathNormalizer {
+    // swiftlint:disable:next function_body_length
     static func normalize(_ raw: NetworkRawTransition) -> NormalizedEvidenceFact? {
         guard raw.previous != raw.current else { return nil }
         let interfaces = raw.current.interfaces.sorted { $0.rawValue < $1.rawValue }
@@ -328,7 +420,12 @@ enum NetworkPathNormalizer {
             sourceID: .network,
             domain: .network,
             eventKind: .networkPathTransition,
-            subject: EvidenceSubject(type: .networkInterface, identityDigest: nil, quality: .unavailable, safeDisplayLabel: "Network path"),
+            subject: EvidenceSubject(
+                type: .networkInterface,
+                identityDigest: nil,
+                quality: .unavailable,
+                safeDisplayLabel: "Network path"
+            ),
             provenance: EvidenceProvenance(
                 sourceID: .network,
                 apiName: "Network.framework",
@@ -343,23 +440,48 @@ enum NetworkPathNormalizer {
             availability: .available,
             previousState: .object([
                 "status": .string(raw.previous.status.rawValue),
-                "interfaces": .array(raw.previous.interfaces.sorted { $0.rawValue < $1.rawValue }.map { .string($0.rawValue) }),
+                "interfaces": .array(raw.previous.interfaces.sorted { $0.rawValue < $1.rawValue }
+                    .map { .string($0.rawValue) })
             ]),
             currentState: .object([
                 "status": .string(raw.current.status.rawValue),
-                "interfaces": .array(interfaces.map { .string($0.rawValue) }),
+                "interfaces": .array(interfaces.map { .string($0.rawValue) })
             ]),
             attributes: [
                 "supplemental": .boolean(true),
-                "interfaceTypes": .array(interfaces.map { .string($0.rawValue) }),
+                "interfaceTypes": .array(interfaces.map { .string($0.rawValue) })
             ],
             sensitivity: EvidenceSensitivityRegistry(fields: [
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("previousState.status"), classification: .none, pseudonymization: .notApplicable),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("previousState.interfaces[*]"), classification: .networkMetadata, pseudonymization: .allowed(scope: "package")),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("currentState.status"), classification: .none, pseudonymization: .notApplicable),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("currentState.interfaces[*]"), classification: .networkMetadata, pseudonymization: .allowed(scope: "package")),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("attributes.supplemental"), classification: .none, pseudonymization: .notApplicable),
-                EvidenceFieldSensitivity(path: EvidenceFieldPath("attributes.interfaceTypes[*]"), classification: .networkMetadata, pseudonymization: .allowed(scope: "package")),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("previousState.status"),
+                    classification: .none,
+                    pseudonymization: .notApplicable
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("previousState.interfaces[*]"),
+                    classification: .networkMetadata,
+                    pseudonymization: .allowed(scope: "package")
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("currentState.status"),
+                    classification: .none,
+                    pseudonymization: .notApplicable
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("currentState.interfaces[*]"),
+                    classification: .networkMetadata,
+                    pseudonymization: .allowed(scope: "package")
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("attributes.supplemental"),
+                    classification: .none,
+                    pseudonymization: .notApplicable
+                ),
+                EvidenceFieldSensitivity(
+                    path: EvidenceFieldPath("attributes.interfaceTypes[*]"),
+                    classification: .networkMetadata,
+                    pseudonymization: .allowed(scope: "package")
+                )
             ]),
             sourceOccurrence: raw.occurrence,
             lifecycleBoundary: .none
@@ -386,6 +508,4 @@ struct SleepWakeRawEvent: Sendable {
         self.observedAt = observedAt
         self.ingressOrder = ingressOrder
     }
-}
-
-// swiftlint:enable line_length trailing_comma identifier_name
+} // swiftlint:disable:this file_length

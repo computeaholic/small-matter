@@ -1,5 +1,3 @@
-// swiftlint:disable file_length
-
 import Foundation
 
 enum EvidenceJournalAvailability: String, Codable, Equatable, Sendable {
@@ -704,4 +702,4 @@ actor InMemoryEvidenceJournal: EvidenceJournal {
             finalStatus: retentionStatus()
         )
     }
-}
+} // swiftlint:disable:this file_length

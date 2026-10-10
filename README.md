@@ -87,11 +87,21 @@ product name.
 
 ## Release status
 
-Version `0.9.1 (2)` is the next direct-distribution release candidate. Local
-unsigned Release builds and artifact verification are reproducible. Developer
-ID signing and notarization require the authorized Apple credentials and are
-reported only when the actual artifact has been accepted by Apple and
-Gatekeeper.
+Small Matter `0.9.1` is the published direct-distribution release. The
+repository contains separate Developer ID and Mac App Store build
+configurations; the latter uses App Sandbox and has its own publishing state.
+Historical release tags and assets are immutable. Local unsigned Release
+builds and artifact verification remain reproducible. Developer ID signing and
+notarization require the authorized Apple credentials and are reported only
+when the actual artifact has been accepted by Apple and Gatekeeper.
+
+The full UI test command remains a mandatory local release gate because
+GitHub-hosted runners do not provide deterministic interactive Automation
+permissions:
+
+```sh
+./scripts/run_tunix_ui_tests.sh --fresh-derived-data
+```
 
 ## License
 

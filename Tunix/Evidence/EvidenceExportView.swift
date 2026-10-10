@@ -8,6 +8,7 @@ private enum EvidenceExportSaveState: Equatable {
     case failed
 }
 
+// swiftlint:disable:next type_body_length
 struct EvidenceExportPreviewView: View {
     let package: EvidencePackage
     private let writer = EvidenceExportWriter()
@@ -18,14 +19,21 @@ struct EvidenceExportPreviewView: View {
         NavigationStack {
             List {
                 Section("Capture") {
-                    previewValue("Status", package.incident?.status.rawValue ?? "Unavailable", identifier: "evidence-export-status")
+                    previewValue(
+                        "Status",
+                        package.incident?.status.rawValue ?? "Unavailable",
+                        identifier: "evidence-export-status"
+                    )
                     if let incident = package.incident {
                         previewValue("Marker", DateFormatter.recentChanges.string(from: incident.markerTime))
                         previewValue("Window", "60 seconds before · 120 seconds after")
                         if incident.status == .incomplete {
-                            Text("IMPORTANT: This capture has known evidence or coverage gaps. Missing evidence is not proof that an event did not occur.")
-                                .foregroundStyle(.secondary)
-                                .accessibilityIdentifier("evidence-export-incomplete-warning")
+                            Text(
+                                "IMPORTANT: This capture has known evidence or coverage gaps. " +
+                                    "Missing evidence is not proof that an event did not occur."
+                            )
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("evidence-export-incomplete-warning")
                         }
                     }
                 }
@@ -55,8 +63,11 @@ struct EvidenceExportPreviewView: View {
                 }
 
                 Section("CAPTURE MEMBERSHIP") {
-                    Text("\(package.observations.count) canonical observation\(package.observations.count == 1 ? "" : "s") retained in this capture")
-                        .accessibilityIdentifier("evidence-export-membership")
+                    Text(
+                        "\(package.observations.count) canonical observation" +
+                            "\(package.observations.count == 1 ? "" : "s") retained in this capture"
+                    )
+                    .accessibilityIdentifier("evidence-export-membership")
                 }
 
                 Section("CHANGES OBSERVED") {
@@ -88,23 +99,33 @@ struct EvidenceExportPreviewView: View {
                 if package.inferences.contains(where: { !$0.alternatives.isEmpty }) {
                     Section("Alternative") {
                         ForEach(package.inferences.sorted(by: compareInferences), id: \.id) { inference in
-                            ForEach(Array(inference.alternatives.sorted { $0.hypothesis < $1.hypothesis }.enumerated()), id: \.offset) { index, alternative in
+                            ForEach(
+                                Array(inference.alternatives.sorted { $0.hypothesis < $1.hypothesis }.enumerated()),
+                                id: \.offset
+                            ) { index, alternative in
                                 Text("Alternative: \(alternative.hypothesis) — \(alternative.reason)")
-                                    .accessibilityIdentifier("evidence-export-alternative-\(inference.id.uuidString)-\(index)")
+                                    .accessibilityIdentifier(
+                                        "evidence-export-alternative-\(inference.id.uuidString)-\(index)"
+                                    )
                             }
                         }
                     }
                     .accessibilityIdentifier("evidence-export-alternatives")
                 }
 
-                if !package.unknowns.isEmpty || package.inferences.contains(where: { !$0.missingEvidence.isEmpty || hasUnknownNetworkCause($0) }) {
+                if !package.unknowns.isEmpty || package.inferences
+                    .contains(where: { !$0.missingEvidence.isEmpty || hasUnknownNetworkCause($0) }) {
                     Section("Unknown") {
-                        ForEach(Array(package.unknowns.sorted(by: compareUnknowns).enumerated()), id: \.offset) { item in
+                        ForEach(Array(package.unknowns.sorted(by: compareUnknowns).enumerated()),
+                                id: \.offset) { item in
                             Text(item.element.explanation)
                                 .foregroundStyle(.secondary)
                         }
                         ForEach(package.inferences.sorted(by: compareInferences), id: \.id) { inference in
-                            ForEach(Array(inference.missingEvidence.sorted(by: compareUnknowns).enumerated()), id: \.offset) { _, item in
+                            ForEach(
+                                Array(inference.missingEvidence.sorted(by: compareUnknowns).enumerated()),
+                                id: \.offset
+                            ) { _, item in
                                 Text("\(inference.ruleID): \(item.explanation)")
                                     .foregroundStyle(.secondary)
                             }
@@ -128,26 +149,40 @@ struct EvidenceExportPreviewView: View {
                                     .font(.subheadline.weight(.semibold))
                                     .accessibilityIdentifier("evidence-export-next-test-\(entry.reference.testID)")
                                 Text(entry.reference.purpose)
-                                    .accessibilityIdentifier("evidence-export-next-test-\(entry.reference.testID)-purpose")
+                                    .accessibilityIdentifier(
+                                        "evidence-export-next-test-\(entry.reference.testID)-purpose"
+                                    )
                                 Text("Action: \(entry.userAction)")
-                                    .accessibilityIdentifier("evidence-export-next-test-\(entry.reference.testID)-action")
+                                    .accessibilityIdentifier(
+                                        "evidence-export-next-test-\(entry.reference.testID)-action"
+                                    )
                                     .foregroundStyle(.secondary)
                                 Text("Evidence expected: \(entry.reference.evidenceExpected)")
-                                    .accessibilityIdentifier("evidence-export-next-test-\(entry.reference.testID)-evidence")
+                                    .accessibilityIdentifier(
+                                        "evidence-export-next-test-\(entry.reference.testID)-evidence"
+                                    )
                                     .foregroundStyle(.secondary)
                                 if !entry.prerequisites.isEmpty {
-                                    Text("Prerequisites: \(entry.prerequisites.map(\.rawValue).joined(separator: ", "))")
-                                        .accessibilityIdentifier("evidence-export-next-test-\(entry.reference.testID)-prerequisites")
-                                        .foregroundStyle(.secondary)
+                                    Text(
+                                        "Prerequisites: \(entry.prerequisites.map(\.rawValue).joined(separator: ", "))"
+                                    )
+                                    .accessibilityIdentifier(
+                                        "evidence-export-next-test-\(entry.reference.testID)-prerequisites"
+                                    )
+                                    .foregroundStyle(.secondary)
                                 }
                                 Text("Risk: \(entry.riskClass.rawValue)")
                                     .accessibilityIdentifier("evidence-export-next-test-\(entry.reference.testID)-risk")
                                     .foregroundStyle(.secondary)
                                 Text("Stopping condition: \(entry.stoppingCondition)")
-                                    .accessibilityIdentifier("evidence-export-next-test-\(entry.reference.testID)-stopping")
+                                    .accessibilityIdentifier(
+                                        "evidence-export-next-test-\(entry.reference.testID)-stopping"
+                                    )
                                     .foregroundStyle(.secondary)
                                 Text("Safety: \(entry.safetyWarning)")
-                                    .accessibilityIdentifier("evidence-export-next-test-\(entry.reference.testID)-safety")
+                                    .accessibilityIdentifier(
+                                        "evidence-export-next-test-\(entry.reference.testID)-safety"
+                                    )
                                     .foregroundStyle(.secondary)
                             }
                         }
@@ -156,8 +191,14 @@ struct EvidenceExportPreviewView: View {
                 .accessibilityIdentifier("evidence-export-next-tests")
 
                 Section("Sources") {
-                    ForEach(package.sourceManifest.sorted(by: { $0.sourceID.rawValue < $1.sourceID.rawValue }), id: \.sourceID) { entry in
-                        Text("\(entry.sourceID.rawValue) · \(entry.disposition.rawValue) · \(entry.includedObservationCount) observed")
+                    ForEach(
+                        package.sourceManifest.sorted(by: { $0.sourceID.rawValue < $1.sourceID.rawValue }),
+                        id: \.sourceID
+                    ) { entry in
+                        Text(
+                            "\(entry.sourceID.rawValue) · \(entry.disposition.rawValue) · " +
+                                "\(entry.includedObservationCount) observed"
+                        )
                     }
                 }
                 .accessibilityIdentifier("evidence-export-source-manifest")
@@ -166,10 +207,18 @@ struct EvidenceExportPreviewView: View {
                     Text("Policy \(package.redactionPolicyVersion)")
                     let pseudonymizedCount = package.redactionManifest.filter { $0.action == .pseudonymize }.count
                     let omittedCount = package.redactionManifest.filter { $0.action == .omit }.count
-                    Text("Approved fields included unchanged · Pseudonymized: \(pseudonymizedCount) · Omitted: \(omittedCount)")
-                    ForEach(Array(package.redactionManifest.sorted(by: compareManifestEntries).enumerated()), id: \.offset) { index, entry in
+                    Text(
+                        "Approved fields included unchanged · Pseudonymized: \(pseudonymizedCount) · " +
+                            "Omitted: \(omittedCount)"
+                    )
+                    ForEach(
+                        Array(package.redactionManifest.sorted(by: compareManifestEntries).enumerated()),
+                        id: \.offset
+                    ) { index, entry in
                         Text("\(entry.action.rawValue) · \(entry.path.rawValue)")
-                            .accessibilityLabel("\(entry.action.rawValue), \(entry.classification.rawValue), \(entry.path.rawValue)")
+                            .accessibilityLabel(
+                                "\(entry.action.rawValue), \(entry.classification.rawValue), \(entry.path.rawValue)"
+                            )
                             .accessibilityIdentifier("redaction-row-\(index)")
                     }
                 }
@@ -179,8 +228,14 @@ struct EvidenceExportPreviewView: View {
                     Section("Versions") {
                         Text("Specification \(versions.specificationVersion)")
                         Text("Package schema \(versions.evidencePackageSchemaVersion)")
-                        Text("Correlation \(versions.correlationRules.map { "\($0.ruleID) \($0.version)" }.joined(separator: ", "))")
-                        Text("Inference \(versions.inferenceRules.map { "\($0.ruleID) \($0.version)" }.joined(separator: ", "))")
+                        let correlations = versions.correlationRules
+                            .map { "\($0.ruleID) \($0.version)" }
+                            .joined(separator: ", ")
+                        Text("Correlation \(correlations)")
+                        let inferences = versions.inferenceRules
+                            .map { "\($0.ruleID) \($0.version)" }
+                            .joined(separator: ", ")
+                        Text("Inference \(inferences)")
                         Text("Next Test catalog \(versions.nextTestCatalogVersion)")
                         Text("Redaction policy \(versions.redactionPolicyVersion)")
                     }
@@ -272,7 +327,8 @@ struct EvidenceExportPreviewView: View {
     }
 
     private func observationLabel(_ id: UUID) -> String {
-        guard let observation = package.observations.first(where: { $0.id == id }) else { return "Observation unavailable" }
+        guard let observation = package.observations.first(where: { $0.id == id })
+        else { return "Observation unavailable" }
         return "\(observation.sourceID.rawValue) · \(observation.eventKind)"
     }
 
@@ -285,7 +341,7 @@ struct EvidenceExportPreviewView: View {
 
     private func canonicalValue(_ value: EvidenceValue) -> String {
         guard let data = try? value.deterministicData() else { return "Additional detail unavailable" }
-        return String(decoding: data, as: UTF8.self)
+        return String(bytes: data, encoding: .utf8) ?? ""
     }
 }
 
@@ -307,9 +363,12 @@ private func compareInferences(_ lhs: Inference, _ rhs: Inference) -> Bool {
 }
 
 private func compareUnknowns(_ lhs: EvidenceMissing, _ rhs: EvidenceMissing) -> Bool {
-    "\(lhs.sourceID?.rawValue ?? "")|\(lhs.reason.rawValue)|\(lhs.explanation)" < "\(rhs.sourceID?.rawValue ?? "")|\(rhs.reason.rawValue)|\(rhs.explanation)"
+    let left = "\(lhs.sourceID?.rawValue ?? "")|\(lhs.reason.rawValue)|\(lhs.explanation)"
+    let right = "\(rhs.sourceID?.rawValue ?? "")|\(rhs.reason.rawValue)|\(rhs.explanation)"
+    return left < right
 }
 
-private func compareManifestEntries(_ lhs: EvidenceRedactionManifestEntry, _ rhs: EvidenceRedactionManifestEntry) -> Bool {
+private func compareManifestEntries(_ lhs: EvidenceRedactionManifestEntry,
+                                    _ rhs: EvidenceRedactionManifestEntry) -> Bool {
     "\(lhs.path.rawValue)|\(lhs.action.rawValue)" < "\(rhs.path.rawValue)|\(rhs.action.rawValue)"
 }
