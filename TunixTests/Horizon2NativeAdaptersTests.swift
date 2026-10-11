@@ -185,11 +185,23 @@ final class Horizon2NativeAdaptersTests: XCTestCase {
         adapter.stop()
 
         let startupCallbacks = emissions.emissions.compactMap { emission -> StorageRawEvent? in
-            guard case let .raw(.storage(raw)) = emission, raw.callbackToken != "baseline-snapshot" else { return nil }
+            guard case let .raw(.storage(raw)) = emission,
+                  raw.callbackToken == "disk-startup" || raw.callbackToken == "volume-startup"
+            else { return nil }
             return raw
         }
-        XCTAssertEqual(startupCallbacks.map(\.semanticRole), [.baseline, .baseline])
+        XCTAssertEqual(startupCallbacks.filter { $0.callbackToken == "disk-startup" }.count, 1)
+        XCTAssertEqual(startupCallbacks.filter { $0.callbackToken == "volume-startup" }.count, 1)
+        XCTAssertEqual(
+            startupCallbacks.first { $0.callbackToken == "disk-startup" }?.semanticRole,
+            .baseline
+        )
+        XCTAssertEqual(
+            startupCallbacks.first { $0.callbackToken == "volume-startup" }?.semanticRole,
+            .baseline
+        )
         XCTAssertFalse(startupCallbacks.contains { $0.semanticRole == .transition })
+        XCTAssertFalse(startupCallbacks.contains { $0.semanticRole == .uncertain })
     }
 
     // Why: ordered canonical flow.
