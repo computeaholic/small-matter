@@ -14,6 +14,22 @@ private enum StorageInitializationPhase: String {
 // Why: canonical contract owner.
 // swiftlint:disable:next type_body_length
 final class StorageEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable {
+    private final class StorageCallbackContext: @unchecked Sendable {
+        weak var owner: StorageEvidenceAdapter?
+
+        init(owner: StorageEvidenceAdapter) {
+            self.owner = owner
+        }
+
+        func detach() {
+            owner = nil
+        }
+
+        func emitDisk(_ disk: DADisk, kind: StorageRawEventKind) {
+            owner?.emitDisk(disk, kind: kind)
+        }
+    }
+
     let sourceID: Horizon2SourceID = .storage
 
     private let clock: any EvidenceClock
@@ -22,9 +38,12 @@ final class StorageEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable
     private let fixtureBaselineSnapshotProvider: (@Sendable (EvidenceSourceOccurrence) -> StorageInventorySnapshot)?
     private let queue = DispatchQueue(label: "com.tunix.horizon2.storage", qos: .utility)
     private let snapshotQueue = DispatchQueue(label: "com.tunix.horizon2.storage.snapshot", qos: .utility)
+    private let queueSpecificKey = DispatchSpecificKey<Void>()
     private let lock = NSLock()
     private var running = false
     private var session: DASession?
+    private var callbackContext: StorageCallbackContext?
+    private var callbackContextPointer: UnsafeMutableRawPointer?
     private var notificationTokens: [NSObjectProtocol] = []
     private var duplicateGate = StorageDuplicateGate()
     private var stateMachine = StorageStateMachine()
@@ -45,6 +64,7 @@ final class StorageEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable
         fixtureBaselineSnapshotProvider = baselineSnapshotProvider
         self.inventoryProvider = inventoryProvider
         self.emit = emit
+        queue.setSpecific(key: queueSpecificKey, value: ())
     }
 
     // Why: ordered canonical flow.
@@ -66,11 +86,17 @@ final class StorageEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable
         bufferHighWaterMark = 0
         let createdSession = DASessionCreate(kCFAllocatorDefault)
         session = createdSession
-        let context = Unmanaged.passUnretained(self).toOpaque()
+        let context = createdSession.map { _ in
+            let callbackContext = StorageCallbackContext(owner: self)
+            self.callbackContext = callbackContext
+            let pointer = Unmanaged.passRetained(callbackContext).toOpaque()
+            self.callbackContextPointer = pointer
+            return pointer
+        }
         if let createdSession {
-            DASessionSetDispatchQueue(createdSession, queue)
             DARegisterDiskAppearedCallback(createdSession, nil, Self.diskAppeared, context)
             DARegisterDiskDisappearedCallback(createdSession, nil, Self.diskDisappeared, context)
+            DASessionSetDispatchQueue(createdSession, queue)
         }
         let center = NSWorkspace.shared.notificationCenter
         notificationTokens = [
@@ -120,25 +146,50 @@ final class StorageEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable
         initializationPhase = .stopped
         let oldSession = session
         session = nil
+        let callbackContext = self.callbackContext
+        self.callbackContext = nil
+        let callbackContextPointer = self.callbackContextPointer
+        self.callbackContextPointer = nil
         let tokens = notificationTokens
         notificationTokens.removeAll()
+        callbackContext?.detach()
         lock.unlock()
 
         tokens.forEach(NSWorkspace.shared.notificationCenter.removeObserver)
         if let oldSession {
-            DASessionSetDispatchQueue(oldSession, nil)
-            DAUnregisterCallback(
-                oldSession,
-                unsafeBitCast(Self.diskAppeared, to: UnsafeMutableRawPointer.self),
-                Unmanaged.passUnretained(self).toOpaque()
-            )
-            DAUnregisterCallback(
-                oldSession,
-                unsafeBitCast(Self.diskDisappeared, to: UnsafeMutableRawPointer.self),
-                Unmanaged.passUnretained(self).toOpaque()
-            )
+            tearDownSession(oldSession, callbackContextPointer: callbackContextPointer)
+        } else if let callbackContextPointer {
+            releaseCallbackContext(callbackContextPointer)
         }
         emit(.health(health(event: .stopped, reason: .notObserved, detail: "Storage observers removed")))
+    }
+
+    private func tearDownSession(_ session: DASession, callbackContextPointer: UnsafeMutableRawPointer?) {
+        let tearDown = {
+            DAUnregisterCallback(
+                session,
+                unsafeBitCast(Self.diskAppeared, to: UnsafeMutableRawPointer.self),
+                callbackContextPointer
+            )
+            DAUnregisterCallback(
+                session,
+                unsafeBitCast(Self.diskDisappeared, to: UnsafeMutableRawPointer.self),
+                callbackContextPointer
+            )
+            DASessionSetDispatchQueue(session, nil)
+            if let callbackContextPointer {
+                self.releaseCallbackContext(callbackContextPointer)
+            }
+        }
+        if DispatchQueue.getSpecific(key: queueSpecificKey) != nil {
+            tearDown()
+        } else {
+            queue.sync(execute: tearDown)
+        }
+    }
+
+    private func releaseCallbackContext(_ pointer: UnsafeMutableRawPointer) {
+        Unmanaged<StorageCallbackContext>.fromOpaque(pointer).release()
     }
 
     func reconcileAfterWake() {
@@ -475,15 +526,19 @@ final class StorageEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable
 
     private static let diskAppeared: DADiskAppearedCallback = { disk, context in
         guard let context else { return }
-        Unmanaged<StorageEvidenceAdapter>.fromOpaque(context).takeUnretainedValue().emitDisk(disk, kind: .diskAppeared)
+        Unmanaged<StorageCallbackContext>.fromOpaque(context)
+            .takeUnretainedValue()
+            .emitDisk(disk, kind: .diskAppeared)
     }
 
     private static let diskDisappeared: DADiskDisappearedCallback = { disk, context in
         guard let context else { return }
-        Unmanaged<StorageEvidenceAdapter>.fromOpaque(context).takeUnretainedValue().emitDisk(
-            disk,
-            kind: .diskDisappeared
-        )
+        Unmanaged<StorageCallbackContext>.fromOpaque(context)
+            .takeUnretainedValue()
+            .emitDisk(
+                disk,
+                kind: .diskDisappeared
+            )
     }
 
     deinit {
