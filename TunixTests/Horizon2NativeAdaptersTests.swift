@@ -717,6 +717,24 @@ final class Horizon2NativeAdaptersTests: XCTestCase {
         XCTAssertTrue(adapters.allSatisfy { !$0.sourceID.rawValue.isEmpty })
     }
 
+    func testStorageAdapterRepeatedStartStopDoesNotCrash() {
+        let clock = FixedEvidenceClock(wallTime: fixedDate, continuousNanoseconds: 10, processUptimeNanoseconds: 10)
+        for _ in 0 ..< 100 {
+            autoreleasepool {
+                let adapter = StorageEvidenceAdapter(
+                    clock: clock,
+                    baselineSnapshotProvider: { _ in .available([]) },
+                    emit: { _ in }
+                )
+                adapter.start()
+                adapter.stop()
+                adapter.stop()
+                adapter.start()
+                adapter.stop()
+            }
+        }
+    }
+
     func testApplicationLifecycleOwnsRuntimeInsteadOfWindowLifecycle() {
         let runtime = EvidenceRuntime(adapterFactory: { _ in [] }, enabled: false)
         let delegate = SmallMatterAppDelegate(evidenceRuntime: runtime)
