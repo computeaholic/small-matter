@@ -3,6 +3,8 @@ import Foundation
 import XCTest
 
 @MainActor
+// Why: this suite keeps the complete Recent Changes presentation contract together.
+// swiftlint:disable:next type_body_length
 final class RecentChangesPresentationTests: XCTestCase {
     func testLoadedFixturePresentsFactsAndSupplementalNetwork() async {
         let model = RecentChangesViewModel(
@@ -12,9 +14,10 @@ final class RecentChangesPresentationTests: XCTestCase {
         await model.refresh()
 
         XCTAssertEqual(model.state, .availableWithChanges)
-        XCTAssertEqual(model.rows.count, 5)
-        XCTAssertTrue(model.rows.contains { $0.title == "Storage device connected" })
-        XCTAssertTrue(model.rows.contains { $0.title == "Volume became available" })
+        XCTAssertEqual(model.rows.count, 3)
+        XCTAssertFalse(model.rows.contains { $0.title == "Storage device connected" })
+        XCTAssertFalse(model.rows.contains { $0.title == "Volume became available" })
+        XCTAssertTrue(model.rows.contains { $0.title == "Storage device disconnected" })
         XCTAssertTrue(model.rows.contains { $0.title == "Power source changed from AC to Battery" })
         XCTAssertTrue(model.rows.contains { $0.title == "Network path became unavailable" && $0.isSupplemental })
         XCTAssertTrue(model.rows.allSatisfy { $0.statusText == "Observed" })
@@ -90,14 +93,20 @@ final class RecentChangesPresentationTests: XCTestCase {
 
         XCTAssertEqual(model.state, .incompleteEvidence)
         XCTAssertEqual(model.coverageWarning, "Some changes may be missing.")
-        XCTAssertEqual(model.rows.count, 5)
+        XCTAssertEqual(model.rows.count, 3)
         XCTAssertFalse(model.rows.contains { $0.title.localizedCaseInsensitiveContains("missing") })
     }
 
     func testUnknownObservationKeepsAvailabilityAndIdentityExplicit() async throws {
-        let model = RecentChangesViewModel(
-            journal: RecentChangesFixture.journal(arguments: ["-UITestingRecentChanges=unknown"])
+        let observation = try makeObservation(
+            id: XCTUnwrap(UUID(uuidString: "00000000-0000-0000-0000-000000001000")),
+            sequence: 1,
+            eventKind: .powerSourceTransition,
+            identityQuality: .unavailable,
+            identityDigest: nil,
+            availability: .unknown(.identityUnavailable)
         )
+        let model = RecentChangesViewModel(journal: InMemoryEvidenceJournal(observations: [observation]))
 
         await model.refresh()
 
@@ -111,6 +120,7 @@ final class RecentChangesPresentationTests: XCTestCase {
         let observation = try makeObservation(
             id: XCTUnwrap(UUID(uuidString: "00000000-0000-0000-0000-000000001001")),
             sequence: 1,
+            eventKind: .powerSourceTransition,
             attributes: ["futureSecret": .string("must not appear")]
         )
         let model = RecentChangesViewModel(journal: InMemoryEvidenceJournal(observations: [observation]))
@@ -151,8 +161,44 @@ final class RecentChangesPresentationTests: XCTestCase {
 
         await model.refresh()
 
-        XCTAssertEqual(model.rows.count, 1)
-        XCTAssertEqual(model.rows.first?.title, "Storage device connected")
+        XCTAssertTrue(model.rows.isEmpty)
+        XCTAssertEqual(model.state, .availableEmpty)
+    }
+
+    func testRoutineStorageLifecycleIsHiddenFromRecentChangesButPreservedForEvidence() throws {
+        let cases: [(EvidenceEventKind, String)] = [
+            (.storageDiskLifecycle, "diskAppeared"),
+            (.storageDiskLifecycle, "diskDisappeared"),
+            (.storageMountLifecycle, "volumeMounted"),
+            (.storageMountLifecycle, "volumeUnmounted")
+        ]
+        let observations = try cases.enumerated().map { offset, item in
+            try makeObservation(
+                id: XCTUnwrap(UUID(uuidString: String(format: "00000000-0000-0000-0000-%012d", 1100 + offset))),
+                sequence: UInt64(1100 + offset),
+                eventKind: item.0,
+                lifecycle: item.1
+            )
+        }
+
+        XCTAssertTrue(observations.allSatisfy { !RecentChangesProjection.isRecentChangesRelevant($0) })
+        XCTAssertEqual(IncidentChangeProjection.userVisibleObservations(observations).count, cases.count)
+    }
+
+    func testPowerAndNetworkTransitionsRemainRecentChangesRelevant() throws {
+        let power = try makeObservation(
+            id: XCTUnwrap(UUID(uuidString: "00000000-0000-0000-0000-000000001120")),
+            sequence: 1120,
+            eventKind: .powerSourceTransition
+        )
+        let network = try makeObservation(
+            id: XCTUnwrap(UUID(uuidString: "00000000-0000-0000-0000-000000001121")),
+            sequence: 1121,
+            eventKind: .networkPathTransition
+        )
+
+        XCTAssertTrue(RecentChangesProjection.isRecentChangesRelevant(power))
+        XCTAssertTrue(RecentChangesProjection.isRecentChangesRelevant(network))
     }
 
     func testUncertainStorageFactsStayOutOfRecentChanges() async throws {
@@ -190,23 +236,37 @@ final class RecentChangesPresentationTests: XCTestCase {
         XCTAssertFalse(result.contains { $0.time.localSequence == 5 })
     }
 
+    // Why: the fixture builder keeps all Observation fields explicit for contract tests.
+    // swiftlint:disable:next function_body_length
     private func makeObservation(
         id: UUID,
         sequence: UInt64,
         date: Date = Date(timeIntervalSince1970: 1_735_689_600),
+        eventKind: EvidenceEventKind = .storageDiskLifecycle,
+        lifecycle: String = "diskAppeared",
+        identityQuality: EvidenceIdentityQuality = .qualified,
+        identityDigest: String? = "private-digest",
+        availability: EvidenceAvailability = .available,
         attributes: [String: EvidenceValue] = [:]
     ) -> Observation {
         let runID = UUID(uuidString: "00000000-0000-0000-0000-000000000901")!
         let sourceID = Horizon2SourceID.storage
+        let isStorageLifecycle = eventKind == .storageDiskLifecycle || eventKind == .storageMountLifecycle
+        let currentState: EvidenceValue? = isStorageLifecycle
+            ? .object(["lifecycle": .string(lifecycle)])
+            : nil
+        let mergedAttributes = isStorageLifecycle
+            ? attributes.merging(["lifecycle": .string(lifecycle)]) { current, _ in current }
+            : attributes
         return Observation(
             id: id,
             domain: .storage,
-            eventKind: .storageDiskLifecycle,
+            eventKind: eventKind,
             sourceID: sourceID,
             subject: EvidenceSubject(
                 type: .storageDisk,
-                identityDigest: "private-digest",
-                quality: .qualified,
+                identityDigest: identityDigest,
+                quality: identityQuality,
                 safeDisplayLabel: "Storage disk"
             ),
             provenance: EvidenceProvenance(
@@ -239,8 +299,9 @@ final class RecentChangesPresentationTests: XCTestCase {
                     quality: .exact
                 )
             ),
-            currentState: .object(["lifecycle": .string("diskAppeared")]),
-            attributes: attributes
+            availability: availability,
+            currentState: currentState,
+            attributes: mergedAttributes
         )
     }
 }

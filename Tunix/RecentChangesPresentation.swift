@@ -96,7 +96,7 @@ final class RecentChangesViewModel: ObservableObject {
         )
         let sourceHealth = await journal.sourceHealth()
         let mappedDetails = observations
-            .filter(IncidentChangeProjection.isUserVisibleChange)
+            .filter(RecentChangesProjection.isRecentChangesRelevant)
             .map(Self.detail(for:))
         detailsByID = Dictionary(uniqueKeysWithValues: mappedDetails.map { ($0.id, $0) })
         rows = mappedDetails.map(\.row)

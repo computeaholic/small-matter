@@ -117,8 +117,8 @@ struct RecentChangesView: View {
             VStack(alignment: .leading, spacing: 0) {
                 incidentCapturePanel
                 stateMessage(
-                    title: "No recent changes yet.",
-                    detail: "Observed changes will appear here as Small Matter records them.",
+                    title: "No meaningful recent changes.",
+                    detail: "Meaningful changes will appear here as Small Matter records them.",
                     identifier: "recent-changes-empty-state"
                 )
             }

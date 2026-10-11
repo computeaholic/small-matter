@@ -94,9 +94,13 @@ final class TunixUITests: XCTestCase {
 
         XCTAssertEqual(app.windows.firstMatch.title, "Recent Changes")
         let diskRow = app.descendants(matching: .any)["recent-change-row-00000000-0000-0000-0000-000000000101"]
-        XCTAssertTrue(diskRow.waitForExistence(timeout: 5))
-        XCTAssertTrue(diskRow.label.contains("Storage device connected"))
-        XCTAssertTrue(diskRow.label.contains("Observed"))
+        XCTAssertFalse(diskRow.waitForExistence(timeout: 2))
+        let volumeRow = app.descendants(matching: .any)["recent-change-row-00000000-0000-0000-0000-000000000102"]
+        XCTAssertFalse(volumeRow.exists)
+        let unavailableStorageRow = app.descendants(matching: .any)[
+            "recent-change-row-00000000-0000-0000-0000-000000000105"
+        ]
+        XCTAssertTrue(unavailableStorageRow.waitForExistence(timeout: 5))
 
         let networkRow = app.descendants(matching: .any)["recent-change-row-00000000-0000-0000-0000-000000000104"]
         XCTAssertTrue(networkRow.waitForExistence(timeout: 5))
@@ -126,7 +130,7 @@ final class TunixUITests: XCTestCase {
 
         let emptyDescription = app.debugDescription
         XCTAssertTrue(emptyDescription.contains("recent-changes-empty-state"))
-        XCTAssertTrue(emptyDescription.contains("No recent changes"))
+        XCTAssertTrue(app.staticTexts["recent-changes-empty-state"].waitForExistence(timeout: 5))
         XCTAssertFalse(emptyDescription.contains("Recent Changes is unavailable."))
     }
 
@@ -136,7 +140,7 @@ final class TunixUITests: XCTestCase {
         let unavailableDescription = app.debugDescription
         XCTAssertTrue(unavailableDescription.contains("recent-changes-unavailable-state"))
         XCTAssertTrue(unavailableDescription.contains("Recent Changes is"))
-        XCTAssertFalse(unavailableDescription.contains("No recent changes yet."))
+        XCTAssertFalse(unavailableDescription.contains("No meaningful recent changes"))
 
         relaunchRecentChangesFixture("capacity")
         app.staticTexts["navigation-Recent Changes"].click()
