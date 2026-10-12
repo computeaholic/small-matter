@@ -735,6 +735,53 @@ final class Horizon2NativeAdaptersTests: XCTestCase {
         }
     }
 
+    func testStorageAdapterCallbackContextReclamationIsDeferredOnCallbackQueue() {
+        let releaseExpectation = expectation(description: "callback context is eventually released")
+        let releaseState = CallbackContextReleaseState()
+        let adapter = StorageEvidenceAdapter(
+            clock: FixedEvidenceClock(wallTime: fixedDate, continuousNanoseconds: 10, processUptimeNanoseconds: 10),
+            baselineSnapshotProvider: { _ in .available([]) },
+            emit: { _ in }
+        )
+        adapter.callbackContextDeinitObserverForTesting = {
+            releaseState.markReleased()
+            releaseExpectation.fulfill()
+        }
+        adapter.start()
+
+        let stopExpectation = expectation(description: "stop completes on callback queue")
+        adapter.performOnCallbackQueueForTesting {
+            adapter.stop()
+            XCTAssertFalse(releaseState.wasReleased)
+            stopExpectation.fulfill()
+        }
+
+        wait(for: [stopExpectation, releaseExpectation], timeout: 2)
+    }
+
+    func testStorageAdapterRestartRetiresEachCallbackContextExactlyOnce() {
+        let releaseExpectation = expectation(description: "each callback context is released")
+        releaseExpectation.expectedFulfillmentCount = 2
+        let releaseState = CallbackContextReleaseState()
+        let adapter = StorageEvidenceAdapter(
+            clock: FixedEvidenceClock(wallTime: fixedDate, continuousNanoseconds: 10, processUptimeNanoseconds: 10),
+            baselineSnapshotProvider: { _ in .available([]) },
+            emit: { _ in }
+        )
+        adapter.callbackContextDeinitObserverForTesting = {
+            releaseState.markReleased()
+            releaseExpectation.fulfill()
+        }
+
+        adapter.start()
+        adapter.stop()
+        adapter.start()
+        adapter.stop()
+
+        wait(for: [releaseExpectation], timeout: 2)
+        XCTAssertEqual(releaseState.releaseCount, 2)
+    }
+
     func testApplicationLifecycleOwnsRuntimeInsteadOfWindowLifecycle() {
         let runtime = EvidenceRuntime(adapterFactory: { _ in [] }, enabled: false)
         let delegate = SmallMatterAppDelegate(evidenceRuntime: runtime)
@@ -989,20 +1036,19 @@ final class Horizon2NativeAdaptersTests: XCTestCase {
             kind: .diskAppeared,
             identity: identity,
             occurrence: occurrence,
-            callbackToken: nil
+            callbackToken: "disk-startup"
         ))
         adapter.stop()
 
-        let rawCount = emissions.emissions.reduce(into: 0) { count, emission in
-            if case .raw = emission {
-                count += 1
-            }
+        let startupCallbacks = emissions.emissions.compactMap { emission -> StorageRawEvent? in
+            guard case let .raw(.storage(raw)) = emission, raw.callbackToken == "disk-startup" else { return nil }
+            return raw
         }
         let baselineHealth = emissions.emissions.compactMap { emission -> EvidenceSourceHealthUpdate? in
             guard case let .health(update) = emission else { return nil }
             return update
         }.first { $0.detail?.contains("Current storage baseline established") == true }
-        XCTAssertEqual(rawCount, 1)
+        XCTAssertEqual(startupCallbacks.count, 1)
         XCTAssertNotNil(baselineHealth)
     }
 
@@ -1316,10 +1362,42 @@ private final class CallbackBox: @unchecked Sendable {
 }
 
 private final class EmissionBox: @unchecked Sendable {
-    private(set) var emissions: [EvidenceAdapterEmission] = []
+    private let lock = NSLock()
+    private var storedEmissions: [EvidenceAdapterEmission] = []
+
+    var emissions: [EvidenceAdapterEmission] {
+        lock.lock()
+        defer { lock.unlock() }
+        return storedEmissions
+    }
 
     func append(_ emission: EvidenceAdapterEmission) {
-        emissions.append(emission)
+        lock.lock()
+        storedEmissions.append(emission)
+        lock.unlock()
+    }
+}
+
+private final class CallbackContextReleaseState: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+
+    var wasReleased: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return count > 0
+    }
+
+    var releaseCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return count
+    }
+
+    func markReleased() {
+        lock.lock()
+        count += 1
+        lock.unlock()
     }
 }
 

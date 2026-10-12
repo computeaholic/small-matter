@@ -16,9 +16,11 @@ private enum StorageInitializationPhase: String {
 final class StorageEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable {
     private final class StorageCallbackContext: @unchecked Sendable {
         weak var owner: StorageEvidenceAdapter?
+        private let onDeinit: (@Sendable () -> Void)?
 
-        init(owner: StorageEvidenceAdapter) {
+        init(owner: StorageEvidenceAdapter, onDeinit: (@Sendable () -> Void)? = nil) {
             self.owner = owner
+            self.onDeinit = onDeinit
         }
 
         func detach() {
@@ -27,6 +29,10 @@ final class StorageEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable
 
         func emitDisk(_ disk: DADisk, kind: StorageRawEventKind) {
             owner?.emitDisk(disk, kind: kind)
+        }
+
+        deinit {
+            onDeinit?()
         }
     }
 
@@ -44,6 +50,9 @@ final class StorageEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable
     private var session: DASession?
     private var callbackContext: StorageCallbackContext?
     private var callbackContextPointer: UnsafeMutableRawPointer?
+    #if DEBUG
+        var callbackContextDeinitObserverForTesting: (@Sendable () -> Void)?
+    #endif
     private var notificationTokens: [NSObjectProtocol] = []
     private var duplicateGate = StorageDuplicateGate()
     private var stateMachine = StorageStateMachine()
@@ -87,7 +96,10 @@ final class StorageEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable
         let createdSession = DASessionCreate(kCFAllocatorDefault)
         session = createdSession
         let context = createdSession.map { _ in
-            let callbackContext = StorageCallbackContext(owner: self)
+            let callbackContext = StorageCallbackContext(
+                owner: self,
+                onDeinit: callbackContextDeinitObserverForTesting
+            )
             self.callbackContext = callbackContext
             let pointer = Unmanaged.passRetained(callbackContext).toOpaque()
             self.callbackContextPointer = pointer
@@ -177,20 +189,30 @@ final class StorageEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable
                 callbackContextPointer
             )
             DASessionSetDispatchQueue(session, nil)
-            if let callbackContextPointer {
-                self.releaseCallbackContext(callbackContextPointer)
-            }
         }
         if DispatchQueue.getSpecific(key: queueSpecificKey) != nil {
             tearDown()
         } else {
             queue.sync(execute: tearDown)
         }
+        if let callbackContextPointer {
+            // Keep the pass-retained context alive until every callback block already
+            // queued ahead of this reclamation block has finished dereferencing it.
+            queue.async { [self] in
+                releaseCallbackContext(callbackContextPointer)
+            }
+        }
     }
 
     private func releaseCallbackContext(_ pointer: UnsafeMutableRawPointer) {
         Unmanaged<StorageCallbackContext>.fromOpaque(pointer).release()
     }
+
+    #if DEBUG
+        func performOnCallbackQueueForTesting(_ operation: @escaping @Sendable () -> Void) {
+            queue.async(execute: operation)
+        }
+    #endif
 
     func reconcileAfterWake() {
         lock.lock()
