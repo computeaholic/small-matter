@@ -1,5 +1,24 @@
 import Foundation
 
+struct EvidenceIngressBatch {
+    let items: [EvidenceIngressItem]
+    #if HORIZON2_MEASUREMENT
+        let dequeuedAtContinuousNanoseconds: UInt64
+        let measurementContext: Horizon2MeasurementBatchContext
+    #endif
+}
+
+struct EvidenceIngressAdmission {
+    let accepted: Bool
+    let shouldSignalWorker: Bool
+    let dropped: [Horizon2DroppedIngress]
+}
+
+struct EvidenceIngressDequeue {
+    let batch: EvidenceIngressBatch?
+    let expired: [Horizon2DroppedIngress]
+}
+
 final class EvidenceIngestionAuthority: @unchecked Sendable {
     private let stateLock = NSLock()
     private let processor: EvidenceIngestionProcessor
@@ -109,10 +128,7 @@ final class EvidenceIngestionAuthority: @unchecked Sendable {
     }
 
     func drainForTesting() async {
-        while !buffer.isIdle() {
-            await Task.yield()
-            try? await Task.sleep(nanoseconds: 1_000_000)
-        }
+        await buffer.waitForIdle()
     }
 
     func currentEpoch() async -> UUID {
@@ -182,6 +198,7 @@ final class EvidenceIngestionAuthority: @unchecked Sendable {
     }
 
     private func persist(_ batch: EvidenceIngressBatch, using processor: EvidenceIngestionProcessor) async {
+        defer { buffer.completeBatch() }
         #if HORIZON2_MEASUREMENT
             let startNanoseconds = DispatchTime.now().uptimeNanoseconds
         #endif
@@ -208,6 +225,8 @@ final class EvidenceIngestionAuthority: @unchecked Sendable {
 
     private func flushOverflowCounts(to processor: EvidenceIngestionProcessor) async {
         let dropped = buffer.takeOverflowCounts()
+        guard !dropped.isEmpty else { return }
+        defer { buffer.completeOverflowFlush() }
         for (key, count) in dropped {
             await processor.recordOverflow(
                 sourceID: key.sourceID,
@@ -246,6 +265,111 @@ final class EvidenceIngestionAuthority: @unchecked Sendable {
         #else
             return true
         #endif
+    }
+}
+
+struct EvidenceIngressCompletionState {
+    private var inFlightBatchCount = 0
+    private var inFlightOverflowFlushCount = 0
+    private var idleWaiters: [CheckedContinuation<Void, Never>] = []
+
+    mutating func registerWaiterIfNeeded(
+        _ waiter: CheckedContinuation<Void, Never>,
+        pendingItemsEmpty: Bool,
+        overflowCountsEmpty: Bool
+    ) -> Bool {
+        if isIdle(pendingItemsEmpty: pendingItemsEmpty, overflowCountsEmpty: overflowCountsEmpty) {
+            return true
+        }
+        idleWaiters.append(waiter)
+        return false
+    }
+
+    mutating func batchDequeued() {
+        inFlightBatchCount += 1
+    }
+
+    mutating func overflowFlushStarted() {
+        inFlightOverflowFlushCount += 1
+    }
+
+    mutating func batchCompleted(
+        pendingItemsEmpty: Bool,
+        overflowCountsEmpty: Bool
+    ) -> [CheckedContinuation<Void, Never>] {
+        precondition(inFlightBatchCount > 0)
+        inFlightBatchCount -= 1
+        return takeIdleWaitersIfIdle(
+            pendingItemsEmpty: pendingItemsEmpty,
+            overflowCountsEmpty: overflowCountsEmpty
+        )
+    }
+
+    mutating func overflowFlushCompleted(
+        pendingItemsEmpty: Bool,
+        overflowCountsEmpty: Bool
+    ) -> [CheckedContinuation<Void, Never>] {
+        precondition(inFlightOverflowFlushCount > 0)
+        inFlightOverflowFlushCount -= 1
+        return takeIdleWaitersIfIdle(
+            pendingItemsEmpty: pendingItemsEmpty,
+            overflowCountsEmpty: overflowCountsEmpty
+        )
+    }
+
+    mutating func takeIdleWaitersIfIdle(
+        pendingItemsEmpty: Bool,
+        overflowCountsEmpty: Bool
+    ) -> [CheckedContinuation<Void, Never>] {
+        guard isIdle(pendingItemsEmpty: pendingItemsEmpty, overflowCountsEmpty: overflowCountsEmpty) else {
+            return []
+        }
+        let waiters = idleWaiters
+        idleWaiters.removeAll(keepingCapacity: true)
+        return waiters
+    }
+
+    private func isIdle(pendingItemsEmpty: Bool, overflowCountsEmpty: Bool) -> Bool {
+        pendingItemsEmpty &&
+            overflowCountsEmpty &&
+            inFlightBatchCount == 0 &&
+            inFlightOverflowFlushCount == 0
+    }
+}
+
+extension EvidenceIngressItem {
+    var batchPayloadBytes: Int {
+        switch emission {
+        case let .raw(raw):
+            return raw.persistencePayloadBytes
+        case let .health(update):
+            return 1024 + (update.detail?.utf8.count ?? 0)
+        }
+    }
+
+    #if HORIZON2_MEASUREMENT
+        var measurementPayloadBytes: Int {
+            batchPayloadBytes
+        }
+    #endif
+}
+
+extension Horizon2RawEvent {
+    var persistencePayloadBytes: Int {
+        let estimate: Int
+        switch self {
+        case let .storage(event):
+            estimate = 64 + event.identity.digestMaterial.reduce(0) { $0 + $1.utf8.count }
+        case let .power(event):
+            estimate = 96 + String(describing: event.current.meaningfulState).utf8.count
+        case let .network(event):
+            estimate = 64 + event.current.interfaces.reduce(0) { $0 + $1.rawValue.utf8.count }
+        case .lifecycle:
+            estimate = 32
+        }
+        // Include a deterministic envelope allowance for canonical JSON,
+        // attributes, and SQLite row metadata in every build configuration.
+        return max(4096, estimate + 4096)
     }
 }
 
