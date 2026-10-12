@@ -1,24 +1,5 @@
 import Foundation
 
-struct EvidenceIngressBatch {
-    let items: [EvidenceIngressItem]
-    #if HORIZON2_MEASUREMENT
-        let dequeuedAtContinuousNanoseconds: UInt64
-        let measurementContext: Horizon2MeasurementBatchContext
-    #endif
-}
-
-struct EvidenceIngressAdmission {
-    let accepted: Bool
-    let shouldSignalWorker: Bool
-    let dropped: [Horizon2DroppedIngress]
-}
-
-struct EvidenceIngressDequeue {
-    let batch: EvidenceIngressBatch?
-    let expired: [Horizon2DroppedIngress]
-}
-
 final class EvidenceIngressBuffer: @unchecked Sendable {
     private let lock = NSLock()
     private let capacity: Int
@@ -27,6 +8,7 @@ final class EvidenceIngressBuffer: @unchecked Sendable {
     #if HORIZON2_MEASUREMENT
         private let measurementMetrics: Horizon2MeasurementMetrics
     #endif
+    private var completionState = EvidenceIngressCompletionState()
 
     private var activeGeneration: UInt64?
     private var pendingItems: [EvidenceIngressItem] = []
@@ -68,6 +50,7 @@ final class EvidenceIngressBuffer: @unchecked Sendable {
     }
 
     func stop() -> [EvidenceIngressItem] {
+        var waiters: [CheckedContinuation<Void, Never>] = []
         lock.lock()
         activeGeneration = nil
         let pending = pendingItems
@@ -80,7 +63,12 @@ final class EvidenceIngressBuffer: @unchecked Sendable {
                 measurementMetrics.discarded(payloadBytes: item.measurementPayloadBytes)
             }
         #endif
+        waiters = completionState.takeIdleWaitersIfIdle(
+            pendingItemsEmpty: pendingItems.isEmpty,
+            overflowCountsEmpty: overflowCounts.isEmpty
+        )
         lock.unlock()
+        resume(waiters)
         return pending
     }
 
@@ -157,15 +145,20 @@ final class EvidenceIngressBuffer: @unchecked Sendable {
         return hasPartialBatch()
     }
 
-    func isIdle() -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        #if HORIZON2_MEASUREMENT
-            let snapshot = measurementMetrics.snapshot()
-            return pendingItems.isEmpty && snapshot.inFlightPersistenceCount == 0
-        #else
-            return pendingItems.isEmpty
-        #endif
+    func waitForIdle() async {
+        await withCheckedContinuation { continuation in
+            lock.lock()
+            if completionState.registerWaiterIfNeeded(
+                continuation,
+                pendingItemsEmpty: pendingItems.isEmpty,
+                overflowCountsEmpty: overflowCounts.isEmpty
+            ) {
+                lock.unlock()
+                continuation.resume()
+            } else {
+                lock.unlock()
+            }
+        }
     }
 
     func takeBatch() -> EvidenceIngressDequeue {
@@ -180,6 +173,7 @@ final class EvidenceIngressBuffer: @unchecked Sendable {
         let count = batchCountLocked()
         let batch = Array(pendingItems.prefix(count))
         let dequeuedAtContinuousNanoseconds = DispatchTime.now().uptimeNanoseconds
+        completionState.batchDequeued()
         #if HORIZON2_MEASUREMENT
             let measurementContext = Horizon2MeasurementBatchContext(
                 observationCount: count,
@@ -218,16 +212,15 @@ final class EvidenceIngressBuffer: @unchecked Sendable {
 
     func takeOverflowCounts() -> [Horizon2OverflowKey: Int] {
         lock.lock()
-        defer { lock.unlock() }
+        guard !overflowCounts.isEmpty else {
+            lock.unlock()
+            return [:]
+        }
         let counts = overflowCounts
         overflowCounts.removeAll(keepingCapacity: true)
+        completionState.overflowFlushStarted()
+        lock.unlock()
         return counts
-    }
-
-    func overflowCountForTesting() -> Int {
-        lock.lock()
-        defer { lock.unlock() }
-        return overflowCounts.values.reduce(0, +)
     }
 
     func queuedPayloadBytesForTesting() -> Int {
@@ -276,6 +269,42 @@ final class EvidenceIngressBuffer: @unchecked Sendable {
             )
         }
     #endif
+}
+
+extension EvidenceIngressBuffer {
+    func overflowCountForTesting() -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return overflowCounts.values.reduce(0, +)
+    }
+}
+
+extension EvidenceIngressBuffer {
+    func completeBatch() {
+        lock.lock()
+        let waiters = completionState.batchCompleted(
+            pendingItemsEmpty: pendingItems.isEmpty,
+            overflowCountsEmpty: overflowCounts.isEmpty
+        )
+        lock.unlock()
+        resume(waiters)
+    }
+
+    func completeOverflowFlush() {
+        lock.lock()
+        let waiters = completionState.overflowFlushCompleted(
+            pendingItemsEmpty: pendingItems.isEmpty,
+            overflowCountsEmpty: overflowCounts.isEmpty
+        )
+        lock.unlock()
+        resume(waiters)
+    }
+
+    private func resume(_ waiters: [CheckedContinuation<Void, Never>]) {
+        for waiter in waiters {
+            waiter.resume()
+        }
+    }
 }
 
 private extension EvidenceIngressBuffer {
@@ -353,41 +382,5 @@ private extension EvidenceIngressBuffer {
             _ = dropped
             _ = rejected
         #endif
-    }
-}
-
-private extension EvidenceIngressItem {
-    var batchPayloadBytes: Int {
-        switch emission {
-        case let .raw(raw):
-            return raw.persistencePayloadBytes
-        case let .health(update):
-            return 1024 + (update.detail?.utf8.count ?? 0)
-        }
-    }
-
-    #if HORIZON2_MEASUREMENT
-        var measurementPayloadBytes: Int {
-            batchPayloadBytes
-        }
-    #endif
-}
-
-private extension Horizon2RawEvent {
-    var persistencePayloadBytes: Int {
-        let estimate: Int
-        switch self {
-        case let .storage(event):
-            estimate = 64 + event.identity.digestMaterial.reduce(0) { $0 + $1.utf8.count }
-        case let .power(event):
-            estimate = 96 + String(describing: event.current.meaningfulState).utf8.count
-        case let .network(event):
-            estimate = 64 + event.current.interfaces.reduce(0) { $0 + $1.rawValue.utf8.count }
-        case .lifecycle:
-            estimate = 32
-        }
-        // Include a deterministic envelope allowance for canonical JSON,
-        // attributes, and SQLite row metadata in every build configuration.
-        return max(4096, estimate + 4096)
     }
 }

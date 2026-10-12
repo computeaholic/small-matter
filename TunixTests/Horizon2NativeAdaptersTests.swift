@@ -704,6 +704,37 @@ final class Horizon2NativeAdaptersTests: XCTestCase {
         runtime.stop()
     }
 
+    func testDrainForTestingIsRepeatableForIdleAndPersistedWork() async {
+        let journal = InMemoryEvidenceJournal()
+        let runtime = EvidenceRuntime(journal: journal, adapterFactory: { _ in [] })
+        runtime.start()
+        defer { runtime.stop() }
+
+        await runtime.drainForTesting()
+        await runtime.drainForTesting()
+        runtime.receive(.raw(.storage(storageEvent(token: "repeatable-drain"))))
+        await runtime.drainForTesting()
+        await runtime.drainForTesting()
+
+        let observations = await journal.query(EvidenceJournalQuery(sourceID: .storage))
+        XCTAssertEqual(observations.count, 1)
+    }
+
+    func testDrainForTestingDoesNotRemainWaitingAcrossStop() async {
+        let runtime = EvidenceRuntime(adapterFactory: { _ in [] })
+        runtime.start()
+        runtime.receive(.raw(.storage(storageEvent(token: "stop-drain"))))
+
+        let drainTask = Task {
+            await runtime.drainForTesting()
+        }
+        await Task.yield()
+        runtime.stop()
+        await drainTask.value
+
+        XCTAssertFalse(runtime.isRunning)
+    }
+
     func testNativeAdaptersRegisterAndCleanlyStopWithoutUserPrompts() {
         let emissions = EmissionBox()
         let adapters: [any Horizon2EvidenceAdapter] = [
@@ -864,13 +895,7 @@ final class Horizon2NativeAdaptersTests: XCTestCase {
                 callbackToken: "overflow-\(index)"
             ))))
         }
-        for _ in 0 ..< 50 {
-            let health = await journal.sourceHealth()
-            if health.contains(where: { $0.reason == .incompleteCapture }) {
-                break
-            }
-            try? await Task.sleep(nanoseconds: 10_000_000)
-        }
+        await runtime.drainForTesting()
         let health = await journal.sourceHealth()
         guard let overflow = health.first(where: { $0.reason == .incompleteCapture }) else {
             XCTFail("Expected a persisted count-limit overflow summary")
@@ -903,14 +928,8 @@ final class Horizon2NativeAdaptersTests: XCTestCase {
             callbackToken: "private-callback-token"
         ))))
 
-        var overflow: EvidenceSourceHealthRecord?
-        for _ in 0 ..< 50 {
-            overflow = await journal.sourceHealth().first { $0.reason == .incompleteCapture }
-            if overflow != nil {
-                break
-            }
-            try? await Task.sleep(nanoseconds: 10_000_000)
-        }
+        await runtime.drainForTesting()
+        let overflow = await journal.sourceHealth().first { $0.reason == .incompleteCapture }
         let record = try XCTUnwrap(overflow)
         XCTAssertEqual(record.suppressedCount, 1)
         XCTAssertEqual(record.detail, Horizon2OverflowDiagnostic.detail(for: .payloadLimit))
@@ -939,14 +958,7 @@ final class Horizon2NativeAdaptersTests: XCTestCase {
         }
         await runtime.drainForTesting()
 
-        var overflow: EvidenceSourceHealthRecord?
-        for _ in 0 ..< 50 {
-            overflow = await journal.sourceHealth().first { $0.reason == .incompleteCapture }
-            if overflow != nil {
-                break
-            }
-            try? await Task.sleep(nanoseconds: 10_000_000)
-        }
+        let overflow = await journal.sourceHealth().first { $0.reason == .incompleteCapture }
         let record = try XCTUnwrap(overflow)
         XCTAssertGreaterThan(record.suppressedCount, 0)
         XCTAssertEqual(record.detail, Horizon2OverflowDiagnostic.detail(for: .countLimit))
