@@ -50,8 +50,12 @@ final class StorageEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable
     private var session: DASession?
     private var callbackContext: StorageCallbackContext?
     private var callbackContextPointer: UnsafeMutableRawPointer?
+    private var callbackContextDeinitObserver: (@Sendable () -> Void)?
     #if DEBUG
-        var callbackContextDeinitObserverForTesting: (@Sendable () -> Void)?
+        var callbackContextDeinitObserverForTesting: (@Sendable () -> Void)? {
+            get { callbackContextDeinitObserver }
+            set { callbackContextDeinitObserver = newValue }
+        }
     #endif
     private var notificationTokens: [NSObjectProtocol] = []
     private var duplicateGate = StorageDuplicateGate()
@@ -98,7 +102,7 @@ final class StorageEvidenceAdapter: Horizon2EvidenceAdapter, @unchecked Sendable
         let context = createdSession.map { _ in
             let callbackContext = StorageCallbackContext(
                 owner: self,
-                onDeinit: callbackContextDeinitObserverForTesting
+                onDeinit: callbackContextDeinitObserver
             )
             self.callbackContext = callbackContext
             let pointer = Unmanaged.passRetained(callbackContext).toOpaque()
