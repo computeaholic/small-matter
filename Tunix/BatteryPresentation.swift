@@ -163,7 +163,7 @@ final class BatteryManager: ObservableObject {
 
     var amperageDisplay: String {
         guard let current = snapshot.currentMilliamps else { return "Unavailable" }
-        return String(format: "%.2f A", abs(Double(current) / 1000))
+        return String(format: "%.2f A", Double(current) / 1000)
     }
 
     var temperatureDisplay: String {
@@ -175,7 +175,9 @@ final class BatteryManager: ObservableObject {
     }
 
     var temperatureStatusText: String {
-        snapshot.temperatureCelsius == nil ? "Unavailable" : snapshot.source.rawValue
+        snapshot.temperatureCelsius == nil
+            ? "Unavailable — no sandbox-compatible battery temperature was observed"
+            : (snapshot.temperatureSource?.rawValue ?? "Observed")
     }
 
     var timeToEmptyDisplay: String {
@@ -183,8 +185,8 @@ final class BatteryManager: ObservableObject {
             return Self.formatMinutes(minutes)
         }
         switch snapshot.operatingState {
-        case .connectedNotCharging: return "Connected to power"
-        case .fullyCharged: return "Fully charged"
+        case .connectedNotCharging: return "Not discharging"
+        case .fullyCharged: return "Not discharging"
         case .charging, .discharging, .unavailable: return "Unavailable"
         }
     }
@@ -202,7 +204,23 @@ final class BatteryManager: ObservableObject {
     }
 
     var sourceDisplay: String {
-        snapshot.source.rawValue
+        switch snapshot.provenanceSources.count {
+        case 0: return "Unavailable"
+        case 1: return snapshot.provenanceSources.first?.rawValue ?? "Unavailable"
+        default: return "Mixed native sources"
+        }
+    }
+
+    var voltageSourceDisplay: String {
+        snapshot.voltageSource?.rawValue ?? "Unavailable"
+    }
+
+    var currentSourceDisplay: String {
+        snapshot.currentSource?.rawValue ?? "Unavailable"
+    }
+
+    var powerSourceDisplay: String {
+        snapshot.powerSource?.rawValue ?? "Derived from voltage/current"
     }
 
     var staleAgeDisplay: String {

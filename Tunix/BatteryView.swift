@@ -166,6 +166,10 @@ private extension BatteryView {
         DisclosureGroup("Telemetry details") {
             VStack(alignment: .leading, spacing: 8) {
                 detailRow("Source", battery.sourceDisplay)
+                detailRow("Voltage source", battery.voltageSourceDisplay)
+                detailRow("Current source", battery.currentSourceDisplay)
+                detailRow("Power", battery.powerSourceDisplay)
+                detailRow("Temperature source", battery.temperatureStatusText)
                 detailRow("Last sample", battery.staleAgeDisplay)
             }
             .padding(.top, 8)

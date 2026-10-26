@@ -1,5 +1,9 @@
 import Foundation
 
+// Battery and thermal snapshots intentionally share this model file so their
+// availability and provenance semantics remain visible together.
+// swiftlint:disable file_length
+
 enum TelemetryFreshness: Equatable {
     case fresh
     case stale
@@ -27,7 +31,7 @@ enum TelemetryErrorKind: String, Equatable {
     case other = "OTHER"
 }
 
-enum TelemetrySource: String, Equatable {
+enum TelemetrySource: String, Equatable, Hashable {
     case machHost = "Mach host processor API"
     case machVM = "Mach VM statistics"
     case networkInterfaces = "Native network interface counters"
@@ -260,6 +264,65 @@ struct BatterySnapshot: Equatable {
     let timeToEmptyMinutes: Int?
     let timeToFullMinutes: Int?
     let temperatureSource: TelemetrySource?
+    let voltageSource: TelemetrySource?
+    let currentSource: TelemetrySource?
+    let powerSource: TelemetrySource?
+    let timeToEmptySource: TelemetrySource?
+    let timeToFullSource: TelemetrySource?
+
+    init(
+        timestamp: Date,
+        availability: BatteryTelemetryAvailability,
+        source: BatteryTelemetrySource,
+        present: Bool,
+        isACConnected: Bool,
+        isCharging: Bool,
+        isFullyCharged: Bool,
+        stateOfChargePercent: Double?,
+        currentCapacityMAh: Int?,
+        maxCapacityMAh: Int?,
+        designCapacityMAh: Int?,
+        healthPercent: Double?,
+        cycleCount: Int?,
+        voltageMillivolts: Int?,
+        currentMilliamps: Int?,
+        powerWatts: Double?,
+        temperatureCelsius: Double?,
+        timeToEmptyMinutes: Int?,
+        timeToFullMinutes: Int?,
+        temperatureSource: TelemetrySource?,
+        voltageSource: TelemetrySource? = nil,
+        currentSource: TelemetrySource? = nil,
+        powerSource: TelemetrySource? = nil,
+        timeToEmptySource: TelemetrySource? = nil,
+        timeToFullSource: TelemetrySource? = nil
+    ) {
+        self.timestamp = timestamp
+        self.availability = availability
+        self.source = source
+        self.present = present
+        self.isACConnected = isACConnected
+        self.isCharging = isCharging
+        self.isFullyCharged = isFullyCharged
+        self.stateOfChargePercent = stateOfChargePercent
+        self.currentCapacityMAh = currentCapacityMAh
+        self.maxCapacityMAh = maxCapacityMAh
+        self.designCapacityMAh = designCapacityMAh
+        self.healthPercent = healthPercent
+        self.cycleCount = cycleCount
+        self.voltageMillivolts = voltageMillivolts
+        self.currentMilliamps = currentMilliamps
+        self.powerWatts = powerWatts
+        self.temperatureCelsius = temperatureCelsius
+        self.timeToEmptyMinutes = timeToEmptyMinutes
+        self.timeToFullMinutes = timeToFullMinutes
+        self.temperatureSource = temperatureSource
+        self.voltageSource = voltageSource
+        self.currentSource = currentSource
+        self.powerSource = powerSource
+        self.timeToEmptySource = timeToEmptySource
+        self.timeToFullSource = timeToFullSource
+    }
 
     static let unavailable = BatterySnapshot(
         timestamp: .now,
@@ -281,7 +344,12 @@ struct BatterySnapshot: Equatable {
         temperatureCelsius: nil,
         timeToEmptyMinutes: nil,
         timeToFullMinutes: nil,
-        temperatureSource: nil
+        temperatureSource: nil,
+        voltageSource: nil,
+        currentSource: nil,
+        powerSource: nil,
+        timeToEmptySource: nil,
+        timeToFullSource: nil
     )
 
     var operatingState: BatteryOperatingState {
@@ -314,8 +382,25 @@ struct BatterySnapshot: Equatable {
             temperatureCelsius: temperatureCelsius,
             timeToEmptyMinutes: timeToEmptyMinutes,
             timeToFullMinutes: timeToFullMinutes,
-            temperatureSource: temperatureSource
+            temperatureSource: temperatureSource,
+            voltageSource: voltageSource,
+            currentSource: currentSource,
+            powerSource: powerSource,
+            timeToEmptySource: timeToEmptySource,
+            timeToFullSource: timeToFullSource
         )
+    }
+
+    var provenanceSources: Set<TelemetrySource> {
+        Set([
+            source,
+            voltageSource,
+            currentSource,
+            powerSource,
+            temperatureSource,
+            timeToEmptySource,
+            timeToFullSource
+        ].compactMap { $0 }.filter { $0 != .unavailable })
     }
 }
 
@@ -327,6 +412,16 @@ enum BatteryPowerModel {
             return nil
         }
         return Double(voltageMillivolts) * Double(currentMilliamps) / 1_000_000
+    }
+
+    static func validVoltageMillivolts(_ value: Int?) -> Int? {
+        guard let value, (1 ... 100_000).contains(value) else { return nil }
+        return value
+    }
+
+    static func validCurrentMilliamps(_ value: Int?) -> Int? {
+        guard let value, value != Int.min, abs(value) <= 1_000_000 else { return nil }
+        return value
     }
 
     static func temperatureCelsius(rawTenthsKelvin: Int?) -> Double? {
@@ -382,3 +477,5 @@ struct BatteryTelemetryHealth: Equatable {
         ).freshness(at: now)
     }
 }
+
+// swiftlint:enable file_length

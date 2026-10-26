@@ -114,6 +114,22 @@ final class BatteryTelemetryRepairTests: XCTestCase {
         XCTAssertTrue(snapshot.present)
     }
 
+    func testPublicRegistryBatteryTemperaturePrecedesSMCFallback() throws {
+        let snapshot = try XCTUnwrap(
+            NativeBatteryTelemetryReader.makeSnapshot(
+                powerSource: nil,
+                registry: [
+                    "BatteryInstalled": true,
+                    "Temperature": 3004
+                ],
+                batteryTemperatureCelsius: nil
+            )
+        )
+
+        XCTAssertEqual(snapshot.temperatureCelsius ?? -1, 27.25, accuracy: 0.01)
+        XCTAssertEqual(snapshot.temperatureSource, .ioRegistry)
+    }
+
     func testBatteryTemperatureGroupingIsDeterministicAndExcludesCPUAndGPU() {
         let groups = CoolingTemperaturePresentation.groups([
             CoolingTemperature(name: "Battery 0", valueCelsius: 30, sourceKey: "TB0T"),
@@ -151,7 +167,7 @@ final class BatteryTelemetryRepairTests: XCTestCase {
             isCharging: false,
             isFullyCharged: false
         )
-        XCTAssertEqual(connected.timeToEmptyDisplay, "Connected to power")
+        XCTAssertEqual(connected.timeToEmptyDisplay, "Not discharging")
         XCTAssertEqual(connected.timeToFullDisplay, "Not charging")
 
         let charging = manager(

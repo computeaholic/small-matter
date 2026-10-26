@@ -117,18 +117,21 @@ struct IncidentContextSnapshot: Codable, Equatable, Sendable {
             ))
         }
 
-        var coolingValues: [String: EvidenceValue] = [:]
+        var coolingValues: [String: EvidenceValue] = [
+            "thermalState": .string(cooling.thermalStateLabel),
+            "thermalStateSource": .string(cooling.snapshot.thermalStateSource.rawValue)
+        ]
         if let fan = cooling.snapshot.fans.first {
             coolingValues["primaryFanRPM"] = .integer(Int64(fan.currentRPM))
         }
         if let temperature = cooling.snapshot.primaryTemperature {
             coolingValues["primaryTemperatureCelsius"] = .decimal(String(format: "%.2f", temperature.valueCelsius))
         }
-        if cooling.snapshot.freshness == .unavailable {
+        if cooling.sensorStatus != .observed {
             unknowns.append(EvidenceMissing(
                 sourceID: nil,
                 reason: .sourceUnavailable,
-                explanation: "Cooling context was unavailable at the marker."
+                explanation: cooling.sensorAvailabilityDescription
             ))
         }
 

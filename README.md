@@ -28,15 +28,19 @@ that state rather than inventing a plausible value.
 - CPU utilization and bounded history
 - memory use, pressure, compression, cache, and swap
 - native interface network throughput
-- battery charge, health, cycles, voltage, current, power, and temperature
-- read-only AppleSMC fan RPM, bounds, and supported temperature readings
+- battery charge, health, cycles, voltage, current, and power from public
+  battery sources; temperature is conditional on the distribution boundary
+- read-only AppleSMC fan RPM and supported temperature readings in the direct
+  Developer ID configuration when the hardware and service permit them
 - macOS thermal pressure
 - storage capacity telemetry
 - System Health diagnostics and support snapshot
 - user-scoped cleanup with quarantine and undo
 - app-scoped Keep Awake using a native power-management assertion
 
-Raw AppleSMC sensor availability is hardware-dependent. Fan write support is
+Raw AppleSMC sensor availability is hardware- and distribution-dependent. The
+Mac App Store build reports macOS thermal state independently and explains when
+raw fan or temperature sensors are unavailable. Fan write support is
 intentionally unproven and absent from the product. Battery-policy control and
 arbitrary SMC writes are also absent.
 

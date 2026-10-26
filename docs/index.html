@@ -30,7 +30,7 @@
       <p>No Small Matter account or sign-in is required.</p>
     </section>
     <section class="panel" aria-labelledby="trouble"><h2 id="trouble">Common questions</h2>
-      <h3>Why is a sensor marked “Unavailable”?</h3><p>Some hardware readings depend on the Mac model, operating system, and App Sandbox restrictions. Small Matter reports unavailable measurements rather than estimating them.</p>
+      <h3>Why is a sensor marked “Unavailable”?</h3><p>Some hardware readings depend on the Mac model, operating system, and App Sandbox restrictions. The Mac App Store build reports public battery values and macOS thermal state independently, but raw AppleSMC fan, hardware-temperature, or battery-temperature readings may be unavailable. Small Matter reports unavailable measurements rather than estimating them.</p>
       <h3>Does Small Matter control fans or charging?</h3><p>No. Hardware telemetry is read-only. macOS retains control over fans, charging, and thermal policy.</p>
       <h3>Where is my diagnostic data sent?</h3><p>Observations are processed locally. Files are shared only when you explicitly choose to export or send them.</p>
     </section>

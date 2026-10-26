@@ -268,7 +268,7 @@ struct SecurityView: View {
                     telemetryRow(
                         "Cooling",
                         cooling.telemetryState.label,
-                        cooling.snapshot.source.rawValue
+                        cooling.snapshot.thermalStateSource.rawValue
                     )
                     telemetryRow("Battery", battery.telemetryStatusLabel, battery.sourceDisplay)
                 }
@@ -286,6 +286,12 @@ struct SecurityView: View {
                             "Cooling last sample",
                             cooling.lastSuccessfulSampleAt?.formatted(date: .omitted, time: .shortened) ?? "Unavailable"
                         )
+                        diagnosticRow(
+                            "Cooling thermal state",
+                            cooling.snapshot.thermalStateLastUpdatedAt?.formatted(date: .omitted, time: .shortened)
+                                ?? "Unavailable"
+                        )
+                        diagnosticRow("Cooling sensor access", cooling.sensorStatus.label)
                         diagnosticRow("Cooling failures", "\(cooling.consecutiveFailures)")
                         diagnosticRow(
                             "Battery last sample",
@@ -440,13 +446,18 @@ struct SecurityView: View {
     private var coolingInfo: [String: Any] {
         var info: [String: Any] = [
             "status": cooling.telemetryState.rawValue,
-            "source": cooling.snapshot.source.rawValue
+            "source": cooling.snapshot.thermalStateSource.rawValue,
+            "sensorStatus": cooling.sensorStatus.rawValue,
+            "thermalState": cooling.thermalStateLabel
         ]
         if let fanCount = cooling.snapshot.fanCount {
             info["fanCount"] = fanCount
         }
         if let age = sampleAge(cooling.lastSuccessfulSampleAt) {
             info["sampleAgeSeconds"] = age
+        }
+        if let age = sampleAge(cooling.snapshot.thermalStateLastUpdatedAt) {
+            info["thermalStateAgeSeconds"] = age
         }
         return info
     }

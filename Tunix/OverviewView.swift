@@ -326,15 +326,18 @@ struct OverviewView: View {
             return "\($0.label) \(value)"
         }
         let readings = Array(fans) + (temperature.map { [$0] } ?? [])
-        return readings.isEmpty ? "Cooling telemetry unavailable" : readings.joined(separator: " · ")
+        if !readings.isEmpty {
+            return "Thermal \(cooling.thermalStateLabel) · " + readings.joined(separator: " · ")
+        }
+        return "Thermal \(cooling.thermalStateLabel) · \(cooling.sensorAvailabilityDescription)"
     }
 
     private var coolingStatusLabel: String {
         switch cooling.telemetryState {
         case .available: return "Normal"
-        case .partial: return "Limited"
-        case .stale: return "Stale"
-        case .unavailable: return "Unavailable"
+        case .partial: return "Thermal state"
+        case .stale: return "Stale sensors"
+        case .unavailable: return "Thermal unavailable"
         }
     }
 }
