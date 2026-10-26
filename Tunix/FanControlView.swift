@@ -3,14 +3,13 @@ import SwiftUI
 struct FanControlView: View {
     @EnvironmentObject private var cooling: CoolingService
     @EnvironmentObject private var settings: SettingsManager
-    @EnvironmentObject private var systemStats: SystemStatsModel
 
     var body: some View {
         TunixAdaptivePage { layout in
             VStack(alignment: .leading, spacing: TunixDesign.sectionSpacing) {
                 TunixPageHeader(
                     title: "Cooling",
-                    subtitle: "A calm view of thermal condition and fan response. macOS manages cooling policy."
+                    subtitle: "Thermal state from macOS, with direct hardware sensors when available."
                 )
                 coolingContent(for: layout)
             }
@@ -51,17 +50,17 @@ private extension FanControlView {
                     Text("Thermal condition")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    Text(systemStats.thermalConditionLabel)
+                    Text(cooling.thermalConditionLabel)
                         .font(.title2.weight(.semibold))
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 4) {
-                    Text(systemStats.thermalStateDetail)
+                    Text(cooling.thermalStateDetail)
                         .font(.subheadline)
                         .multilineTextAlignment(.trailing)
-                    if cooling.telemetryState == .stale || cooling.telemetryState == .unavailable {
+                    if cooling.sensorStatus != .observed {
                         TunixStatusBadge(
-                            title: cooling.telemetryState == .stale ? "Reading stale" : "Reading unavailable",
+                            title: cooling.sensorStatus.label,
                             systemImage: "exclamationmark.circle",
                             tint: .orange
                         )
@@ -89,6 +88,12 @@ private extension FanControlView {
                     }
                 }
             }
+        } else {
+            ContentUnavailableView(
+                "Hardware temperatures unavailable",
+                systemImage: "thermometer.medium",
+                description: Text(cooling.sensorAvailabilityDescription)
+            )
         }
     }
 
@@ -111,7 +116,7 @@ private extension FanControlView {
             ContentUnavailableView(
                 cooling.telemetryState == .stale ? "Fan telemetry is stale" : "Fan telemetry unavailable",
                 systemImage: "fan.slash",
-                description: Text("Cooling policy remains managed by macOS.")
+                description: Text(cooling.sensorAvailabilityDescription)
             )
         }
     }

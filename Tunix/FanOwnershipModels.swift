@@ -29,6 +29,26 @@ enum CoolingTelemetryState: String, Equatable, Sendable {
     }
 }
 
+enum CoolingSensorStatus: String, Equatable, Sendable {
+    case notObserved
+    case observed
+    case permissionDenied
+    case unsupportedByDistribution
+    case unsupportedHardware
+    case temporarilyUnavailable
+
+    var label: String {
+        switch self {
+        case .notObserved: return "Not observed"
+        case .observed: return "Observed"
+        case .permissionDenied: return "Access unavailable"
+        case .unsupportedByDistribution: return "Not available in App Store build"
+        case .unsupportedHardware: return "Not supported by this Mac"
+        case .temporarilyUnavailable: return "Temporarily unavailable"
+        }
+    }
+}
+
 struct CoolingSnapshot: Equatable, Sendable {
     let timestamp: Date
     let freshness: TelemetryFreshness
@@ -40,10 +60,47 @@ struct CoolingSnapshot: Equatable, Sendable {
     let lastSuccessfulSampleAt: Date?
     let consecutiveFailures: Int
     let macOSPolicyOwner: Bool
+    let thermalStateSource: TelemetrySource
+    let thermalStateLastUpdatedAt: Date?
+    let thermalStateFreshness: TelemetryFreshness
+    let sensorStatus: CoolingSensorStatus
+
+    init(
+        timestamp: Date,
+        freshness: TelemetryFreshness,
+        source: TelemetrySource,
+        nativeThermalState: ProcessInfo.ThermalState,
+        fanCount: Int?,
+        fans: [CoolingFan],
+        temperatures: [CoolingTemperature],
+        lastSuccessfulSampleAt: Date?,
+        consecutiveFailures: Int,
+        macOSPolicyOwner: Bool,
+        thermalStateSource: TelemetrySource = .processInfo,
+        thermalStateLastUpdatedAt: Date? = nil,
+        thermalStateFreshness: TelemetryFreshness = .unavailable,
+        sensorStatus: CoolingSensorStatus = .notObserved
+    ) {
+        self.timestamp = timestamp
+        self.freshness = freshness
+        self.source = source
+        self.nativeThermalState = nativeThermalState
+        self.fanCount = fanCount
+        self.fans = fans
+        self.temperatures = temperatures
+        self.lastSuccessfulSampleAt = lastSuccessfulSampleAt
+        self.consecutiveFailures = consecutiveFailures
+        self.macOSPolicyOwner = macOSPolicyOwner
+        self.thermalStateSource = thermalStateSource
+        self.thermalStateLastUpdatedAt = thermalStateLastUpdatedAt
+        self.thermalStateFreshness = thermalStateFreshness
+        self.sensorStatus = sensorStatus
+    }
 
     var state: CoolingTelemetryState {
-        guard freshness != .unavailable else { return .unavailable }
+        guard thermalStateFreshness != .unavailable else { return .unavailable }
         guard freshness != .stale else { return .stale }
+        guard sensorStatus == .observed, freshness != .unavailable else { return .partial }
         let hasCompleteFanTelemetry = fanCount.map { $0 > 0 && fans.count == $0 } == true &&
             fans.allSatisfy { $0.minimumRPM != nil && $0.maximumRPM != nil }
         return hasCompleteFanTelemetry && !temperatures.isEmpty ? .available : .partial
@@ -63,7 +120,11 @@ struct CoolingSnapshot: Equatable, Sendable {
         temperatures: [],
         lastSuccessfulSampleAt: nil,
         consecutiveFailures: 0,
-        macOSPolicyOwner: true
+        macOSPolicyOwner: true,
+        thermalStateSource: .processInfo,
+        thermalStateLastUpdatedAt: nil,
+        thermalStateFreshness: .unavailable,
+        sensorStatus: .notObserved
     )
 }
 
@@ -84,7 +145,11 @@ extension CoolingSnapshot {
             temperatures: raw.temperatures,
             lastSuccessfulSampleAt: lastSuccessfulSampleAt,
             consecutiveFailures: consecutiveFailures,
-            macOSPolicyOwner: true
+            macOSPolicyOwner: true,
+            thermalStateSource: .processInfo,
+            thermalStateLastUpdatedAt: timestamp,
+            thermalStateFreshness: .fresh,
+            sensorStatus: .observed
         )
     }
 }

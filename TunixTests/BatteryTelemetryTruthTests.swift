@@ -49,6 +49,66 @@ final class BatteryTelemetryTruthTests: XCTestCase {
         XCTAssertNil(BatteryPowerModel.watts(voltageMillivolts: 0, currentMilliamps: 1))
     }
 
+    func testPowerSourceFallbackRetainsSignedElectricalProvenance() throws {
+        let snapshot = try XCTUnwrap(
+            NativeBatteryTelemetryReader.makeSnapshot(
+                powerSource: [
+                    kIOPSPowerSourceStateKey: "Battery Power",
+                    kIOPSCurrentCapacityKey: 40,
+                    kIOPSMaxCapacityKey: 100,
+                    kIOPSVoltageKey: 12000,
+                    kIOPSCurrentKey: -2500
+                ],
+                registry: nil,
+                batteryTemperatureCelsius: nil
+            )
+        )
+
+        XCTAssertEqual(snapshot.voltageMillivolts, 12000)
+        XCTAssertEqual(snapshot.voltageSource, .powerSources)
+        XCTAssertEqual(snapshot.currentMilliamps, -2500)
+        XCTAssertEqual(snapshot.currentSource, .powerSources)
+        XCTAssertEqual(snapshot.powerWatts, -30)
+        XCTAssertEqual(snapshot.powerSource, .powerSources)
+    }
+
+    @MainActor
+    func testCurrentPresentationPreservesDischargeDirection() {
+        let manager = BatteryManager(
+            reader: SequencedBatteryReader(results: [
+                BatterySnapshot(
+                    timestamp: .now,
+                    availability: .valid,
+                    source: .ioRegistry,
+                    present: true,
+                    isACConnected: false,
+                    isCharging: false,
+                    isFullyCharged: false,
+                    stateOfChargePercent: 40,
+                    currentCapacityMAh: 4000,
+                    maxCapacityMAh: 8000,
+                    designCapacityMAh: 8500,
+                    healthPercent: 94,
+                    cycleCount: 10,
+                    voltageMillivolts: 12000,
+                    currentMilliamps: -2500,
+                    powerWatts: -30,
+                    temperatureCelsius: nil,
+                    timeToEmptyMinutes: nil,
+                    timeToFullMinutes: nil,
+                    temperatureSource: nil,
+                    voltageSource: .ioRegistry,
+                    currentSource: .ioRegistry,
+                    powerSource: .ioRegistry
+                )
+            ]),
+            startTimer: false
+        )
+
+        XCTAssertEqual(manager.amperageDisplay, "-2.50 A")
+        XCTAssertEqual(manager.signedPowerDisplay, "-30.0 W")
+    }
+
     func testTemperatureNormalizesTenthsKelvin() throws {
         XCTAssertEqual(
             try XCTUnwrap(BatteryPowerModel.temperatureCelsius(rawTenthsKelvin: 3004)),

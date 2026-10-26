@@ -46,7 +46,7 @@ history.
 | CPU | Mach processor statistics | CPUSnapshot in SystemTelemetrySnapshot | 1 s / 60 samples | Invalid deltas retain the last coherent sample |
 | Memory | Mach VM statistics and pressure events | MemorySnapshot in SystemTelemetrySnapshot | 1 s / 60 samples | Invalid reads retain the last sample |
 | Network | Native interface counters | NetworkSnapshot in SystemTelemetrySnapshot | 1 s / 60 samples | First sample has no invented rate |
-| Cooling | Read-only AppleSMC and ProcessInfo thermal state | Immutable CoolingSnapshot from CoolingService | 3 s / bounded current state | Last good read is retained through transient failure |
+| Cooling | ProcessInfo thermal state plus read-only AppleSMC where the distribution permits it | Immutable CoolingSnapshot from CoolingService | 3 s / bounded current state | Thermal state is independent; raw sensor failure remains explicit |
 | Thermal | ProcessInfo.thermalState | SystemThermalSnapshot | 1 s local state | macOS thermal pressure remains available when raw sensors do not |
 | Battery | IOPowerSources and AppleSmartBattery IORegistry | BatterySnapshot | 5 s / bounded current state | Last good sample becomes stale, then unavailable |
 | Storage | Filesystem attributes | StorageSnapshot | 1 s / no persistent telemetry history | Missing attributes are unavailable, not zero |
@@ -72,7 +72,7 @@ millivolts, milliamps, and watts.
 ## Sampling and lifecycle
 
 - `SystemStatsModel`: one 1-second timer for CPU, memory, network, storage, and local thermal state.
-- `CoolingService`: one 3-second app-process AppleSMC read loop.
+- `CoolingService`: one 3-second bounded sensor loop plus immediate ProcessInfo thermal-state refreshes.
 - `BatteryManager`: one 5-second native battery loop.
 - Memory pressure: one event source.
 
@@ -107,8 +107,10 @@ command, fan write, or battery-policy write. The app entitlements remain empty
 and Release keeps Hardened Runtime enabled without adding exceptions.
 
 macOS owns thermal and charging policy. Fan read availability, fan bounds
-availability, and experimental/unproven write capability remain separate; the
-write capability is absent from the product.
+availability, and experimental/unproven write capability remain separate. The
+Mac App Store build retains public thermal state and battery telemetry while
+excluding the private AppleSMC user-client path; the direct Developer ID build
+keeps its established read-only sensor boundary.
 
 ## macOS interaction model
 
