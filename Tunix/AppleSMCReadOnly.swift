@@ -41,9 +41,9 @@ enum CoolingCollectionError: Error, Sendable, Equatable {
 
 #else
 
-// SwiftFormat's preprocessor indentation model does not account for this
-// direct-distribution branch's additional scope level.
-// swiftformat:disable indent wrap
+    // SwiftFormat's preprocessor indentation model does not account for this
+    // direct-distribution branch's additional scope level.
+    // swiftformat:disable indent wrap
 
     private struct SMCKeyInfo {
         var dataSize: UInt32 = 0
@@ -337,5 +337,5 @@ enum CoolingCollectionError: Error, Sendable, Equatable {
         }
     }
 
-// swiftformat:enable indent wrap
+    // swiftformat:enable indent wrap
 #endif
