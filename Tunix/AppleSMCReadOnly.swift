@@ -41,6 +41,10 @@ enum CoolingCollectionError: Error, Sendable, Equatable {
 
 #else
 
+// SwiftFormat's preprocessor indentation model does not account for this
+// direct-distribution branch's additional scope level.
+// swiftformat:disable indent wrap
+
     private struct SMCKeyInfo {
         var dataSize: UInt32 = 0
         var dataType: UInt32 = 0
@@ -216,16 +220,16 @@ enum CoolingCollectionError: Error, Sendable, Equatable {
             var size = MemoryLayout<SMCKeyData>.stride
 
             guard IOConnectCallStructMethod(
-                      connection,
-                      2,
-                      &infoInput,
-                      size,
-                      &infoOutput,
-                      &size
-                  ) == kIOReturnSuccess,
-                  infoOutput.result == 0,
-                  infoOutput.keyInfo.dataSize > 0,
-                  infoOutput.keyInfo.dataSize <= 32
+                connection,
+                2,
+                &infoInput,
+                size,
+                &infoOutput,
+                &size
+            ) == kIOReturnSuccess,
+                infoOutput.result == 0,
+                infoOutput.keyInfo.dataSize > 0,
+                infoOutput.keyInfo.dataSize <= 32
             else {
                 throw CoolingCollectionError.keyUnreadable(key)
             }
@@ -238,14 +242,14 @@ enum CoolingCollectionError: Error, Sendable, Equatable {
             size = MemoryLayout<SMCKeyData>.stride
 
             guard IOConnectCallStructMethod(
-                      connection,
-                      2,
-                      &readInput,
-                      size,
-                      &readOutput,
-                      &size
-                  ) == kIOReturnSuccess,
-                  readOutput.result == 0
+                connection,
+                2,
+                &readInput,
+                size,
+                &readOutput,
+                &size
+            ) == kIOReturnSuccess,
+                readOutput.result == 0
             else {
                 throw CoolingCollectionError.keyUnreadable(key)
             }
@@ -333,4 +337,5 @@ enum CoolingCollectionError: Error, Sendable, Equatable {
         }
     }
 
+// swiftformat:enable indent wrap
 #endif
