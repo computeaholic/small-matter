@@ -147,6 +147,164 @@ final class EvidenceExportTests: XCTestCase {
         }
     }
 
+    // swiftlint:disable:next function_body_length
+    func testPersistedBuild7CoolingContextAssemblesAndExports() async throws {
+        let incident = IncidentPackage(
+            id: incidentID,
+            marker: IncidentMarker(markerID: UUID(), wallTime: markerDate),
+            status: .incomplete,
+            completedAt: nil,
+            materializedContext: .object([
+                "system": .object(["thermalState": .string("Nominal")]),
+                "network": .object([:]),
+                "battery": .object(["present": .boolean(true)]),
+                "cooling": .object([
+                    "thermalState": .string("Nominal"),
+                    "thermalStateSource": .string("ProcessInfo")
+                ]),
+                "windowSummary": .object([
+                    "sampleCount": .unsigned(0),
+                    "coverage": .string("PARTIAL")
+                ])
+            ]),
+            observationIDs: [],
+            unknowns: [EvidenceMissing(
+                sourceID: nil,
+                reason: .sourceCoverageGap,
+                explanation: "Telemetry context covered 0 samples from partial window coverage."
+            )]
+        )
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "issue-14-\(UUID().uuidString)",
+            isDirectory: true
+        )
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let databaseURL = root.appendingPathComponent("journal.sqlite")
+        let journal = try SQLiteEvidenceJournal(databaseURL: databaseURL)
+        try await journal.persist(incident: incident)
+
+        let reopened = try SQLiteEvidenceJournal(databaseURL: databaseURL)
+        let package = try await EvidencePackageAssembler().assemble(incidentID: incidentID, journal: reopened)
+        guard case let .object(contextFields) = package.context,
+              case let .object(cooling)? = contextFields[EvidenceContextSchema.cooling]
+        else {
+            return XCTFail("The cooling context was not preserved in the assembled package.")
+        }
+        XCTAssertEqual(cooling[EvidenceContextSchema.Field.thermalState], .string("Nominal"))
+        XCTAssertEqual(cooling[EvidenceContextSchema.Field.thermalStateSource], .string("ProcessInfo"))
+
+        let json = try EvidencePackageJSONRenderer.render(package)
+        let text = try EvidencePackageTextRenderer.render(package)
+        XCTAssertTrue(String(bytes: json, encoding: .utf8)?.contains("thermalStateSource") == true)
+        XCTAssertTrue(text.contains("WHAT WAS HAPPENING"))
+        XCTAssertTrue(text.contains("Status: INCOMPLETE"))
+
+        let writer = EvidenceExportWriter()
+        let jsonDestination = root.appendingPathComponent("evidence.json")
+        let textDestination = root.appendingPathComponent("evidence.txt")
+        try writer.write(package: package, format: .json, to: jsonDestination)
+        try writer.write(package: package, format: .text, to: textDestination)
+        XCTAssertEqual(try Data(contentsOf: jsonDestination), try writer.data(for: package, format: .json))
+        XCTAssertEqual(try Data(contentsOf: textDestination), try writer.data(for: package, format: .text))
+    }
+
+    @MainActor
+    // swiftlint:disable:next function_body_length
+    func testIncidentCollectorAndWindowSummaryStayWithinExportContract() async throws {
+        let systemStats = SystemStatsModel(refreshInterval: 60)
+        let battery = BatteryManager(reader: ContractBatteryReader(), startTimer: false)
+        let cooling = CoolingService(
+            source: ContractCoolingSource(),
+            thermalStateReader: { .nominal },
+            automaticallyStart: false
+        )
+        cooling.refresh()
+        try await Task.sleep(for: .milliseconds(100))
+
+        let snapshot = IncidentContextSnapshot.current(
+            capturedAt: markerDate,
+            systemStats: systemStats,
+            battery: battery,
+            cooling: cooling
+        )
+        XCTAssertNoThrow(try EvidenceRedactionPolicy.redactContext(snapshot.values))
+
+        let summary = IncidentWindowSummary(
+            requestedStart: markerDate.addingTimeInterval(-60),
+            requestedEnd: markerDate.addingTimeInterval(120),
+            coveredStart: markerDate.addingTimeInterval(-60),
+            coveredEnd: markerDate.addingTimeInterval(120),
+            sampleCount: 3,
+            coverage: .partial,
+            metrics: ["cpuUtilizationPercent": IncidentWindowMetric(
+                sampleCount: 3,
+                minimum: 1,
+                maximum: 3,
+                mean: 2
+            )],
+            states: ["thermalState": ["Nominal", "Fair"]]
+        )
+        let context = EvidenceValue.object([
+            EvidenceContextSchema.system: .object([
+                EvidenceContextSchema.Field.cpuUtilizationPercent: .decimal("12.50"),
+                EvidenceContextSchema.Field.memoryPressure: .string("normal"),
+                EvidenceContextSchema.Field.memoryUsedBytes: .unsigned(100),
+                EvidenceContextSchema.Field.memoryPhysicalBytes: .unsigned(200),
+                EvidenceContextSchema.Field.swapUsedBytes: .unsigned(0),
+                EvidenceContextSchema.Field.rootStorageFreeBytes: .unsigned(300),
+                EvidenceContextSchema.Field.rootStorageTotalBytes: .unsigned(400),
+                EvidenceContextSchema.Field.lowPowerMode: .boolean(false),
+                EvidenceContextSchema.Field.thermalState: .string("Nominal")
+            ]),
+            EvidenceContextSchema.network: .object([
+                EvidenceContextSchema.Field.sentBytes: .unsigned(1),
+                EvidenceContextSchema.Field.receivedBytes: .unsigned(2),
+                EvidenceContextSchema.Field.uploadBytesPerSecond: .decimal("3.00"),
+                EvidenceContextSchema.Field.downloadBytesPerSecond: .decimal("4.00")
+            ]),
+            EvidenceContextSchema.battery: .object([
+                EvidenceContextSchema.Field.present: .boolean(true),
+                EvidenceContextSchema.Field.acConnected: .boolean(true),
+                EvidenceContextSchema.Field.charging: .boolean(false),
+                EvidenceContextSchema.Field.stateOfChargePercent: .decimal("80.00")
+            ]),
+            EvidenceContextSchema.cooling: .object([
+                EvidenceContextSchema.Field.thermalState: .string("Nominal"),
+                EvidenceContextSchema.Field.thermalStateSource: .string("ProcessInfo"),
+                EvidenceContextSchema.Field.primaryFanRPM: .integer(0),
+                EvidenceContextSchema.Field.primaryTemperatureCelsius: .decimal("42.00")
+            ]),
+            EvidenceContextSchema.windowSummary: summary.evidenceValue
+        ])
+
+        XCTAssertNoThrow(try EvidenceRedactionPolicy.redactContext(context))
+    }
+
+    func testCoolingContextRejectsUnknownFieldsAndInvalidValueTypes() {
+        XCTAssertThrowsError(try EvidenceRedactionPolicy.redactContext(.object([
+            EvidenceContextSchema.cooling: .object([
+                EvidenceContextSchema.Field.thermalStateSource: .object([:])
+            ])
+        ]))) { error in
+            XCTAssertEqual(
+                error as? EvidencePackageError,
+                .unsupportedContextField("context.cooling.thermalStateSource")
+            )
+        }
+
+        XCTAssertThrowsError(try EvidenceRedactionPolicy.redactContext(.object([
+            EvidenceContextSchema.cooling: .object([
+                "futureCoolingSecret": .string("JEFF_PRIVATE_CONTEXT_SENTINEL")
+            ])
+        ]))) { error in
+            XCTAssertEqual(
+                error as? EvidencePackageError,
+                .unclassifiedField("context.cooling.futureCoolingSecret")
+            )
+        }
+    }
+
     func testWindowSummaryContextIsScalarAndExportable() async throws {
         let context = EvidenceValue.object([
             "system": .object(["cpuUtilizationPercent": .decimal("12.50")]),
@@ -638,5 +796,48 @@ private extension EvidenceExportTests {
         }
         return journal
         // Why: cohesive reviewed boundary.
+    }
+}
+
+private struct ContractBatteryReader: BatteryTelemetryReading {
+    func read() -> BatterySnapshot? {
+        BatterySnapshot(
+            timestamp: .now,
+            availability: .fresh,
+            source: .powerSources,
+            present: true,
+            isACConnected: true,
+            isCharging: true,
+            isFullyCharged: false,
+            stateOfChargePercent: 80,
+            currentCapacityMAh: 4000,
+            maxCapacityMAh: 4800,
+            designCapacityMAh: 5000,
+            healthPercent: 96,
+            cycleCount: 42,
+            voltageMillivolts: 12000,
+            currentMilliamps: 1000,
+            powerWatts: 12,
+            temperatureCelsius: 32,
+            timeToEmptyMinutes: nil,
+            timeToFullMinutes: 30,
+            temperatureSource: .ioRegistry,
+            voltageSource: .ioRegistry,
+            currentSource: .ioRegistry,
+            powerSource: .ioRegistry,
+            timeToEmptySource: nil,
+            timeToFullSource: .ioRegistry
+        )
+    }
+}
+
+private final class ContractCoolingSource: CoolingTelemetrySource, @unchecked Sendable {
+    func collect() -> Result<CoolingRawObservation, CoolingCollectionError> {
+        .success(CoolingRawObservation(
+            fanCount: 1,
+            fans: [CoolingFan(fanIndex: 0, currentRPM: 0, minimumRPM: 0, maximumRPM: 5000)],
+            temperatures: [CoolingTemperature(name: "CPU", valueCelsius: 42, sourceKey: "TC0P")],
+            thermalState: .nominal
+        ))
     }
 } // swiftlint:disable:this file_length

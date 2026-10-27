@@ -1,6 +1,167 @@
 import CryptoKit
 import Foundation
 
+private extension EvidenceValue {
+    var isBoolean: Bool {
+        if case .boolean = self {
+            return true
+        }
+        return false
+    }
+
+    var isDate: Bool {
+        if case .date = self {
+            return true
+        }
+        return false
+    }
+
+    var isDecimal: Bool {
+        if case .decimal = self {
+            return true
+        }
+        return false
+    }
+
+    var isInteger: Bool {
+        if case .integer = self {
+            return true
+        }
+        return false
+    }
+
+    var isNull: Bool {
+        if case .null = self {
+            return true
+        }
+        return false
+    }
+
+    var isScalar: Bool {
+        switch self {
+        case .string, .integer, .unsigned, .decimal, .boolean, .date, .bytes, .null: return true
+        case .array, .object: return false
+        }
+    }
+
+    var isString: Bool {
+        if case .string = self {
+            return true
+        }
+        return false
+    }
+
+    var isUnsigned: Bool {
+        if case .unsigned = self {
+            return true
+        }
+        return false
+    }
+}
+
+// Why: the incident collector and export policy share one explicit scalar contract.
+enum EvidenceContextSchema {
+    static let system = "system"
+    static let network = "network"
+    static let battery = "battery"
+    static let cooling = "cooling"
+    static let windowSummary = "windowSummary"
+
+    enum Field {
+        static let cpuUtilizationPercent = "cpuUtilizationPercent"
+        static let memoryPressure = "memoryPressure"
+        static let memoryUsedBytes = "memoryUsedBytes"
+        static let memoryPhysicalBytes = "memoryPhysicalBytes"
+        static let swapUsedBytes = "swapUsedBytes"
+        static let rootStorageFreeBytes = "rootStorageFreeBytes"
+        static let rootStorageTotalBytes = "rootStorageTotalBytes"
+        static let lowPowerMode = "lowPowerMode"
+        static let thermalState = "thermalState"
+        static let sentBytes = "sentBytes"
+        static let receivedBytes = "receivedBytes"
+        static let uploadBytesPerSecond = "uploadBytesPerSecond"
+        static let downloadBytesPerSecond = "downloadBytesPerSecond"
+        static let present = "present"
+        static let acConnected = "acConnected"
+        static let charging = "charging"
+        static let stateOfChargePercent = "stateOfChargePercent"
+        static let thermalStateSource = "thermalStateSource"
+        static let primaryFanRPM = "primaryFanRPM"
+        static let primaryTemperatureCelsius = "primaryTemperatureCelsius"
+        static let requestedStart = "requestedStart"
+        static let requestedEnd = "requestedEnd"
+        static let coveredStart = "coveredStart"
+        static let coveredEnd = "coveredEnd"
+        static let sampleCount = "sampleCount"
+        static let coverage = "coverage"
+    }
+
+    static let explicitFieldsBySection: [String: Set<String>] = [
+        system: [
+            Field.cpuUtilizationPercent, Field.memoryPressure, Field.memoryUsedBytes,
+            Field.memoryPhysicalBytes, Field.swapUsedBytes, Field.rootStorageFreeBytes,
+            Field.rootStorageTotalBytes, Field.lowPowerMode, Field.thermalState
+        ],
+        network: [Field.sentBytes, Field.receivedBytes, Field.uploadBytesPerSecond, Field.downloadBytesPerSecond],
+        battery: [Field.present, Field.acConnected, Field.charging, Field.stateOfChargePercent],
+        cooling: [Field.thermalState, Field.thermalStateSource, Field.primaryFanRPM, Field.primaryTemperatureCelsius]
+    ]
+
+    static let windowSummaryFields: Set<String> = [
+        Field.requestedStart, Field.requestedEnd, Field.coveredStart, Field.coveredEnd,
+        Field.sampleCount, Field.coverage
+    ]
+
+    static func isAllowed(section: String, field: String) -> Bool {
+        if section == windowSummary {
+            return windowSummaryFields.contains(field) ||
+                field.hasPrefix("metric_") || field.hasPrefix("state_")
+        }
+        return explicitFieldsBySection[section]?.contains(field) == true
+    }
+
+    static func acceptsScalar(_ value: EvidenceValue, section: String, field: String) -> Bool {
+        switch (section, field) {
+        case (system, Field.cpuUtilizationPercent),
+             (network, Field.uploadBytesPerSecond),
+             (network, Field.downloadBytesPerSecond),
+             (battery, Field.stateOfChargePercent),
+             (cooling, Field.primaryTemperatureCelsius):
+            return value.isDecimal
+        case (system, Field.memoryUsedBytes),
+             (system, Field.memoryPhysicalBytes),
+             (system, Field.swapUsedBytes),
+             (system, Field.rootStorageFreeBytes),
+             (system, Field.rootStorageTotalBytes),
+             (network, Field.sentBytes),
+             (network, Field.receivedBytes),
+             (cooling, Field.primaryFanRPM):
+            return value.isInteger || value.isUnsigned
+        case (system, Field.memoryPressure),
+             (system, Field.thermalState),
+             (cooling, Field.thermalState),
+             (cooling, Field.thermalStateSource),
+             (windowSummary, Field.coverage):
+            return value.isString
+        case (system, Field.lowPowerMode),
+             (battery, Field.present),
+             (battery, Field.acConnected),
+             (battery, Field.charging):
+            return value.isBoolean
+        case (windowSummary, Field.requestedStart),
+             (windowSummary, Field.requestedEnd),
+             (windowSummary, Field.coveredStart),
+             (windowSummary, Field.coveredEnd):
+            return value.isDate || value.isNull
+        case (windowSummary, Field.sampleCount):
+            return value.isInteger || value.isUnsigned
+        default:
+            return section == windowSummary && (field.hasPrefix("metric_") || field.hasPrefix("state_")) &&
+                value.isScalar
+        }
+    }
+}
+
 // Why: canonical contract owner.
 // swiftlint:disable:next type_body_length
 enum EvidenceRedactionPolicy {
@@ -112,15 +273,6 @@ enum EvidenceRedactionPolicy {
         guard case let .object(topLevel) = context else {
             throw EvidencePackageError.unsupportedContextField("context")
         }
-        let allowed: [String: Set<String>] = [
-            "system": [
-                "cpuUtilizationPercent", "memoryPressure", "memoryUsedBytes", "memoryPhysicalBytes",
-                "swapUsedBytes", "rootStorageFreeBytes", "rootStorageTotalBytes", "lowPowerMode", "thermalState"
-            ],
-            "network": ["sentBytes", "receivedBytes", "uploadBytesPerSecond", "downloadBytesPerSecond"],
-            "battery": ["present", "acConnected", "charging", "stateOfChargePercent"],
-            "cooling": ["primaryFanRPM", "primaryTemperatureCelsius"]
-        ]
         var result: [String: EvidenceValue] = [:]
         for (section, value) in topLevel {
             guard case let .object(fields) = value else {
@@ -128,15 +280,10 @@ enum EvidenceRedactionPolicy {
             }
             var safeFields: [String: EvidenceValue] = [:]
             for (key, field) in fields {
-                let isWindowSummaryField = section == "windowSummary" && (
-                    key == "requestedStart" || key == "requestedEnd" || key == "coveredStart" ||
-                        key == "coveredEnd" || key == "sampleCount" || key == "coverage" ||
-                        key.hasPrefix("metric_") || key.hasPrefix("state_")
-                )
-                guard isWindowSummaryField || allowed[section]?.contains(key) == true else {
+                guard EvidenceContextSchema.isAllowed(section: section, field: key) else {
                     throw EvidencePackageError.unclassifiedField("context.\(section).\(key)")
                 }
-                guard isScalar(field) else {
+                guard EvidenceContextSchema.acceptsScalar(field, section: section, field: key) else {
                     throw EvidencePackageError.unsupportedContextField("context.\(section).\(key)")
                 }
                 safeFields[key] = field
@@ -307,13 +454,6 @@ enum EvidenceRedactionPolicy {
         case let .bytes(value): return value.base64EncodedString()
         case .array, .object, .null:
             throw EvidencePackageError.unclassifiedField(path)
-        }
-    }
-
-    private static func isScalar(_ value: EvidenceValue) -> Bool {
-        switch value {
-        case .string, .integer, .unsigned, .decimal, .boolean, .date, .bytes, .null: return true
-        case .array, .object: return false
         }
     }
 

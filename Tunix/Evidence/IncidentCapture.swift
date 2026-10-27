@@ -43,7 +43,9 @@ struct IncidentContextSnapshot: Codable, Equatable, Sendable {
                 explanation: "CPU context was unavailable at the marker."
             ))
         } else {
-            system["cpuUtilizationPercent"] = .decimal(String(format: "%.2f", telemetry.cpu.totalUtilization))
+            system[EvidenceContextSchema.Field.cpuUtilizationPercent] = .decimal(
+                String(format: "%.2f", telemetry.cpu.totalUtilization)
+            )
         }
 
         if telemetry.memory.freshness == .unavailable {
@@ -53,20 +55,22 @@ struct IncidentContextSnapshot: Codable, Equatable, Sendable {
                 explanation: "Memory context was unavailable at the marker."
             ))
         } else {
-            system["memoryPressure"] = .string(telemetry.memory.telemetry.pressure.rawValue)
-            system["memoryUsedBytes"] = .unsigned(telemetry.memory.telemetry.usedBytes)
-            system["memoryPhysicalBytes"] = .unsigned(telemetry.memory.telemetry.physicalBytes)
+            system[EvidenceContextSchema.Field.memoryPressure] = .string(telemetry.memory.telemetry.pressure.rawValue)
+            system[EvidenceContextSchema.Field.memoryUsedBytes] = .unsigned(telemetry.memory.telemetry.usedBytes)
+            system[EvidenceContextSchema.Field.memoryPhysicalBytes] = .unsigned(
+                telemetry.memory.telemetry.physicalBytes
+            )
             if let swap = telemetry.memory.telemetry.swapUsedBytes {
-                system["swapUsedBytes"] = .unsigned(swap)
+                system[EvidenceContextSchema.Field.swapUsedBytes] = .unsigned(swap)
             }
         }
 
         if telemetry.storage.freshness != .unavailable {
             if let free = telemetry.storage.freeBytes {
-                system["rootStorageFreeBytes"] = .unsigned(free)
+                system[EvidenceContextSchema.Field.rootStorageFreeBytes] = .unsigned(free)
             }
             if let total = telemetry.storage.totalBytes {
-                system["rootStorageTotalBytes"] = .unsigned(total)
+                system[EvidenceContextSchema.Field.rootStorageTotalBytes] = .unsigned(total)
             }
         } else {
             unknowns.append(EvidenceMissing(
@@ -85,29 +89,35 @@ struct IncidentContextSnapshot: Codable, Equatable, Sendable {
             ))
         } else {
             if let sent = telemetry.network.sentBytes {
-                network["sentBytes"] = .unsigned(sent)
+                network[EvidenceContextSchema.Field.sentBytes] = .unsigned(sent)
             }
             if let received = telemetry.network.receivedBytes {
-                network["receivedBytes"] = .unsigned(received)
+                network[EvidenceContextSchema.Field.receivedBytes] = .unsigned(received)
             }
             if let upload = telemetry.network.uploadBytesPerSecond {
-                network["uploadBytesPerSecond"] = .decimal(String(format: "%.2f", upload))
+                network[EvidenceContextSchema.Field.uploadBytesPerSecond] = .decimal(
+                    String(format: "%.2f", upload)
+                )
             }
             if let download = telemetry.network.downloadBytesPerSecond {
-                network["downloadBytesPerSecond"] = .decimal(String(format: "%.2f", download))
+                network[EvidenceContextSchema.Field.downloadBytesPerSecond] = .decimal(
+                    String(format: "%.2f", download)
+                )
             }
         }
 
-        system["lowPowerMode"] = .boolean(telemetry.thermal.lowPowerMode)
-        system["thermalState"] = .string(telemetry.thermal.thermalState.contextLabel)
+        system[EvidenceContextSchema.Field.lowPowerMode] = .boolean(telemetry.thermal.lowPowerMode)
+        system[EvidenceContextSchema.Field.thermalState] = .string(telemetry.thermal.thermalState.contextLabel)
 
         var batteryValues: [String: EvidenceValue] = [
-            "present": .boolean(battery.snapshot.present),
-            "acConnected": .boolean(battery.snapshot.isACConnected),
-            "charging": .boolean(battery.snapshot.isCharging)
+            EvidenceContextSchema.Field.present: .boolean(battery.snapshot.present),
+            EvidenceContextSchema.Field.acConnected: .boolean(battery.snapshot.isACConnected),
+            EvidenceContextSchema.Field.charging: .boolean(battery.snapshot.isCharging)
         ]
         if let charge = battery.snapshot.stateOfChargePercent {
-            batteryValues["stateOfChargePercent"] = .decimal(String(format: "%.2f", charge))
+            batteryValues[EvidenceContextSchema.Field.stateOfChargePercent] = .decimal(
+                String(format: "%.2f", charge)
+            )
         }
         if battery.snapshot.availability == .unavailable {
             unknowns.append(EvidenceMissing(
@@ -118,14 +128,18 @@ struct IncidentContextSnapshot: Codable, Equatable, Sendable {
         }
 
         var coolingValues: [String: EvidenceValue] = [
-            "thermalState": .string(cooling.thermalStateLabel),
-            "thermalStateSource": .string(cooling.snapshot.thermalStateSource.rawValue)
+            EvidenceContextSchema.Field.thermalState: .string(cooling.thermalStateLabel),
+            EvidenceContextSchema.Field.thermalStateSource: .string(
+                cooling.snapshot.thermalStateSource.rawValue
+            )
         ]
         if let fan = cooling.snapshot.fans.first {
-            coolingValues["primaryFanRPM"] = .integer(Int64(fan.currentRPM))
+            coolingValues[EvidenceContextSchema.Field.primaryFanRPM] = .integer(Int64(fan.currentRPM))
         }
         if let temperature = cooling.snapshot.primaryTemperature {
-            coolingValues["primaryTemperatureCelsius"] = .decimal(String(format: "%.2f", temperature.valueCelsius))
+            coolingValues[EvidenceContextSchema.Field.primaryTemperatureCelsius] = .decimal(
+                String(format: "%.2f", temperature.valueCelsius)
+            )
         }
         if cooling.sensorStatus != .observed {
             unknowns.append(EvidenceMissing(
@@ -138,10 +152,10 @@ struct IncidentContextSnapshot: Codable, Equatable, Sendable {
         return IncidentContextSnapshot(
             capturedAt: capturedAt,
             values: .object([
-                "system": .object(system),
-                "network": .object(network),
-                "battery": .object(batteryValues),
-                "cooling": .object(coolingValues)
+                EvidenceContextSchema.system: .object(system),
+                EvidenceContextSchema.network: .object(network),
+                EvidenceContextSchema.battery: .object(batteryValues),
+                EvidenceContextSchema.cooling: .object(coolingValues)
             ]),
             unknowns: unknowns
         )
@@ -186,12 +200,12 @@ struct IncidentWindowSummary: Equatable, Sendable {
 
     var evidenceValue: EvidenceValue {
         var fields: [String: EvidenceValue] = [
-            "requestedStart": .date(requestedStart),
-            "requestedEnd": .date(requestedEnd),
-            "coveredStart": coveredStart.map(EvidenceValue.date) ?? .null,
-            "coveredEnd": coveredEnd.map(EvidenceValue.date) ?? .null,
-            "sampleCount": .unsigned(UInt64(sampleCount)),
-            "coverage": .string(coverage.rawValue)
+            EvidenceContextSchema.Field.requestedStart: .date(requestedStart),
+            EvidenceContextSchema.Field.requestedEnd: .date(requestedEnd),
+            EvidenceContextSchema.Field.coveredStart: coveredStart.map(EvidenceValue.date) ?? .null,
+            EvidenceContextSchema.Field.coveredEnd: coveredEnd.map(EvidenceValue.date) ?? .null,
+            EvidenceContextSchema.Field.sampleCount: .unsigned(UInt64(sampleCount)),
+            EvidenceContextSchema.Field.coverage: .string(coverage.rawValue)
         ]
         for key in metrics.keys.sorted() {
             let metric = metrics[key]!
@@ -283,28 +297,56 @@ final class IncidentContextHistory: ObservableObject {
     }
 
     private static let metricPaths: [(String, [String])] = [
-        ("cpuUtilizationPercent", ["system", "cpuUtilizationPercent"]),
-        ("memoryUsedBytes", ["system", "memoryUsedBytes"]),
-        ("memoryPhysicalBytes", ["system", "memoryPhysicalBytes"]),
-        ("swapUsedBytes", ["system", "swapUsedBytes"]),
-        ("rootStorageFreeBytes", ["system", "rootStorageFreeBytes"]),
-        ("rootStorageTotalBytes", ["system", "rootStorageTotalBytes"]),
-        ("networkSentBytes", ["network", "sentBytes"]),
-        ("networkReceivedBytes", ["network", "receivedBytes"]),
-        ("networkUploadBytesPerSecond", ["network", "uploadBytesPerSecond"]),
-        ("networkDownloadBytesPerSecond", ["network", "downloadBytesPerSecond"]),
-        ("stateOfChargePercent", ["battery", "stateOfChargePercent"]),
-        ("primaryFanRPM", ["cooling", "primaryFanRPM"]),
-        ("primaryTemperatureCelsius", ["cooling", "primaryTemperatureCelsius"])
+        (EvidenceContextSchema.Field.cpuUtilizationPercent, [
+            EvidenceContextSchema.system, EvidenceContextSchema.Field.cpuUtilizationPercent
+        ]),
+        (EvidenceContextSchema.Field.memoryUsedBytes, [
+            EvidenceContextSchema.system, EvidenceContextSchema.Field.memoryUsedBytes
+        ]),
+        (EvidenceContextSchema.Field.memoryPhysicalBytes, [
+            EvidenceContextSchema.system, EvidenceContextSchema.Field.memoryPhysicalBytes
+        ]),
+        (EvidenceContextSchema.Field.swapUsedBytes, [
+            EvidenceContextSchema.system, EvidenceContextSchema.Field.swapUsedBytes
+        ]),
+        (EvidenceContextSchema.Field.rootStorageFreeBytes, [
+            EvidenceContextSchema.system, EvidenceContextSchema.Field.rootStorageFreeBytes
+        ]),
+        (EvidenceContextSchema.Field.rootStorageTotalBytes, [
+            EvidenceContextSchema.system, EvidenceContextSchema.Field.rootStorageTotalBytes
+        ]),
+        ("networkSentBytes", [EvidenceContextSchema.network, EvidenceContextSchema.Field.sentBytes]),
+        ("networkReceivedBytes", [EvidenceContextSchema.network, EvidenceContextSchema.Field.receivedBytes]),
+        ("networkUploadBytesPerSecond", [
+            EvidenceContextSchema.network, EvidenceContextSchema.Field.uploadBytesPerSecond
+        ]),
+        ("networkDownloadBytesPerSecond", [
+            EvidenceContextSchema.network, EvidenceContextSchema.Field.downloadBytesPerSecond
+        ]),
+        (EvidenceContextSchema.Field.stateOfChargePercent, [
+            EvidenceContextSchema.battery, EvidenceContextSchema.Field.stateOfChargePercent
+        ]),
+        (EvidenceContextSchema.Field.primaryFanRPM, [
+            EvidenceContextSchema.cooling, EvidenceContextSchema.Field.primaryFanRPM
+        ]),
+        (EvidenceContextSchema.Field.primaryTemperatureCelsius, [
+            EvidenceContextSchema.cooling, EvidenceContextSchema.Field.primaryTemperatureCelsius
+        ])
     ]
 
     private static let statePaths: [(String, [String])] = [
-        ("memoryPressure", ["system", "memoryPressure"]),
-        ("thermalState", ["system", "thermalState"]),
-        ("lowPowerMode", ["system", "lowPowerMode"]),
-        ("batteryPresent", ["battery", "present"]),
-        ("batteryACConnected", ["battery", "acConnected"]),
-        ("batteryCharging", ["battery", "charging"])
+        (EvidenceContextSchema.Field.memoryPressure, [
+            EvidenceContextSchema.system, EvidenceContextSchema.Field.memoryPressure
+        ]),
+        (EvidenceContextSchema.Field.thermalState, [
+            EvidenceContextSchema.system, EvidenceContextSchema.Field.thermalState
+        ]),
+        (EvidenceContextSchema.Field.lowPowerMode, [
+            EvidenceContextSchema.system, EvidenceContextSchema.Field.lowPowerMode
+        ]),
+        ("batteryPresent", [EvidenceContextSchema.battery, EvidenceContextSchema.Field.present]),
+        ("batteryACConnected", [EvidenceContextSchema.battery, EvidenceContextSchema.Field.acConnected]),
+        ("batteryCharging", [EvidenceContextSchema.battery, EvidenceContextSchema.Field.charging])
     ]
 
     private static func metrics(from samples: [IncidentContextSample]) -> [String: IncidentWindowMetric] {
@@ -712,10 +754,10 @@ final class IncidentCaptureCoordinator: ObservableObject {
         summary: IncidentWindowSummary
     ) -> EvidenceValue {
         guard case let .object(fields) = context else {
-            return .object(["windowSummary": summary.evidenceValue])
+            return .object([EvidenceContextSchema.windowSummary: summary.evidenceValue])
         }
         var updated = fields
-        updated["windowSummary"] = summary.evidenceValue
+        updated[EvidenceContextSchema.windowSummary] = summary.evidenceValue
         return .object(updated)
     }
 }

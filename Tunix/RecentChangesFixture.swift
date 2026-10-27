@@ -88,9 +88,15 @@ enum RecentChangesFixture {
             ].contains(mode) else { return }
 
             let context = EvidenceValue.object([
-                "system": .object(["cpuUtilizationPercent": .decimal("12.50")]),
+                "system": .object([
+                    "cpuUtilizationPercent": .decimal("12.50"),
+                    "thermalState": .string("Nominal")
+                ]),
                 "battery": .object(["acConnected": .boolean(true)]),
-                "cooling": .object([:])
+                "cooling": .object([
+                    "thermalState": .string("Nominal"),
+                    "thermalStateSource": .string("ProcessInfo")
+                ])
             ])
             let markerDate = mode == "capturing" ? Date() : baseDate.addingTimeInterval(240)
             let observationsInWindow = observations.map(\.id)
@@ -359,9 +365,15 @@ enum RecentChangesFixture {
         // swiftlint:disable:next function_body_length
         private static func incidentPackages(mode: String) -> [IncidentPackage] {
             let context = EvidenceValue.object([
-                "system": .object(["cpuUtilizationPercent": .decimal("12.50")]),
+                "system": .object([
+                    "cpuUtilizationPercent": .decimal("12.50"),
+                    "thermalState": .string("Nominal")
+                ]),
                 "battery": .object(["acConnected": .boolean(true)]),
-                "cooling": .object([:])
+                "cooling": .object([
+                    "thermalState": .string("Nominal"),
+                    "thermalStateSource": .string("ProcessInfo")
+                ])
             ])
             let ids = observations.map(\.id)
             let markerDate = baseDate.addingTimeInterval(240)
