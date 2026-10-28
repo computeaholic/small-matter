@@ -1,3 +1,4 @@
+import Foundation
 import XCTest
 
 @MainActor
@@ -589,6 +590,73 @@ extension TunixUITests {
         XCTAssertTrue(FileManager.default.fileExists(atPath: textDestination.path))
         let textAttributes = try? FileManager.default.attributesOfItem(atPath: textDestination.path)
         XCTAssertEqual((textAttributes?[.posixPermissions] as? NSNumber)?.intValue, 0o600)
+    }
+
+    func testEvidenceExportSaveActionsUseRealUserSelectedDestination() throws {
+        let documents = try XCTUnwrap(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first)
+        let suffix = UUID().uuidString
+        let jsonDestination = documents.appendingPathComponent("Small-Matter-UI-\(suffix).json")
+        let textDestination = documents.appendingPathComponent("Small-Matter-UI-\(suffix).text")
+        defer {
+            try? FileManager.default.removeItem(at: jsonDestination)
+            try? FileManager.default.removeItem(at: textDestination)
+        }
+
+        relaunchIncidentFixture("export-supported")
+        app.staticTexts["navigation-Recent Changes"].click()
+        app.buttons["incident-history-row-00000000-0000-0000-0000-000000000305"].click()
+        app.buttons["incident-preview-evidence-export"].click()
+        saveThroughRealSavePanel(button: "evidence-export-save-json", filename: jsonDestination.lastPathComponent)
+        let jsonData = try Data(contentsOf: jsonDestination)
+        XCTAssertNotNil(try? JSONSerialization.jsonObject(with: jsonData), "The JSON export must be valid JSON.")
+        XCTAssertFalse(String(data: jsonData, encoding: .utf8)?.contains(documents.path) == true)
+        XCTAssertEqual(try permissions(of: jsonDestination), 0o600)
+
+        relaunchIncidentFixture("export-supported")
+        app.staticTexts["navigation-Recent Changes"].click()
+        app.buttons["incident-history-row-00000000-0000-0000-0000-000000000305"].click()
+        app.buttons["incident-preview-evidence-export"].click()
+        saveThroughRealSavePanel(button: "evidence-export-save-json", filename: jsonDestination.lastPathComponent)
+        XCTAssertNotNil(try? JSONSerialization.jsonObject(with: Data(contentsOf: jsonDestination)))
+        XCTAssertEqual(try permissions(of: jsonDestination), 0o600)
+
+        relaunchIncidentFixture("export-supported")
+        app.staticTexts["navigation-Recent Changes"].click()
+        app.buttons["incident-history-row-00000000-0000-0000-0000-000000000305"].click()
+        app.buttons["incident-preview-evidence-export"].click()
+        saveThroughRealSavePanel(button: "evidence-export-save-text", filename: textDestination.lastPathComponent)
+        XCTAssertTrue(try String(data: Data(contentsOf: textDestination), encoding: .utf8)?
+            .contains("SMALL MATTER") == true)
+        XCTAssertEqual(try permissions(of: textDestination), 0o600)
+    }
+
+    private func saveThroughRealSavePanel(button: String, filename: String) {
+        app.buttons[button].click()
+        let panel = app.descendants(matching: .any)["save-panel"]
+        XCTAssertTrue(panel.waitForExistence(timeout: 5), app.debugDescription)
+        let wherePopup = app.popUpButtons["where popup"]
+        if wherePopup.waitForExistence(timeout: 2), (wherePopup.value as? String) != "Documents" {
+            wherePopup.click()
+            let documentsItem = app.menuItems["Documents"]
+            if documentsItem.waitForExistence(timeout: 2) {
+                documentsItem.click()
+            }
+        }
+        let nameField = app.textFields["saveAsNameTextField"]
+        XCTAssertTrue(nameField.waitForExistence(timeout: 5), app.debugDescription)
+        nameField.click()
+        nameField.typeKey("a", modifierFlags: .command)
+        nameField.typeText(filename)
+        app.buttons["OKButton"].click()
+        if app.buttons["action-button-1"].waitForExistence(timeout: 2) {
+            app.buttons["action-button-1"].click()
+        }
+        XCTAssertTrue(app.staticTexts["Saved"].waitForExistence(timeout: 5), app.debugDescription)
+    }
+
+    private func permissions(of url: URL) throws -> Int {
+        let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+        return try XCTUnwrap((attributes[.posixPermissions] as? NSNumber)?.intValue)
     }
 
     func testEvidenceExportSaveFailureIsVisibleWithoutDebugDetails() {

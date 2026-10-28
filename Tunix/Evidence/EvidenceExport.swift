@@ -555,14 +555,19 @@ enum EvidencePackageTextRenderer {
 }
 
 struct EvidenceExportWriter {
+    private let temporaryDirectory: URL
     private let permissionVerifier: (URL) throws -> Void
 
-    init(permissionVerifier: @escaping (URL) throws -> Void = { url in
-        let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
-        guard (attributes[.posixPermissions] as? NSNumber)?.intValue == 0o600 else {
-            throw EvidencePackageError.writeFailure("Could not verify export permissions.")
+    init(
+        temporaryDirectory: URL = FileManager.default.temporaryDirectory,
+        permissionVerifier: @escaping (URL) throws -> Void = { url in
+            let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+            guard (attributes[.posixPermissions] as? NSNumber)?.intValue == 0o600 else {
+                throw EvidencePackageError.writeFailure("Could not verify export permissions.")
+            }
         }
-    }) {
+    ) {
+        self.temporaryDirectory = temporaryDirectory
         self.permissionVerifier = permissionVerifier
     }
 
@@ -576,8 +581,14 @@ struct EvidenceExportWriter {
     func write(package: EvidencePackage, format: EvidenceExportFormat, to destination: URL) throws {
         let data = try data(for: package, format: format)
         let fileManager = FileManager.default
-        let temporary = destination.deletingLastPathComponent()
-            .appendingPathComponent(".\(destination.lastPathComponent).\(UUID().uuidString).partial")
+        let temporary = temporaryDirectory
+            .appendingPathComponent(".Small-Matter-Evidence-\(UUID().uuidString).partial")
+        let hasSecurityScope = destination.startAccessingSecurityScopedResource()
+        defer {
+            if hasSecurityScope {
+                destination.stopAccessingSecurityScopedResource()
+            }
+        }
         do {
             guard fileManager.createFile(
                 atPath: temporary.path,
