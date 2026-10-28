@@ -483,6 +483,67 @@ final class EvidenceExportTests: XCTestCase {
             .contains { $0.lastPathComponent.contains(".partial") })
     }
 
+    func testWriterPreservesExistingDestinationWhenPermissionVerificationFails() async throws {
+        let journal = try await makeJournal(observations: [storageObservation()])
+        let package = try await EvidencePackageAssembler().assemble(incidentID: incidentID, journal: journal)
+        let destinationDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "horizon2-i8-overwrite-permission-\(UUID().uuidString)",
+            isDirectory: true
+        )
+        let stagingDirectory = destinationDirectory.appendingPathComponent("staging", isDirectory: true)
+        try FileManager.default.createDirectory(at: stagingDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: destinationDirectory) }
+
+        let destination = destinationDirectory.appendingPathComponent("export.json")
+        let original = Data("existing export".utf8)
+        try original.write(to: destination)
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: destination.path)
+        let writer = EvidenceExportWriter(
+            temporaryDirectory: stagingDirectory,
+            permissionVerifier: { _ in
+                throw EvidencePackageError.writeFailure("permission fixture")
+            }
+        )
+
+        XCTAssertThrowsError(try writer.write(package: package, format: .json, to: destination))
+        XCTAssertEqual(try Data(contentsOf: destination), original)
+        XCTAssertFalse(try FileManager.default.contentsOfDirectory(
+            at: stagingDirectory,
+            includingPropertiesForKeys: nil
+        )
+        .contains { $0.lastPathComponent.contains(".partial") })
+    }
+
+    func testWriterKeepsStagingOutOfSelectedDestinationDirectory() async throws {
+        let journal = try await makeJournal(observations: [storageObservation()])
+        let package = try await EvidencePackageAssembler().assemble(incidentID: incidentID, journal: journal)
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "horizon2-i8-staging-boundary-\(UUID().uuidString)",
+            isDirectory: true
+        )
+        let destinationDirectory = root.appendingPathComponent("selected", isDirectory: true)
+        let stagingDirectory = root.appendingPathComponent("sandbox-tmp", isDirectory: true)
+        try FileManager.default.createDirectory(at: destinationDirectory, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: stagingDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let destination = destinationDirectory.appendingPathComponent("export.json")
+        let writer = EvidenceExportWriter(temporaryDirectory: stagingDirectory)
+        try writer.write(package: package, format: .json, to: destination)
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: destination.path))
+        XCTAssertFalse(try FileManager.default.contentsOfDirectory(
+            at: destinationDirectory,
+            includingPropertiesForKeys: nil
+        )
+        .contains { $0.lastPathComponent.contains(".partial") })
+        XCTAssertFalse(try FileManager.default.contentsOfDirectory(
+            at: stagingDirectory,
+            includingPropertiesForKeys: nil
+        )
+        .contains { $0.lastPathComponent.contains(".partial") })
+    }
+
     func testTextRendererPreservesInferenceEpistemicCategories() async throws {
         let journal = try await makeJournal(
             observations: [networkObservation()],
