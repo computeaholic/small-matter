@@ -226,7 +226,7 @@ private struct SmallMatterCommands: Commands {
             navigationButton("Overview", destination: .overview, shortcut: "1")
             navigationButton("Recent Changes", destination: .recentChanges, shortcut: "7")
             navigationButton("Performance", destination: .performance, shortcut: "2")
-            navigationButton("Cooling", destination: .cooling, shortcut: "3")
+            navigationButton("Cooling Details", destination: .cooling, shortcut: "3")
             navigationButton("Battery", destination: .battery, shortcut: "4")
             navigationButton("Cleanup", destination: .cleanup, shortcut: "5")
             navigationButton("System Health", destination: .systemHealth, shortcut: "6")

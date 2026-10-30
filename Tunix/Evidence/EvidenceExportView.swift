@@ -22,19 +22,16 @@ struct EvidenceExportPreviewView: View {
                 Section("Capture") {
                     previewValue(
                         "Status",
-                        package.incident?.status.rawValue ?? "Unavailable",
+                        package.incident.map { IncidentCapturePresentation.status(for: $0.status) } ?? "Unavailable",
                         identifier: "evidence-export-status"
                     )
                     if let incident = package.incident {
                         previewValue("Marker", DateFormatter.recentChanges.string(from: incident.markerTime))
                         previewValue("Window", "60 seconds before · 120 seconds after")
                         if incident.status == .incomplete {
-                            Text(
-                                "IMPORTANT: This capture has known evidence or coverage gaps. " +
-                                    "Missing evidence is not proof that an event did not occur."
-                            )
-                            .foregroundStyle(.secondary)
-                            .accessibilityIdentifier("evidence-export-incomplete-warning")
+                            Text(IncidentCapturePresentation.incompleteDetail)
+                                .foregroundStyle(.secondary)
+                                .accessibilityIdentifier("evidence-export-incomplete-warning")
                         }
                     }
                 }
@@ -76,7 +73,7 @@ struct EvidenceExportPreviewView: View {
                     Text("\(visibleObservations.count) visible change\(visibleObservations.count == 1 ? "" : "s")")
                         .accessibilityIdentifier("evidence-export-observed")
                     if visibleObservations.isEmpty {
-                        Text("No supported system transitions were observed during this capture window.")
+                        Text(IncidentCapturePresentation.zeroObservationDetail)
                             .foregroundStyle(.secondary)
                             .accessibilityIdentifier("evidence-export-no-observations")
                     }
