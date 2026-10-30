@@ -7,18 +7,15 @@ struct OverviewSupportingPanels: View {
     let navigate: (AppSection) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: TunixDesign.sectionSpacing) {
-            ViewThatFits(in: .horizontal) {
-                HStack(alignment: .top, spacing: TunixDesign.groupSpacing) {
-                    batterySummary
-                    storageSummary
-                }
-                VStack(spacing: TunixDesign.groupSpacing) {
-                    batterySummary
-                    storageSummary
-                }
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: TunixDesign.groupSpacing) {
+                batterySummary
+                storageSummary
             }
-            investigatePanel
+            VStack(spacing: TunixDesign.groupSpacing) {
+                batterySummary
+                storageSummary
+            }
         }
     }
 
@@ -84,41 +81,6 @@ struct OverviewSupportingPanels: View {
             }
         }
         .accessibilityIdentifier("overview-storage-summary")
-    }
-
-    private var investigatePanel: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            TunixSectionHeader(title: "Investigate", subtitle: "Choose the next useful view")
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 10) {
-                    investigateButton(
-                        "Recent Changes",
-                        systemImage: "clock.arrow.circlepath",
-                        destination: .recentChanges
-                    )
-                    investigateButton("System Health", systemImage: "heart.text.square", destination: .security)
-                    investigateButton("Cleanup", systemImage: "sparkles.rectangle.stack", destination: .cleanup)
-                }
-                VStack(spacing: 10) {
-                    investigateButton(
-                        "Recent Changes",
-                        systemImage: "clock.arrow.circlepath",
-                        destination: .recentChanges
-                    )
-                    investigateButton("System Health", systemImage: "heart.text.square", destination: .security)
-                    investigateButton("Cleanup", systemImage: "sparkles.rectangle.stack", destination: .cleanup)
-                }
-            }
-        }
-    }
-
-    private func investigateButton(_ title: String, systemImage: String, destination: AppSection) -> some View {
-        Button { navigate(destination) } label: {
-            Label(title, systemImage: systemImage)
-                .frame(maxWidth: .infinity)
-        }
-        .buttonStyle(.bordered)
-        .accessibilityIdentifier("overview-investigate-\(destination.rawValue)")
     }
 
     private var freePercent: Int? {

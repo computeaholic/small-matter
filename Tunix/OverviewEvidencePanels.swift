@@ -16,25 +16,30 @@ struct OverviewEvidencePanels: View {
 
     private var conditionPanel: some View {
         TunixPanel {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 18) {
                 HStack(alignment: .top, spacing: 14) {
                     Image(systemName: conditionIcon)
-                        .font(.system(size: 22, weight: .semibold))
+                        .font(.system(size: 26, weight: .semibold))
                         .foregroundStyle(conditionColor)
-                        .frame(width: 42, height: 42)
-                        .background(conditionColor.opacity(0.13), in: RoundedRectangle(cornerRadius: 11))
+                        .frame(width: 52, height: 52)
+                        .background(conditionColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 15))
                         .accessibilityHidden(true)
 
                     VStack(alignment: .leading, spacing: 5) {
                         Text(conditionTitle)
-                            .font(.title3.weight(.semibold))
+                            .font(.title2.weight(.semibold))
                         Text(conditionDetail)
-                            .font(.subheadline)
+                            .font(.body)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer(minLength: 12)
-                    TunixStatusBadge(title: conditionBadge, systemImage: conditionIcon, tint: conditionColor)
+                    VStack(alignment: .trailing, spacing: 8) {
+                        TunixStatusBadge(title: conditionBadge, systemImage: conditionIcon, tint: conditionColor)
+                        Button("System Health") { navigate(.security) }
+                            .buttonStyle(.borderless)
+                            .accessibilityIdentifier("overview-open-system-health")
+                    }
                 }
 
                 Divider()
@@ -45,7 +50,7 @@ struct OverviewEvidencePanels: View {
                         conditionFact(
                             "Performance data",
                             value: stats.systemTelemetryStatusLabel,
-                            detail: "CPU, memory, storage, and network"
+                            detail: "Updated \(stats.lastTelemetryUpdatedText)"
                         )
                         conditionFact("Hardware detail", value: coolingCoverageTitle, detail: coolingCoverageDetail)
                     }

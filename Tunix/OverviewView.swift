@@ -16,14 +16,7 @@ struct OverviewView: View {
         TunixAdaptivePage { layout in
             VStack(alignment: .leading, spacing: TunixDesign.sectionSpacing) {
                 OverviewHeader(stats: stats)
-                OverviewEvidencePanels(
-                    stats: stats,
-                    cooling: cooling,
-                    recentChanges: recentChanges,
-                    navigate: navigate
-                )
-                performancePanel(for: layout)
-                supportingPanel
+                overviewContent(for: layout)
             }
         }
         .background(Color(nsColor: .windowBackgroundColor))
@@ -31,6 +24,37 @@ struct OverviewView: View {
         .task { await recentChanges.refresh() }
         .onReceive(NotificationCenter.default.publisher(for: .horizon2JournalDidResolve)) { _ in
             Task { await recentChanges.refresh() }
+        }
+    }
+
+    @ViewBuilder
+    private func overviewContent(for layout: TunixLayoutClass) -> some View {
+        switch layout {
+        case .compact:
+            OverviewEvidencePanels(
+                stats: stats,
+                cooling: cooling,
+                recentChanges: recentChanges,
+                navigate: navigate
+            )
+            performancePanel(for: layout)
+            supportingPanel
+        case .standard, .wide, .large:
+            HStack(alignment: .top, spacing: TunixDesign.sectionSpacing) {
+                OverviewEvidencePanels(
+                    stats: stats,
+                    cooling: cooling,
+                    recentChanges: recentChanges,
+                    navigate: navigate
+                )
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+
+                VStack(alignment: .leading, spacing: TunixDesign.sectionSpacing) {
+                    performancePanel(for: layout)
+                    supportingPanel
+                }
+                .frame(width: layout == .standard ? 360 : 430, alignment: .topLeading)
+            }
         }
     }
 

@@ -57,10 +57,14 @@ final class TunixUITests: XCTestCase {
         XCTAssertTrue(hierarchy.contains("Total ut"), hierarchy)
         XCTAssertTrue(hierarchy.contains("Memory,"), hierarchy)
 
-        for destination in ["Recent Changes", "System Health", "Cleanup"] {
-            let identifier = "overview-investigate-\(destination)"
+        for identifier in [
+            "overview-open-recent-changes",
+            "overview-open-system-health",
+            "overview-open-performance",
+            "overview-open-battery"
+        ] {
             let button = app.buttons[identifier]
-            XCTAssertTrue(button.waitForExistence(timeout: 5), "Missing dynamic identifier \(identifier)")
+            XCTAssertTrue(button.waitForExistence(timeout: 5), "Missing contextual identifier \(identifier)")
             XCTAssertEqual(button.identifier, identifier)
         }
     }

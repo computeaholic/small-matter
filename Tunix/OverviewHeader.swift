@@ -8,7 +8,7 @@ struct OverviewHeader: View {
         HStack(alignment: .bottom, spacing: 20) {
             TunixPageHeader(
                 title: "Overview",
-                subtitle: "A quiet read on what your Mac is doing right now."
+                subtitle: "A quiet read on what your Mac is experiencing right now."
             )
             Spacer(minLength: 20)
             VStack(alignment: .trailing, spacing: 4) {
@@ -22,7 +22,15 @@ struct OverviewHeader: View {
                 Text("Updated \(stats.lastUpdated.formatted(date: .omitted, time: .shortened))")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                Text(stats.systemTelemetryStatusLabel)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(stats.systemTelemetryIsAvailable ? .secondary : TunixBrand.warning)
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "Overview. \(stats.systemTelemetryStatusLabel). " +
+                "Updated \(stats.lastUpdated.formatted(date: .omitted, time: .shortened))"
+        )
     }
 }
