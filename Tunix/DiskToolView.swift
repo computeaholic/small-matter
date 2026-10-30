@@ -1,9 +1,8 @@
 import SwiftUI
 
 struct DiskToolView: View {
-    @EnvironmentObject private var settings: SettingsManager
     @EnvironmentObject private var diskTool: DiskTool
-    @State private var showingCleanupConfirmation = false
+    @State private var showingDeletionConfirmation = false
 
     private let formatter: ByteCountFormatter = {
         let formatter = ByteCountFormatter()
@@ -16,25 +15,25 @@ struct DiskToolView: View {
             VStack(alignment: .leading, spacing: TunixDesign.sectionSpacing) {
                 TunixPageHeader(
                     title: "Disk Cleanup",
-                    subtitle: "Scan first, review what can be reclaimed, then stage it safely."
+                    subtitle: "Review only Small Matter-owned disposable data, then reclaim it deliberately."
                 )
                 cleanupContent(for: layout)
             }
         }
         .navigationTitle("Cleanup")
         .confirmationDialog(
-            "Stage cleanup?",
-            isPresented: $showingCleanupConfirmation,
+            "Delete eligible files?",
+            isPresented: $showingDeletionConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Stage Cleanup", role: .destructive) {
-                diskTool.stageCleanup(safeMode: settings.settings.safeCleanupMode)
+            Button("Delete Eligible Files", role: .destructive) {
+                diskTool.deleteSelected()
             }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(
-                "Selected items will be moved to Small Matter Quarantine. Nothing is permanently deleted, " +
-                    "and the last action can be undone."
+                "This permanently deletes the reviewed Small Matter-owned files. " +
+                    "They are not placed in Quarantine and cannot be undone."
             )
         }
     }
@@ -44,22 +43,22 @@ struct DiskToolView: View {
         switch layout {
         case .compact, .standard:
             workflow
-            scanControls
-            targetList
-            actionSummary
-            safetyNote
+            controls
+            opportunityList
+            CleanupResultSummaryView(diskTool: diskTool, formatter: formatter)
+            CleanupCapabilityNote()
         case .wide, .large:
             HStack(alignment: .top, spacing: TunixDesign.sectionSpacing) {
                 VStack(alignment: .leading, spacing: TunixDesign.sectionSpacing) {
                     workflow
-                    scanControls
-                    targetList
+                    controls
+                    opportunityList
                 }
                 VStack(alignment: .leading, spacing: TunixDesign.sectionSpacing) {
-                    actionSummary
-                    safetyNote
+                    CleanupResultSummaryView(diskTool: diskTool, formatter: formatter)
+                    CleanupCapabilityNote()
                 }
-                .frame(width: 300, alignment: .topLeading)
+                .frame(width: 340, alignment: .topLeading)
             }
         }
     }
@@ -70,35 +69,43 @@ struct DiskToolView: View {
             workflowDivider
             workflowStep("2", "Review")
             workflowDivider
-            workflowStep("3", "Stage")
+            workflowStep("3", "Delete")
             workflowDivider
-            workflowStep("4", "Undo")
+            workflowStep("4", "Verify")
         }
         .font(.caption.weight(.semibold))
         .foregroundStyle(.secondary)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Cleanup workflow: scan, review, stage, undo")
+        .accessibilityLabel("Cleanup workflow: scan, review, delete, verify")
     }
 
-    private var scanControls: some View {
+    private var controls: some View {
         HStack(spacing: 12) {
-            Button(diskTool.isScanning ? "Scanning…" : "Scan") {
+            Button(diskTool.isScanning ? "Scanning…" : "Scan for Safe Cleanup") {
                 diskTool.scan()
             }
             .buttonStyle(.borderedProminent)
-            .disabled(diskTool.isScanning)
+            .disabled(diskTool.isScanning || diskTool.isDeleting)
+            .accessibilityIdentifier("cleanup-scan")
 
-            Button(diskTool.isStaging ? "Staging…" : "Stage Cleanup…") {
-                showingCleanupConfirmation = true
+            Button(diskTool.isDeleting ? "Deleting…" : "Delete Selected…") {
+                showingDeletionConfirmation = true
             }
             .buttonStyle(.bordered)
-            .disabled(diskTool.lastScan == nil || diskTool.isScanning || diskTool.isStaging)
+            .disabled(
+                diskTool.isScanning || diskTool.isDeleting || diskTool.inventory == nil
+                    || diskTool.selectedCandidateIDs.isEmpty
+            )
+            .accessibilityIdentifier("cleanup-delete-selected")
 
-            Button("Undo Last Cleanup") {
-                diskTool.undoLastAction()
+            if diskTool.lastAction != nil {
+                Button("Undo Last Quarantine") {
+                    diskTool.undoLastAction()
+                }
+                .buttonStyle(.bordered)
+                .disabled(diskTool.isDeleting)
+                .accessibilityIdentifier("cleanup-undo-quarantine")
             }
-            .buttonStyle(.bordered)
-            .disabled(diskTool.lastAction == nil || diskTool.isStaging)
 
             Spacer()
             if let lastScan = diskTool.lastScan {
@@ -109,145 +116,109 @@ struct DiskToolView: View {
         }
     }
 
-    private var targetList: some View {
+    private var opportunityList: some View {
         VStack(alignment: .leading, spacing: 12) {
-            TunixSectionHeader(title: "Reclaimable space", subtitle: "Choose categories after the scan completes")
-            if diskTool.lastScan == nil {
-                VStack(spacing: 10) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
-                    Text("Nothing scanned yet")
-                        .font(.headline)
-                    Text("Scan your user-scoped cleanup locations to see what can be reclaimed.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 30)
-            } else {
-                ForEach($diskTool.targets) { $target in
-                    targetRow(target: $target)
-                }
-            }
-        }
-    }
+            TunixSectionHeader(
+                title: "Verified cleanup opportunities",
+                subtitle: "Only explicitly approved Small Matter-owned disposable files appear here"
+            )
 
-    private func targetRow(target: Binding<DiskCleanupTarget>) -> some View {
-        HStack(spacing: 14) {
-            Toggle(isOn: target.isEnabled) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(target.wrappedValue.name)
-                        .font(.body.weight(.semibold))
-                    Text(explanation(for: target.wrappedValue.name))
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    DisclosureGroup("Show location") {
-                        Text(target.wrappedValue.path)
-                            .font(.caption.monospaced())
-                            .foregroundStyle(.secondary)
-                            .textSelection(.enabled)
-                            .padding(.top, 4)
+            if let inventory = diskTool.inventory {
+                HStack(spacing: 16) {
+                    CleanupSummaryMetric("Scanned", value: "\(inventory.scannedItemCount)")
+                    CleanupSummaryMetric("Eligible", value: "\(inventory.candidates.count)")
+                    CleanupSummaryMetric(
+                        "Estimated",
+                        value: formatter.string(fromByteCount: Int64(inventory.estimatedAllocatedBytes))
+                    )
+                }
+                .padding(.bottom, 4)
+
+                if inventory.candidates.isEmpty {
+                    emptyOpportunities
+                } else {
+                    ForEach(inventory.candidates) { candidate in
+                        CleanupCandidateRow(diskTool: diskTool, candidate: candidate, formatter: formatter)
                     }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
                 }
-            }
-            .toggleStyle(.checkbox)
-            Spacer(minLength: 12)
-            VStack(alignment: .trailing, spacing: 4) {
-                Text(sizeText(target.wrappedValue.sizeBytes))
-                    .font(.body.weight(.semibold).monospacedDigit())
-                Text(accessLabel(for: target.wrappedValue))
-                    .font(.caption)
-                    .foregroundStyle(accessColor(for: target.wrappedValue))
-            }
-        }
-        .padding(.vertical, 10)
-        .overlay(alignment: .bottom) {
-            Divider()
-        }
-    }
 
-    private var actionSummary: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if let lastAction = diskTool.lastAction {
-                TunixSectionHeader(title: "Last cleanup")
-                Text(
-                    "\(lastAction.targets.joined(separator: ", ")) · " +
-                        formatter.string(fromByteCount: Int64(lastAction.totalBytes))
-                )
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            }
-
-            if let error = diskTool.lastError {
-                TunixStatusBadge(title: "Needs attention", systemImage: "exclamationmark.triangle", tint: .orange)
-                Text(error)
-                    .font(.footnote)
+                if !inventory.skipped.isEmpty {
+                    DisclosureGroup("Skipped for safety · \(skippedCount(inventory))") {
+                        VStack(alignment: .leading, spacing: 6) {
+                            ForEach(inventory.skipped) { summary in
+                                Text("\(summary.count) · \(summary.reason.label)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .padding(.top, 6)
+                    }
+                    .font(.subheadline)
+                    .accessibilityIdentifier("cleanup-skipped-details")
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("Scan before choosing what to delete.", systemImage: "magnifyingglass")
+                        .font(.headline)
+                    Text(
+                        "Small Matter will not sweep system folders, other applications, Quarantine, evidence, " +
+                            "or user documents."
+                    )
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.vertical, 16)
+                .accessibilityIdentifier("cleanup-not-scanned")
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var safetyNote: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            TunixSectionHeader(title: "Safe Cleanup")
+    private var emptyOpportunities: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("No verified cleanup opportunities.", systemImage: "checkmark.circle")
+                .font(.headline)
             Text(
-                settings.settings.safeCleanupMode
-                    ? "Safe mode is on. Cleanup is limited to user cache and log locations, " +
-                    "and items are staged in Small Matter Quarantine."
-                    : "Advanced cleanup locations can be selected manually. " +
-                    "Items are still staged in Small Matter Quarantine before removal."
+                "Nothing in the approved Small Matter-owned disposable scope is " +
+                    "currently eligible for permanent deletion. " +
+                    "This does not mean other locations are empty; they are " +
+                    "intentionally not treated as safe cleanup targets."
             )
             .font(.subheadline)
             .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(.top, 4)
+        .padding(.vertical, 16)
+        .accessibilityIdentifier("cleanup-empty-state")
+    }
+
+    private func skippedCount(_ inventory: CleanupInventory) -> Int {
+        inventory.skipped.reduce(0) { $0 + $1.count }
     }
 
     private func workflowStep(_ number: String, _ title: String) -> some View {
-        HStack(spacing: 5) {
-            Text(number)
-                .font(.caption2.weight(.bold).monospacedDigit())
-                .frame(width: 18, height: 18)
-                .background(TunixDesign.subtleFill, in: Circle())
-            Text(title)
-        }
+        Label(title, systemImage: "circle.fill")
+            .labelStyle(WorkflowLabelStyle(number: number))
     }
 
     private var workflowDivider: some View {
         Image(systemName: "chevron.right")
             .font(.caption2)
             .foregroundStyle(.tertiary)
+            .accessibilityHidden(true)
     }
+}
 
-    private func explanation(for name: String) -> String {
-        switch name {
-        case "User Caches": return "Temporary app data that can be regenerated."
-        case "System Caches": return "Shared caches that may be restricted by macOS."
-        case "User Logs": return "Local application logs retained by the user."
-        case "System Logs": return "System log data subject to macOS permissions."
-        case "Temporary": return "Temporary user-scoped files."
-        default: return "System-scoped files; availability depends on macOS permissions."
+private struct WorkflowLabelStyle: LabelStyle {
+    let number: String
+
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 5) {
+            Text(number)
+                .font(.caption2.weight(.bold).monospacedDigit())
+                .frame(width: 18, height: 18)
+                .background(Color.secondary.opacity(0.15), in: Circle())
+            configuration.title
         }
-    }
-
-    private func accessLabel(for target: DiskCleanupTarget) -> String {
-        let path = (target.path as NSString).expandingTildeInPath
-        return FileManager.default.isReadableFile(atPath: path) ? "Available" : "Restricted"
-    }
-
-    private func accessColor(for target: DiskCleanupTarget) -> Color {
-        accessLabel(for: target) == "Available" ? .secondary : .orange
-    }
-
-    private func sizeText(_ bytes: UInt64?) -> String {
-        guard let bytes else { return "—" }
-        return formatter.string(fromByteCount: Int64(bytes))
     }
 }

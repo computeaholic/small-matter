@@ -20,35 +20,48 @@ final class ActionLedger {
     private let queue = DispatchQueue(label: "com.tunix.actionledger", qos: .utility)
     private let ledgerURL: URL
 
-    init() {
-        let appSupport = FileManager.default.urls(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask
-        ).first ?? URL(fileURLWithPath: NSTemporaryDirectory())
-        let folder = appSupport.appendingPathComponent(
-            ProductIdentity.stableApplicationSupportDirectoryName,
-            isDirectory: true
-        )
-        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        ledgerURL = folder.appendingPathComponent("action-ledger.json")
+    init(ledgerURL: URL? = nil) {
+        if let ledgerURL {
+            self.ledgerURL = ledgerURL
+        } else {
+            let appSupport = FileManager.default.urls(
+                for: .applicationSupportDirectory,
+                in: .userDomainMask
+            ).first ?? URL(fileURLWithPath: NSTemporaryDirectory())
+            let folder = appSupport.appendingPathComponent(
+                ProductIdentity.stableApplicationSupportDirectoryName,
+                isDirectory: true
+            )
+            try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            self.ledgerURL = folder.appendingPathComponent("action-ledger.json")
+        }
         load()
     }
 
     func append(_ action: CleanupAction) {
-        queue.async(flags: .barrier) {
+        queue.sync(flags: .barrier) {
             self.actions.append(action)
             self.save()
         }
     }
 
-    func popLast() -> CleanupAction? {
-        var result: CleanupAction?
+    func removeLast(ifMatching id: UUID) -> Bool {
+        var removed = false
         queue.sync(flags: .barrier) {
-            guard !self.actions.isEmpty else { return }
-            result = self.actions.removeLast()
+            guard self.actions.last?.id == id else { return }
+            _ = self.actions.removeLast()
+            self.save()
+            removed = true
+        }
+        return removed
+    }
+
+    func replaceLast(_ action: CleanupAction) {
+        queue.sync(flags: .barrier) {
+            guard self.actions.last?.id == action.id else { return }
+            self.actions[self.actions.count - 1] = action
             self.save()
         }
-        return result
     }
 
     func last() -> CleanupAction? {
