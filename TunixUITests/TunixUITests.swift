@@ -32,6 +32,39 @@ final class TunixUITests: XCTestCase {
         XCTAssertEqual(app.windows.firstMatch.title, "Overview")
     }
 
+    func testOverviewRendersValuesAndDynamicIdentifiers() {
+        let performanceHeading = app.staticTexts["Current performance"]
+        XCTAssertTrue(performanceHeading.waitForExistence(timeout: 5), app.debugDescription)
+
+        let hierarchy = app.debugDescription
+        for literalExpression in [
+            "(stats.memoryPressureLabel)",
+            "(freePercent)",
+            "(stats.diskTotalText)",
+            "(destination.rawValue)",
+            "(title), (value), (detail)",
+            "(stats.cpuUsageText)",
+            "(row.timeText) · (row.sourceText)",
+            "(row.title), (row.summary), (row.timeText)"
+        ] {
+            XCTAssertFalse(
+                hierarchy.contains(literalExpression),
+                "Overview exposed source-code text: \(literalExpression)\n\(hierarchy)"
+            )
+        }
+
+        XCTAssertTrue(hierarchy.contains("Current performance"), hierarchy)
+        XCTAssertTrue(hierarchy.contains("Total ut"), hierarchy)
+        XCTAssertTrue(hierarchy.contains("Memory,"), hierarchy)
+
+        for destination in ["Recent Changes", "System Health", "Cleanup"] {
+            let identifier = "overview-investigate-\(destination)"
+            let button = app.buttons[identifier]
+            XCTAssertTrue(button.waitForExistence(timeout: 5), "Missing dynamic identifier \(identifier)")
+            XCTAssertEqual(button.identifier, identifier)
+        }
+    }
+
     func testNavigationShowsMonitoringDestinations() {
         // swiftformat:disable trailingCommas
         let destinations = [
