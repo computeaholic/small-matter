@@ -14,8 +14,8 @@ struct DiskToolView: View {
         TunixAdaptivePage { layout in
             VStack(alignment: .leading, spacing: TunixDesign.sectionSpacing) {
                 TunixPageHeader(
-                    title: "Disk Cleanup",
-                    subtitle: "Review only Small Matter-owned disposable data, then reclaim it deliberately."
+                    title: "App-Owned Cleanup",
+                    subtitle: "Review only Small Matter-owned disposable data, then delete it deliberately."
                 )
                 cleanupContent(for: layout)
             }
@@ -81,7 +81,7 @@ struct DiskToolView: View {
 
     private var controls: some View {
         HStack(spacing: 12) {
-            Button(diskTool.isScanning ? "Scanning…" : "Scan for Safe Cleanup") {
+            Button(diskTool.isScanning ? "Scanning…" : "Scan App-Owned Data") {
                 diskTool.scan()
             }
             .buttonStyle(.borderedProminent)
@@ -119,7 +119,7 @@ struct DiskToolView: View {
     private var opportunityList: some View {
         VStack(alignment: .leading, spacing: 12) {
             TunixSectionHeader(
-                title: "Verified cleanup opportunities",
+                title: "Verified app-owned cleanup opportunities",
                 subtitle: "Only explicitly approved Small Matter-owned disposable files appear here"
             )
 
@@ -176,7 +176,7 @@ struct DiskToolView: View {
 
     private var emptyOpportunities: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("No verified cleanup opportunities.", systemImage: "checkmark.circle")
+            Label("No verified app-owned cleanup opportunities.", systemImage: "checkmark.circle")
                 .font(.headline)
             Text(
                 "Nothing in the approved Small Matter-owned disposable scope is " +
