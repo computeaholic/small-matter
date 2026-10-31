@@ -535,6 +535,228 @@ final class Horizon2SQLiteJournalTests: XCTestCase {
         XCTAssertEqual(reopenedStatus.availability, .available)
     }
 
+    @MainActor
+    // Why: one bounded qualification keeps the fixed-limit, capture, reopen, and integrity contract together.
+    // swiftlint:disable:next function_body_length
+    func testFixedProductionLimitRecoveryPreservesProtectedCaptureAcrossReopen() async throws {
+        let root = try makeTemporaryRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let databaseURL = root.appendingPathComponent("horizon2.sqlite")
+        let productionLimit = Horizon2EvidenceConfiguration.maximumJournalBytes
+        XCTAssertEqual(productionLimit, 16 * 1024 * 1024)
+
+        let protectedObservation = makeObservation(
+            observedAt: Date(),
+            id: UUID(),
+            subjectIdentityDigest: "protected-subject",
+            provenanceAPIName: "Protected Fixture API"
+        )
+        let expiredObservations = (0 ..< 128).map { offset in
+            makeObservation(
+                observedAt: Date(timeIntervalSinceNow: -8 * 86400 - Double(offset)),
+                id: UUID(),
+                subjectIdentityDigest: nil,
+                provenanceAPIName: "Expired Fixture API \(offset)"
+            )
+        }
+        let protectedIncident = makeIncident(for: protectedObservation, completedAt: Date(), id: UUID())
+        let releaseIncidentID = UUID()
+        let releaseIncident = IncidentPackage(
+            id: releaseIncidentID,
+            marker: IncidentMarker(
+                markerID: UUID(),
+                wallTime: expiredObservations[0].time.observedWallTime,
+                observationID: expiredObservations[0].id
+            ),
+            status: .complete,
+            completedAt: Date(),
+            materializedContext: .object(["fixture": .string("release-after-block")]),
+            observationIDs: expiredObservations.map(\.id)
+        )
+        let recoveryObservation = makeObservation(observedAt: Date(), id: UUID())
+        let initialSubjectCount: String
+        let initialProvenanceCount: String
+        let recoveryMilliseconds: Double
+        var capturedIncidentID: UUID?
+
+        do {
+            let journal = try SQLiteEvidenceJournal(databaseURL: databaseURL, retentionBatchSize: 8)
+            try await journal.append(protectedObservation)
+            for observation in expiredObservations {
+                try await journal.append(observation)
+            }
+            try await journal.persist(incident: protectedIncident, retentionProtected: true)
+            try await journal.persist(incident: releaseIncident)
+
+            let protectedSets = try CorrelationEngine().correlate(
+                incident: protectedIncident,
+                observations: [protectedObservation]
+            )
+            try await journal.persistEvidenceSets(incidentID: protectedIncident.id, sets: protectedSets)
+            let protectedInferences = try protectedSets.map {
+                try InferenceEngine().evaluate(
+                    incident: protectedIncident,
+                    evidenceSet: $0,
+                    observations: [protectedObservation]
+                )
+            }
+            try await journal.persistInferences(
+                incidentID: protectedIncident.id,
+                inferences: protectedInferences,
+                catalogEntries: Horizon2NextTestCatalog.production.entries
+            )
+            try await journal.recordSourceHealth(EvidenceSourceHealthRecord(
+                id: UUID(),
+                sourceID: .storage,
+                reason: .sourceUnavailable,
+                observedAt: Date(),
+                detail: nil
+            ))
+
+            var accepted = 0
+            while accepted < 10000 {
+                let batch = (0 ..< 7).map { offset in
+                    makeObservation(
+                        observedAt: Date(timeIntervalSinceNow: -86400),
+                        id: UUID(),
+                        extraAttribute: offset == 0 ? .string("canonical-batch") : nil
+                    )
+                }
+                do {
+                    try await journal.appendBatch(batch)
+                    accepted += batch.count
+                } catch EvidenceJournalError.capacityUnavailable {
+                    break
+                }
+            }
+
+            let blockedStatus = await journal.retentionStatus()
+            XCTAssertGreaterThan(accepted, 100)
+            XCTAssertEqual(blockedStatus.availability, .capacityUnavailable)
+            XCTAssertGreaterThanOrEqual(blockedStatus.bytes, productionLimit * 8 / 10)
+            XCTAssertLessThanOrEqual(blockedStatus.bytes, productionLimit)
+            initialSubjectCount = try scalarFromDatabase(databaseURL, sql: "SELECT COUNT(*) FROM subjects")
+            initialProvenanceCount = try scalarFromDatabase(databaseURL, sql: "SELECT COUNT(*) FROM provenance")
+
+            try await journal.deleteIncident(id: releaseIncidentID)
+            let recoveryStart = DispatchTime.now().uptimeNanoseconds
+            try await journal.append(recoveryObservation)
+            recoveryMilliseconds = Double(DispatchTime.now().uptimeNanoseconds - recoveryStart) / 1_000_000.0
+
+            let recoveredStatus = await journal.retentionStatus()
+            let recoveredObservation = await journal.observation(id: recoveryObservation.id)
+            var expiredResults: [Observation?] = []
+            for observation in expiredObservations {
+                expiredResults.append(await journal.observation(id: observation.id))
+            }
+            let preservedObservation = await journal.observation(id: protectedObservation.id)
+            let preservedIncident = await journal.incident(id: protectedIncident.id)
+            let recoveredSets = await journal.evidenceSets(incidentID: protectedIncident.id)
+            let recoveredInferences = await journal.inferences(incidentID: protectedIncident.id, currentOnly: false)
+            let recoveredHealth = await journal.sourceHealth()
+            let recoveredForeignKeys = await journal.foreignKeyViolationsForTesting()
+            XCTAssertEqual(recoveredStatus.availability, .available)
+            XCTAssertLessThanOrEqual(recoveredStatus.bytes, productionLimit)
+            XCTAssertNotNil(recoveredObservation)
+            XCTAssertTrue(expiredResults.allSatisfy { $0 == nil })
+            XCTAssertNotNil(preservedObservation)
+            XCTAssertNotNil(preservedIncident)
+            XCTAssertEqual(recoveredSets.count, protectedSets.count)
+            XCTAssertEqual(recoveredInferences.count, protectedInferences.count)
+            XCTAssertFalse(recoveredHealth.isEmpty)
+            XCTAssertTrue(recoveredForeignKeys.isEmpty)
+
+            let captureMarker = Date(timeIntervalSinceNow: 3600)
+            let captureTemplate = makeObservation(observedAt: captureMarker, id: UUID())
+            let captureObservation = Observation(
+                id: captureTemplate.id,
+                domain: captureTemplate.domain,
+                eventKind: captureTemplate.eventKind,
+                sourceID: captureTemplate.sourceID,
+                subject: captureTemplate.subject,
+                provenance: captureTemplate.provenance,
+                time: captureTemplate.time,
+                currentState: .object([:]),
+                attributes: [:],
+                sensitivity: captureTemplate.sensitivity
+            )
+            try await journal.append(captureObservation)
+            let scheduler = ManualIncidentCaptureScheduler()
+            let coordinator = IncidentCaptureCoordinator(
+                journal: journal,
+                clock: FixedEvidenceClock(
+                    wallTime: captureMarker,
+                    continuousNanoseconds: 10,
+                    processUptimeNanoseconds: 10
+                ),
+                scheduler: scheduler,
+                processRunID: UUID()
+            )
+            coordinator.start(context: IncidentContextSnapshot(
+                capturedAt: captureMarker,
+                values: .object([
+                    EvidenceContextSchema.system: .object([:])
+                ])
+            ))
+            for _ in 0 ..< 1000 where coordinator.state == .starting {
+                await Task.yield()
+            }
+            XCTAssertEqual(coordinator.state, .capturing)
+            scheduler.advance(by: 120)
+            for _ in 0 ..< 1000 where coordinator.state == .capturing || coordinator.state == .finalizing {
+                await Task.yield()
+            }
+            XCTAssertEqual(coordinator.state, .complete)
+            for _ in 0 ..< 1000 {
+                let hasCapturedIncident = coordinator.incidents.contains {
+                    $0.id != protectedIncident.id && $0.id != releaseIncidentID
+                }
+                if hasCapturedIncident {
+                    break
+                }
+                await Task.yield()
+            }
+            let captured = try XCTUnwrap(coordinator.incidents.first {
+                $0.id != protectedIncident.id && $0.id != releaseIncidentID
+            })
+            XCTAssertEqual(captured.status, .complete)
+            capturedIncidentID = captured.id
+            let package = try await EvidencePackageAssembler().assemble(incidentID: captured.id, journal: journal)
+            XCTAssertFalse(package.observations.isEmpty)
+            let writer = EvidenceExportWriter(temporaryDirectory: root)
+            XCTAssertFalse(try writer.data(for: package, format: .json).isEmpty)
+            XCTAssertFalse(try writer.data(for: package, format: .text).isEmpty)
+        }
+
+        XCTAssertLessThan(recoveryMilliseconds, 30000)
+        let reopened = try SQLiteEvidenceJournal(databaseURL: databaseURL, retentionBatchSize: 8)
+        let reopenedStatus = await reopened.retentionStatus()
+        let reopenedRecovery = await reopened.observation(id: recoveryObservation.id)
+        let reopenedProtected = await reopened.observation(id: protectedObservation.id)
+        let reopenedIncident = await reopened.incident(id: protectedIncident.id)
+        let reopenedForeignKeys = await reopened.foreignKeyViolationsForTesting()
+        XCTAssertEqual(reopenedStatus.availability, .available)
+        XCTAssertLessThanOrEqual(reopenedStatus.bytes, productionLimit)
+        XCTAssertEqual(reopenedRecovery?.id, recoveryObservation.id)
+        XCTAssertNotNil(reopenedProtected)
+        XCTAssertNotNil(reopenedIncident)
+        XCTAssertTrue(reopenedForeignKeys.isEmpty)
+        let reopenedCaptureID = try XCTUnwrap(capturedIncidentID)
+        let reopenedCaptureValue = await reopened.incident(id: reopenedCaptureID)
+        let reopenedCapture = try XCTUnwrap(reopenedCaptureValue)
+        XCTAssertEqual(reopenedCapture.status, .complete)
+        let reopenedPackage = try await EvidencePackageAssembler().assemble(
+            incidentID: reopenedCapture.id,
+            journal: reopened
+        )
+        XCTAssertFalse(reopenedPackage.observations.isEmpty)
+        XCTAssertEqual(try scalarFromDatabase(databaseURL, sql: "PRAGMA integrity_check"), "ok")
+        let finalSubjectCount = try scalarFromDatabase(databaseURL, sql: "SELECT COUNT(*) FROM subjects")
+        let finalProvenanceCount = try scalarFromDatabase(databaseURL, sql: "SELECT COUNT(*) FROM provenance")
+        XCTAssertLessThan(Int(finalSubjectCount) ?? Int.max, Int(initialSubjectCount) ?? 0)
+        XCTAssertLessThan(Int(finalProvenanceCount) ?? Int.max, Int(initialProvenanceCount) ?? 0)
+    }
+
     func testRetentionRemovesOnlyUnreferencedSubjectAndProvenanceMetadata() async throws {
         let root = try makeTemporaryRoot()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -575,6 +797,58 @@ final class Horizon2SQLiteJournalTests: XCTestCase {
         ), "1")
         let foreignKeyViolations = await journal.foreignKeyViolationsForTesting()
         XCTAssertTrue(foreignKeyViolations.isEmpty)
+    }
+
+    func testRepeatedCapacityRecoveryCyclesPreserveProtectedEvidenceAtProductionLimit() async throws {
+        let root = try makeTemporaryRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let databaseURL = root.appendingPathComponent("horizon2.sqlite")
+        let journal = try SQLiteEvidenceJournal(databaseURL: databaseURL, retentionBatchSize: 1)
+        let protectedObservation = makeObservation(observedAt: Date(), id: UUID())
+        let protectedIncident = makeIncident(for: protectedObservation, completedAt: Date(), id: UUID())
+        try await journal.append(protectedObservation)
+        try await journal.persist(incident: protectedIncident, retentionProtected: true)
+
+        var recoveryIDs: [UUID] = []
+        for cycle in 0 ..< 3 {
+            let expired = makeObservation(
+                observedAt: Date(timeIntervalSinceNow: -8 * 86400 - Double(cycle)),
+                id: UUID(),
+                subjectIdentityDigest: nil,
+                provenanceAPIName: "Repeated Recovery Fixture (cycle)"
+            )
+            try await journal.append(expired)
+            await journal.forceCapacityUnavailableForTesting()
+
+            let recovered = makeObservation(observedAt: Date(timeIntervalSinceNow: 1), id: UUID())
+            let status = try await journal.performRetention(now: Date())
+            XCTAssertEqual(status.availability, .available)
+            XCTAssertLessThanOrEqual(status.bytes, Horizon2EvidenceConfiguration.maximumJournalBytes)
+            try await journal.append(recovered)
+            recoveryIDs.append(recovered.id)
+            let expiredResult = await journal.observation(id: expired.id)
+            let recoveredResult = await journal.observation(id: recovered.id)
+            let protectedIncidentResult = await journal.incident(id: protectedIncident.id)
+            XCTAssertNil(expiredResult)
+            XCTAssertNotNil(recoveredResult)
+            XCTAssertNotNil(protectedIncidentResult)
+        }
+
+        let reopened = try SQLiteEvidenceJournal(databaseURL: databaseURL, retentionBatchSize: 1)
+        for id in recoveryIDs {
+            let recovery = await reopened.observation(id: id)
+            XCTAssertNotNil(recovery)
+        }
+        let reopenedProtectedObservation = await reopened.observation(id: protectedObservation.id)
+        let reopenedProtectedIncident = await reopened.incident(id: protectedIncident.id)
+        let foreignKeyViolations = await reopened.foreignKeyViolationsForTesting()
+        XCTAssertNotNil(reopenedProtectedObservation)
+        XCTAssertNotNil(reopenedProtectedIncident)
+        XCTAssertTrue(foreignKeyViolations.isEmpty)
+        XCTAssertEqual(
+            try scalarFromDatabase(databaseURL, sql: "PRAGMA integrity_check"),
+            "ok"
+        )
     }
 
     func testExplicitCapacityRecoveryCompactsUnprotectedHistoryAndPreservesProtectedEvidence() async throws {
