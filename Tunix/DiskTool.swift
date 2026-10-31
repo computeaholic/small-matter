@@ -146,7 +146,7 @@ final class DiskTool: ObservableObject {
         guard !selected.isEmpty else { return }
         if CleanupDistributionContext.current == .appStore,
            selected.contains(where: { candidate in
-               roots.first(where: { $0.id == candidate.rootID })?.scope == .xcodeDerivedData
+               self.roots.first(where: { $0.id == candidate.rootID })?.scope == .xcodeDerivedData
            }) {
             lastError =
                 "The Mac App Store build does not enable permanent deletion of user-selected data. " +
