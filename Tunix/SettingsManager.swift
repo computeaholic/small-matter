@@ -155,10 +155,18 @@ struct SettingsView: View {
             }
 
             Section("Cleanup") {
-                Toggle("Safe Cleanup Mode", isOn: $settings.settings.safeCleanupMode)
-                Text("When enabled, cleanup is limited to cache/log targets with quarantine.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                Text(
+                    "Small Matter only reviews its own disposable cache scope. " +
+                        "It does not sweep other applications, system-managed storage, Quarantine, or documents."
+                )
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                Text(
+                    "Permanent deletion is explicit and cannot be undone; " +
+                        "legacy Quarantine remains separately reversible."
+                )
+                .font(.footnote)
+                .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)

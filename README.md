@@ -5,8 +5,8 @@ precise observation, least privilege, and minimal interference.
 
 The app provides local CPU, memory, network, storage, battery, cooling, and
 thermal telemetry; readable System Health diagnostics; a privacy-preserving
-support snapshot; explicit Keep Awake; and user-scoped cleanup with quarantine
-and undo.
+support snapshot; explicit Keep Awake; and conservative app-owned cleanup with
+legacy quarantine and undo support.
 
 Small Matter runs as the logged-in user. It has no privileged helper, root
 daemon, cloud service, analytics, tracking, or AI integration. Hardware
@@ -35,7 +35,7 @@ that state rather than inventing a plausible value.
 - macOS thermal pressure
 - storage capacity telemetry
 - System Health diagnostics and support snapshot
-- user-scoped cleanup with quarantine and undo
+- conservative app-owned cleanup; legacy Quarantine and Undo remain available
 - app-scoped Keep Awake using a native power-management assertion
 
 Raw AppleSMC sensor availability is hardware- and distribution-dependent. The

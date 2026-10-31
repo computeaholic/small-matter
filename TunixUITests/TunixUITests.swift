@@ -89,6 +89,31 @@ final class TunixUITests: XCTestCase {
         }
     }
 
+    func testCleanupScanShowsVerifiedReviewSurface() {
+        app.staticTexts["navigation-Cleanup"].click()
+
+        let scan = app.buttons["cleanup-scan"]
+        XCTAssertTrue(scan.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["cleanup-not-scanned"].exists)
+
+        scan.click()
+        let notScanned = app.descendants(matching: .any)["cleanup-not-scanned"]
+        let deadline = Date().addingTimeInterval(5)
+        while notScanned.exists, Date() < deadline {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        }
+
+        XCTAssertFalse(notScanned.exists, "Cleanup scan did not finish")
+        XCTAssertNotEqual(scan.label, "Cancel Scan", "Cleanup scan remained in progress")
+        XCTAssertTrue(
+            app.descendants(matching: .any)["cleanup-empty-state"].exists
+                || app.descendants(matching: .any).matching(
+                    NSPredicate(format: "identifier BEGINSWITH 'cleanup-candidate-'")
+                ).firstMatch.exists,
+            "Cleanup scan did not present a verified result or explicit empty state"
+        )
+    }
+
     func testCoolingTemperatureGroupsHaveStableAccessibilityIdentifiers() {
         app.staticTexts["navigation-System Health"].click()
         app.buttons["system-health-open-cooling"].click()
