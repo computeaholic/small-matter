@@ -73,7 +73,42 @@ extension SQLiteEvidenceJournal {
         else { throw EvidenceJournalError.invalidSensitivity("health.detail") }
     }
 
-    func deleteExpiredObservations(before cutoff: String) throws {
+    /// Removes only relational metadata that no longer has an observation
+    /// owner. Incident, evidence-set, inference, redaction, and membership
+    /// rows are intentionally not part of this cleanup.
+    @discardableResult
+    func deleteUnreferencedMetadata() throws -> Int {
+        let ownsTransaction = sqlite3_get_autocommit(connection.database) != 0
+        if ownsTransaction {
+            try connection.exec("BEGIN IMMEDIATE")
+        }
+        var deleted = 0
+        do {
+            try connection.exec(
+                "DELETE FROM subjects WHERE NOT EXISTS " +
+                    "(SELECT 1 FROM observations WHERE observations.subject_id=subjects.subject_id)"
+            )
+            deleted += Int(sqlite3_changes(connection.database))
+            try connection.exec(
+                "DELETE FROM provenance WHERE NOT EXISTS " +
+                    "(SELECT 1 FROM observations WHERE observations.provenance_id=provenance.provenance_id)"
+            )
+            deleted += Int(sqlite3_changes(connection.database))
+            if ownsTransaction {
+                try connection.exec("COMMIT")
+            }
+            return deleted
+        } catch {
+            if ownsTransaction {
+                try? connection.exec("ROLLBACK")
+            }
+            throw error
+        }
+    }
+
+    @discardableResult
+    func deleteExpiredObservations(before cutoff: String) throws -> Int {
+        var deleted = 0
         while true {
             try connection.exec("BEGIN IMMEDIATE")
             do {
@@ -95,15 +130,19 @@ extension SQLiteEvidenceJournal {
                     )
                 defer { sqlite3_finalize(statement) }; guard sqlite3_step(statement) == SQLITE_DONE
                 else { throw Self.mapSQLiteError(sqlite3_errcode(connection.database))
-                }; let count = sqlite3_changes(connection.database); try connection.exec("COMMIT"); if count == 0 {
+                }; let count = Int(sqlite3_changes(connection.database)); deleted += count; try connection
+                    .exec("COMMIT"); if count == 0 {
                     break
                 }
             } catch { try? connection.exec("ROLLBACK"); throw error }
         }
         try checkpoint(force: true)
+        return deleted
     }
 
-    func deleteExpiredIncidents(before cutoff: String) throws {
+    @discardableResult
+    func deleteExpiredIncidents(before cutoff: String) throws -> Int {
+        var deleted = 0
         while true {
             try connection.exec("BEGIN IMMEDIATE")
             do {
@@ -120,7 +159,7 @@ extension SQLiteEvidenceJournal {
                 guard sqlite3_step(statement) == SQLITE_DONE else {
                     throw Self.mapSQLiteError(sqlite3_errcode(connection.database))
                 }
-                let count = sqlite3_changes(connection.database)
+                let count = Int(sqlite3_changes(connection.database)); deleted += count
                 try connection.exec("COMMIT")
                 if count == 0 {
                     break
@@ -131,6 +170,7 @@ extension SQLiteEvidenceJournal {
             }
         }
         try checkpoint(force: true)
+        return deleted
     }
 
     func oldestEvictableIncident() throws -> UUID? {

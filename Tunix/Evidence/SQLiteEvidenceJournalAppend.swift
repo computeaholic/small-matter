@@ -14,7 +14,6 @@ extension SQLiteEvidenceJournal {
     func append(_ observation: Observation) throws {
         guard availabilityState != .unavailable else { throw currentError() }
         if availabilityState == .capacityUnavailable {
-            guard !capacityRecoveryBlocked else { throw currentError() }
             _ = try performRetention()
             guard availabilityState == .available else { throw currentError() }
         }
@@ -201,7 +200,6 @@ extension SQLiteEvidenceJournal {
         guard !observations.isEmpty else { return }
         guard availabilityState != .unavailable else { throw currentError() }
         if availabilityState == .capacityUnavailable {
-            guard !capacityRecoveryBlocked else { throw currentError() }
             _ = try performRetention()
             guard availabilityState == .available else { throw currentError() }
         }

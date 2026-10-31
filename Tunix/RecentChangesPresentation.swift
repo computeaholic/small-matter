@@ -139,11 +139,17 @@ final class RecentChangesViewModel: ObservableObject {
         do {
             let result = try await journal.clearUnprotectedHistory()
             await refresh()
-            capacityRecoveryMessage = result.observationsDeleted == 0
-                ? "No unprotected observations were available to remove. Capture remains unavailable " +
-                "because protected or non-observation journal data still fills the bound."
-                : "Removed \(result.observationsDeleted) unprotected observations. Protected captures " +
-                "were preserved, and capture is available again if the journal reports available."
+            if result.finalStatus.availability == .available {
+                capacityRecoveryMessage = "Removed \(result.observationsDeleted) unprotected observations. " +
+                    "Protected captures were preserved. Capture readiness will be confirmed by the next " +
+                    "durable observation."
+            } else {
+                capacityRecoveryMessage = result.observationsDeleted == 0
+                    ? "No unprotected observations were available to remove. Capture remains unavailable " +
+                    "because protected or non-observation journal data still fills the bound."
+                    : "Removed \(result.observationsDeleted) unprotected observations, but capture remains " +
+                    "unavailable because protected or non-observation journal data still fills the bound."
+            }
         } catch {
             capacityRecoveryMessage = "Safe evidence recovery could not complete. Existing history has " +
                 "not been reported as lost."

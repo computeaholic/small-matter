@@ -89,6 +89,8 @@ final class RecentChangesPresentationTests: XCTestCase {
         XCTAssertEqual(status.availability, .available)
         XCTAssertNil(remainingObservation)
         XCTAssertTrue(model.capacityRecoveryMessage?.contains("Removed 1") == true)
+        XCTAssertTrue(model.capacityRecoveryMessage?.contains("confirmed by the next durable observation") == true)
+        XCTAssertFalse(model.capacityRecoveryMessage?.contains("capture is available again") == true)
     }
 
     func testIncompleteCoverageIsStatusNotAnObservation() async {

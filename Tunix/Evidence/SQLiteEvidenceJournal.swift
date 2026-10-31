@@ -124,8 +124,9 @@ actor SQLiteEvidenceJournal: EvidenceJournal {
     let retentionBatchSize: Int
     let retentionDays: Int
     var availabilityState: EvidenceJournalAvailability = .available
-    // Once retention has proved that the journal cannot currently make room,
-    // queued writers fail promptly until an explicit recovery operation.
+    // Records that the last retention pass could not make room. A later
+    // writer retries policy-approved retention so expiry can recover capture;
+    // protected-only pressure remains fail closed.
     var capacityRecoveryBlocked = false
     var appendsSinceCheckpoint = 0
     #if HORIZON2_MEASUREMENT
@@ -158,6 +159,19 @@ actor SQLiteEvidenceJournal: EvidenceJournal {
         connection = try SQLiteConnection(url: self.databaseURL, injectMigrationFailure: injectMigrationFailure)
         try Self.applyFileProtection(to: self.databaseURL)
         try Self.protectJournalFiles(for: self.databaseURL)
+        let fileManager = FileManager.default
+        let initialFootprint = [
+            self.databaseURL,
+            URL(fileURLWithPath: self.databaseURL.path + "-wal"),
+            URL(fileURLWithPath: self.databaseURL.path + "-shm")
+        ].reduce(0) { total, url in
+            let attributes = try? fileManager.attributesOfItem(atPath: url.path)
+            return total + ((attributes?[.size] as? NSNumber)?.intValue ?? 0)
+        }
+        if initialFootprint > maximumJournalBytes {
+            availabilityState = .capacityUnavailable
+            capacityRecoveryBlocked = false
+        }
     }
 }
 
