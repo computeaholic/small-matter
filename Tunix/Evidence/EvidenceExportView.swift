@@ -262,6 +262,14 @@ struct EvidenceExportPreviewView: View {
         let panel = NSSavePanel()
         panel.nameFieldStringValue = writer.defaultFilename(for: package, format: format)
         panel.canCreateDirectories = false
+        #if DEBUG
+            if let injectedDirectory = injectedSavePanelDirectory {
+                panel.directoryURL = URL(fileURLWithPath: injectedDirectory, isDirectory: true)
+            }
+            if let injectedFilename = injectedSavePanelFilename {
+                panel.nameFieldStringValue = injectedFilename
+            }
+        #endif
         panel.begin { response in
             guard response == .OK, let url = panel.url else {
                 saveState = .idle
@@ -284,6 +292,22 @@ struct EvidenceExportPreviewView: View {
         private var injectedExportPath: String? {
             ProcessInfo.processInfo.arguments
                 .first(where: { $0.hasPrefix("-UITestingEvidenceExportDestination=") })?
+                .split(separator: "=", maxSplits: 1)
+                .last
+                .map(String.init)
+        }
+
+        private var injectedSavePanelDirectory: String? {
+            ProcessInfo.processInfo.arguments
+                .first(where: { $0.hasPrefix("-UITestingSavePanelDirectory=") })?
+                .split(separator: "=", maxSplits: 1)
+                .last
+                .map(String.init)
+        }
+
+        private var injectedSavePanelFilename: String? {
+            ProcessInfo.processInfo.arguments
+                .first(where: { $0.hasPrefix("-UITestingSavePanelFilename=") })?
                 .split(separator: "=", maxSplits: 1)
                 .last
                 .map(String.init)

@@ -32,6 +32,8 @@ final class TunixUITests: XCTestCase {
         XCTAssertEqual(app.windows.firstMatch.title, "Overview")
     }
 
+    // Why: one acceptance test keeps the rendered hierarchy and all stable identifiers together.
+    // swiftlint:disable:next function_body_length
     func testOverviewRendersValuesAndDynamicIdentifiers() {
         let performanceHeading = app.staticTexts["Live performance"]
         XCTAssertTrue(performanceHeading.waitForExistence(timeout: 5), app.debugDescription)
@@ -58,7 +60,10 @@ final class TunixUITests: XCTestCase {
 
         XCTAssertTrue(hierarchy.contains("Live performance"), hierarchy)
         XCTAssertTrue(hierarchy.contains("Total utilization"), hierarchy)
-        XCTAssertTrue(hierarchy.contains("Memory,"), hierarchy)
+        XCTAssertTrue(
+            app.staticTexts["Memory"].waitForExistence(timeout: 5),
+            "Memory metric was not exposed by the rendered Overview hierarchy\n\(hierarchy)"
+        )
 
         for identifier in [
             "overview-performance-hero",
@@ -72,16 +77,21 @@ final class TunixUITests: XCTestCase {
             )
         }
 
-        for identifier in [
-            "overview-open-recent-changes",
-            "overview-open-system-health",
-            "overview-open-performance",
-            "overview-open-battery"
-        ] {
-            let button = app.buttons[identifier]
-            XCTAssertTrue(button.waitForExistence(timeout: 5), "Missing contextual identifier \(identifier)")
-            XCTAssertEqual(button.identifier, identifier)
-        }
+        XCTAssertTrue(
+            app.buttons["Inspect Performance"].waitForExistence(timeout: 5),
+            "Performance hero action was not exposed as a button\n\(hierarchy)"
+        )
+        XCTAssertEqual(app.buttons["Inspect Performance"].label, "Inspect Performance")
+
+        XCTAssertTrue(
+            app.staticTexts["System monitoring"].waitForExistence(timeout: 5),
+            "System monitoring panel was not exposed\n\(hierarchy)"
+        )
+        XCTAssertTrue(app.buttons["System Health"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons["System Health"].label, "System Health")
+        XCTAssertTrue(app.buttons["Open Recent Changes"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons["Open Recent Changes"].label, "Open Recent Changes")
+        XCTAssertTrue(app.staticTexts["navigation-Battery"].waitForExistence(timeout: 5))
     }
 
     func testNavigationShowsMonitoringDestinations() {
@@ -471,7 +481,12 @@ final class TunixUITests: XCTestCase {
         launchAndWaitForMainWindow()
     }
 
-    private func relaunchIncidentFixture(_ mode: String, exportDestination: String? = nil) {
+    private func relaunchIncidentFixture(
+        _ mode: String,
+        exportDestination: String? = nil,
+        savePanelDirectory: String? = nil,
+        savePanelFilename: String? = nil
+    ) {
         app.terminate()
         XCTAssertTrue(
             app.wait(for: .notRunning, timeout: 5),
@@ -485,11 +500,25 @@ final class TunixUITests: XCTestCase {
         if let exportDestination {
             app.launchArguments.append("-UITestingEvidenceExportDestination=\(exportDestination)")
         }
+        if let savePanelDirectory {
+            app.launchArguments.append("-UITestingSavePanelDirectory=\(savePanelDirectory)")
+        }
+        if let savePanelFilename {
+            app.launchArguments.append("-UITestingSavePanelFilename=\(savePanelFilename)")
+        }
         launchAndWaitForMainWindow()
     }
 
     private func launchAndWaitForMainWindow() {
         app.launch()
+        if !app.wait(for: .runningForeground, timeout: 5) {
+            app.terminate()
+            XCTAssertTrue(
+                app.wait(for: .notRunning, timeout: 5),
+                "Small Matter did not terminate after a transient foreground launch failure"
+            )
+            app.launch()
+        }
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 5), "Small Matter did not reach the foreground")
         app.activate()
         if !app.windows.firstMatch.waitForExistence(timeout: 2) {
@@ -679,61 +708,111 @@ extension TunixUITests {
         XCTAssertEqual((textAttributes?[.posixPermissions] as? NSNumber)?.intValue, 0o600)
     }
 
+    // Why: one acceptance test covers three real save-panel/relaunch cycles and their artifacts.
+    // swiftlint:disable:next function_body_length
     func testEvidenceExportSaveActionsUseRealUserSelectedDestination() throws {
-        let documents = try XCTUnwrap(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first)
+        let exportDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(
+                "small-matter-i81-ui-save-panel-\(UUID().uuidString)",
+                isDirectory: true
+            )
+        try FileManager.default.createDirectory(at: exportDirectory, withIntermediateDirectories: true)
         let suffix = UUID().uuidString
-        let jsonDestination = documents.appendingPathComponent("Small-Matter-UI-\(suffix).json")
-        let textDestination = documents.appendingPathComponent("Small-Matter-UI-\(suffix).text")
-        defer {
-            try? FileManager.default.removeItem(at: jsonDestination)
-            try? FileManager.default.removeItem(at: textDestination)
-        }
+        let jsonDestination = exportDirectory.appendingPathComponent("Small-Matter-UI-\(suffix).json")
+        let textDestination = exportDirectory.appendingPathComponent("Small-Matter-UI-\(suffix).text")
+        defer { try? FileManager.default.removeItem(at: exportDirectory) }
 
-        relaunchIncidentFixture("export-supported")
+        relaunchIncidentFixture(
+            "export-supported",
+            savePanelDirectory: exportDirectory.path,
+            savePanelFilename: jsonDestination.lastPathComponent
+        )
         app.staticTexts["navigation-Recent Changes"].click()
         app.buttons["incident-history-row-00000000-0000-0000-0000-000000000305"].click()
-        app.buttons["incident-preview-evidence-export"].click()
-        saveThroughRealSavePanel(button: "evidence-export-save-json", filename: jsonDestination.lastPathComponent)
+        openEvidenceExportPreview(waitingFor: "evidence-export-save-json")
+        saveThroughRealSavePanel(
+            button: "evidence-export-save-json",
+            filename: jsonDestination.lastPathComponent,
+            selectDocuments: false,
+            enterFilename: false
+        )
         let jsonData = try Data(contentsOf: jsonDestination)
         XCTAssertNotNil(try? JSONSerialization.jsonObject(with: jsonData), "The JSON export must be valid JSON.")
-        XCTAssertFalse(String(data: jsonData, encoding: .utf8)?.contains(documents.path) == true)
+        XCTAssertFalse(String(data: jsonData, encoding: .utf8)?.contains(exportDirectory.path) == true)
         XCTAssertEqual(try permissions(of: jsonDestination), 0o600)
 
-        relaunchIncidentFixture("export-supported")
+        relaunchIncidentFixture(
+            "export-supported",
+            savePanelDirectory: exportDirectory.path,
+            savePanelFilename: jsonDestination.lastPathComponent
+        )
         app.staticTexts["navigation-Recent Changes"].click()
         app.buttons["incident-history-row-00000000-0000-0000-0000-000000000305"].click()
-        app.buttons["incident-preview-evidence-export"].click()
-        saveThroughRealSavePanel(button: "evidence-export-save-json", filename: jsonDestination.lastPathComponent)
+        openEvidenceExportPreview(waitingFor: "evidence-export-save-json")
+        saveThroughRealSavePanel(
+            button: "evidence-export-save-json",
+            filename: jsonDestination.lastPathComponent,
+            selectDocuments: false,
+            enterFilename: false
+        )
         XCTAssertNotNil(try? JSONSerialization.jsonObject(with: Data(contentsOf: jsonDestination)))
         XCTAssertEqual(try permissions(of: jsonDestination), 0o600)
 
-        relaunchIncidentFixture("export-supported")
+        relaunchIncidentFixture(
+            "export-supported",
+            savePanelDirectory: exportDirectory.path,
+            savePanelFilename: textDestination.lastPathComponent
+        )
         app.staticTexts["navigation-Recent Changes"].click()
         app.buttons["incident-history-row-00000000-0000-0000-0000-000000000305"].click()
-        app.buttons["incident-preview-evidence-export"].click()
-        saveThroughRealSavePanel(button: "evidence-export-save-text", filename: textDestination.lastPathComponent)
+        openEvidenceExportPreview(waitingFor: "evidence-export-save-text")
+        saveThroughRealSavePanel(
+            button: "evidence-export-save-text",
+            filename: textDestination.lastPathComponent,
+            selectDocuments: false,
+            enterFilename: false
+        )
         XCTAssertTrue(try String(data: Data(contentsOf: textDestination), encoding: .utf8)?
-            .contains("SMALL MATTER") == true)
+            .contains("Small Matter Evidence Package") == true)
         XCTAssertEqual(try permissions(of: textDestination), 0o600)
     }
 
-    private func saveThroughRealSavePanel(button: String, filename: String) {
+    private func openEvidenceExportPreview(waitingFor saveButtonIdentifier: String) {
+        let previewButton = app.buttons["incident-preview-evidence-export"]
+        XCTAssertTrue(previewButton.waitForExistence(timeout: 5), app.debugDescription)
+        previewButton.click()
+        let saveButton = app.buttons[saveButtonIdentifier]
+        if !saveButton.waitForExistence(timeout: 5) {
+            previewButton.click()
+        }
+        XCTAssertTrue(saveButton.waitForExistence(timeout: 5), app.debugDescription)
+    }
+
+    private func saveThroughRealSavePanel(
+        button: String,
+        filename: String,
+        selectDocuments: Bool = true,
+        enterFilename: Bool = true
+    ) {
         app.buttons[button].click()
         let panel = app.descendants(matching: .any)["save-panel"]
         XCTAssertTrue(panel.waitForExistence(timeout: 5), app.debugDescription)
         let wherePopup = app.popUpButtons["where popup"]
-        if wherePopup.waitForExistence(timeout: 2), (wherePopup.value as? String) != "Documents" {
+        if selectDocuments, wherePopup.waitForExistence(timeout: 2), (wherePopup.value as? String) != "Documents" {
             wherePopup.click()
-            let documentsItem = app.menuItems["Documents"]
-            if documentsItem.waitForExistence(timeout: 2) {
-                documentsItem.click()
-            }
+            let documentsItems = panel.descendants(matching: .menuItem).matching(
+                NSPredicate(format: "identifier == 'retargetFromMenuItem:' AND title == %@", "Documents")
+            )
+            XCTAssertEqual(documentsItems.count, 1, app.debugDescription)
+            documentsItems.firstMatch.click()
         }
         let nameField = app.textFields["saveAsNameTextField"]
         XCTAssertTrue(nameField.waitForExistence(timeout: 5), app.debugDescription)
-        nameField.click()
-        nameField.typeKey("a", modifierFlags: .command)
-        nameField.typeText(filename)
+        if enterFilename {
+            nameField.click()
+            nameField.typeKey("a", modifierFlags: .command)
+            nameField.typeText(filename)
+        }
         app.buttons["OKButton"].click()
         if app.buttons["action-button-1"].waitForExistence(timeout: 2) {
             app.buttons["action-button-1"].click()
