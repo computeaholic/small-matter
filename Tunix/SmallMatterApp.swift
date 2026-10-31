@@ -172,8 +172,11 @@ struct SmallMatterApp: App {
                 .environmentObject(appDelegate.evidenceRuntime)
                 .environmentObject(appDelegate.incidentCapture)
                 .environmentObject(appDelegate.contextHistory)
+            #if DEBUG
+                .preferredColorScheme(VisualAcceptanceConfiguration.colorScheme)
+            #endif
         }
-        .defaultSize(width: 1100, height: 720)
+        .defaultSize(width: visualAcceptanceWidth, height: visualAcceptanceHeight)
 
         Settings {
             SettingsView()
@@ -184,7 +187,52 @@ struct SmallMatterApp: App {
             SmallMatterCommands(keepAwake: keepAwake)
         }
     }
+
+    private var visualAcceptanceWidth: CGFloat {
+        #if DEBUG
+            return VisualAcceptanceConfiguration.width
+        #else
+            return 1100
+        #endif
+    }
+
+    private var visualAcceptanceHeight: CGFloat {
+        #if DEBUG
+            return VisualAcceptanceConfiguration.height
+        #else
+            return 720
+        #endif
+    }
 }
+
+#if DEBUG
+    private enum VisualAcceptanceConfiguration {
+        private static let arguments = ProcessInfo.processInfo.arguments
+
+        static var width: CGFloat {
+            value(after: "-VisualAcceptanceWidth").flatMap { Double($0) }.map { CGFloat($0) } ?? 1100
+        }
+
+        static var height: CGFloat {
+            value(after: "-VisualAcceptanceHeight").flatMap { Double($0) }.map { CGFloat($0) } ?? 720
+        }
+
+        static var colorScheme: ColorScheme? {
+            switch value(after: "-VisualAcceptanceAppearance")?.lowercased() {
+            case "light": return .light
+            case "dark": return .dark
+            default: return nil
+            }
+        }
+
+        private static func value(after flag: String) -> String? {
+            guard let index = arguments.firstIndex(of: flag), arguments.indices.contains(index + 1) else {
+                return nil
+            }
+            return arguments[index + 1]
+        }
+    }
+#endif
 
 extension Notification.Name {
     static let tunixNavigate = Notification.Name("com.tunix.navigate")
@@ -226,7 +274,7 @@ private struct SmallMatterCommands: Commands {
             navigationButton("Overview", destination: .overview, shortcut: "1")
             navigationButton("Recent Changes", destination: .recentChanges, shortcut: "7")
             navigationButton("Performance", destination: .performance, shortcut: "2")
-            navigationButton("Cooling", destination: .cooling, shortcut: "3")
+            navigationButton("Cooling Details", destination: .cooling, shortcut: "3")
             navigationButton("Battery", destination: .battery, shortcut: "4")
             navigationButton("Cleanup", destination: .cleanup, shortcut: "5")
             navigationButton("System Health", destination: .systemHealth, shortcut: "6")

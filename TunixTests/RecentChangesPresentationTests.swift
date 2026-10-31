@@ -6,6 +6,13 @@ import XCTest
 // Why: this suite keeps the complete Recent Changes presentation contract together.
 // swiftlint:disable:next type_body_length
 final class RecentChangesPresentationTests: XCTestCase {
+    func testCapturePresentationKeepsStatusAndCoverageMeaningDistinct() {
+        XCTAssertEqual(IncidentCapturePresentation.status(for: .complete), "Captured successfully")
+        XCTAssertEqual(IncidentCapturePresentation.status(for: .incomplete), "Captured with limitations")
+        XCTAssertTrue(IncidentCapturePresentation.incompleteDetail.contains("Missing evidence is not proof"))
+        XCTAssertTrue(IncidentCapturePresentation.zeroObservationDetail.contains("does not establish"))
+    }
+
     func testLoadedFixturePresentsFactsAndSupplementalNetwork() async {
         let model = RecentChangesViewModel(
             journal: RecentChangesFixture.journal(arguments: ["-UITestingRecentChanges=loaded"])

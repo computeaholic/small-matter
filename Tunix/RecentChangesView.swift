@@ -233,13 +233,18 @@ private struct IncidentCapturePanel: View {
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier("incident-capture-window")
             case .complete:
-                Text("Complete")
+                Text("Captured successfully")
                     .font(.callout.weight(.medium))
                     .accessibilityIdentifier("incident-capture-complete")
             case .incomplete:
-                Text("Incomplete")
-                    .font(.callout.weight(.medium))
-                    .accessibilityIdentifier("incident-capture-incomplete")
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Captured with limitations")
+                    Text(IncidentCapturePresentation.incompleteDetail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .font(.callout.weight(.medium))
+                .accessibilityIdentifier("incident-capture-incomplete")
             case .unavailable, .failure:
                 Text("Capture is unavailable right now.")
                     .font(.callout)
@@ -261,7 +266,7 @@ private struct IncidentCapturePanel: View {
                         )
                     } label: {
                         HStack {
-                            Text(incident.status == .complete ? "Complete" : "Incomplete")
+                            Text(IncidentCapturePresentation.status(for: incident.status))
                             Spacer()
                             Text(DateFormatter.recentChanges.string(from: incident.marker.wallTime))
                                 .foregroundStyle(.secondary)
@@ -320,7 +325,13 @@ private struct IncidentSummaryView: View {
                 }
 
                 Section("Capture") {
-                    summaryRow("Status", incident.status == .complete ? "Complete" : "Incomplete")
+                    summaryRow("Status", IncidentCapturePresentation.status(for: incident.status))
+                    if incident.status == .incomplete {
+                        Text(IncidentCapturePresentation.incompleteDetail)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("incident-summary-incomplete-detail")
+                    }
                     summaryRow("Marker", DateFormatter.recentChanges.string(from: incident.marker.wallTime))
                     summaryRow("Window", "60 seconds before · 120 seconds after")
                     summaryRow("Observations", String(observations.count))
@@ -339,7 +350,7 @@ private struct IncidentSummaryView: View {
 
                 Section("CHANGES OBSERVED") {
                     if visibleObservations.isEmpty {
-                        Text("No supported system transitions were observed during this capture window.")
+                        Text(IncidentCapturePresentation.zeroObservationDetail)
                             .foregroundStyle(.secondary)
                             .accessibilityIdentifier("incident-no-observations")
                     } else {
