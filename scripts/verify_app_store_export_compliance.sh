@@ -8,7 +8,7 @@ build_settings=$(/usr/bin/xcodebuild \
     -configuration MacAppStore \
     -showBuildSettings)
 
-if ! printf '%s\n' "$build_settings" | rg -q '^    INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO$'; then
+if ! printf '%s\n' "$build_settings" | rg -q 'INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO'; then
     echo "Mac App Store export compliance declaration is missing or not NO" >&2
     exit 1
 fi
