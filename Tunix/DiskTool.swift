@@ -21,6 +21,7 @@ final class DiskTool: ObservableObject {
     private let history: CleanupHistoryLog
     private let deletionIntentLog: CleanupDeletionIntentLog
     private let legacyIntentLog: CleanupIntentLog
+    private var scanWorkItem: DispatchWorkItem?
 
     init(
         storage: any CleanupStorage = LocalCleanupStorage(),
@@ -47,20 +48,32 @@ final class DiskTool: ObservableObject {
     }
 
     func scan() {
-        guard !isScanning, !isDeleting else { return }
+        if isScanning {
+            scanWorkItem?.cancel()
+            return
+        }
+        guard !isDeleting else { return }
         isScanning = true
         lastError = nil
         let roots = self.roots
         let engine = engine
-        DispatchQueue.global(qos: .utility).async {
-            let result = engine.inventory(roots: roots)
+        var workItem: DispatchWorkItem!
+        workItem = DispatchWorkItem { [weak self] in
+            let result = engine.inventory(roots: roots, shouldCancel: { workItem.isCancelled })
             DispatchQueue.main.async {
+                guard let self else { return }
                 self.inventory = result
-                self.selectedCandidateIDs = Set(result.candidates.map(\.id))
+                self.selectedCandidateIDs = []
                 self.lastScan = result.scannedAt
                 self.isScanning = false
+                self.scanWorkItem = nil
+                if !result.isComplete {
+                    self.lastError = "The scan was incomplete. Review the safety notice before scanning again."
+                }
             }
         }
+        scanWorkItem = workItem
+        DispatchQueue.global(qos: .utility).async(execute: workItem)
     }
 
     func chooseXcodeDerivedDataLocation() {
@@ -119,6 +132,7 @@ final class DiskTool: ObservableObject {
     func deleteSelected() {
         guard !isDeleting,
               let inventory,
+              inventory.isComplete,
               !selectedCandidateIDs.isEmpty
         else { return }
 
@@ -156,6 +170,24 @@ final class DiskTool: ObservableObject {
                 }
             }
         }
+    }
+
+    var selectedCandidates: [CleanupCandidate] {
+        guard let inventory else { return [] }
+        return inventory.candidates.filter { selectedCandidateIDs.contains($0.id) }
+    }
+
+    var selectedCandidateCount: Int {
+        selectedCandidates.count
+    }
+
+    var selectedAllocatedBytes: UInt64 {
+        selectedCandidates.reduce(0) { $0 + $1.allocatedBytes }
+    }
+
+    var selectedScopeDescription: String {
+        let labels = Set(selectedCandidates.map(\.category)).sorted()
+        return labels.isEmpty ? "no approved scope" : labels.joined(separator: ", ")
     }
 
     func undoLastAction() {

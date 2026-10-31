@@ -94,8 +94,9 @@ struct CleanupCapabilityNote: View {
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
             Text(
-                "Xcode cleanup is blocked while known Xcode/build processes are active. " +
-                    "Quarantined files are reversible; permanently deleted files are not."
+                "Derived Data cleanup is blocked while known Xcode/build processes are active or when macOS " +
+                    "cannot provide a complete process snapshot. Quarantined files are reversible; permanently " +
+                    "deleted files are not."
             )
             .font(.caption)
             .foregroundStyle(.secondary)

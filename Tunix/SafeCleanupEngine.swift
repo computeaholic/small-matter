@@ -4,28 +4,52 @@ private struct CleanupRootInventory {
     var scannedItemCount = 0
     var candidates: [CleanupCandidate] = []
     var skippedByReason: [CleanupSkipReason: Int] = [:]
+    var isComplete = true
+}
+
+private struct CleanupDeletionAccounting {
+    var deletedCount = 0
+    var staleCount = 0
+    var failedCount = 0
+    var diagnostics: [CleanupDiagnostic] = []
 }
 
 struct SafeCleanupEngine {
     let storage: any CleanupStorage
-    private let activeDevelopmentProcessNames: () -> [String]
+    let developmentProcessSnapshot: () -> DevelopmentProcessSnapshot
 
     init(
         storage: any CleanupStorage = LocalCleanupStorage(),
-        activeDevelopmentProcessNames: @escaping () -> [String] = LocalCleanupStorage.activeDevelopmentProcessNames
+        developmentProcessSnapshot: @escaping () -> DevelopmentProcessSnapshot =
+            LocalCleanupStorage.activeDevelopmentProcessSnapshot
     ) {
         self.storage = storage
-        self.activeDevelopmentProcessNames = activeDevelopmentProcessNames
+        self.developmentProcessSnapshot = developmentProcessSnapshot
     }
 
     func inventory(
         roots: [CleanupRoot],
         distribution: CleanupDistributionContext = .current,
-        now: Date = .now
+        now: Date = .now,
+        maxItemsPerRoot: Int = 50000,
+        shouldCancel: @escaping () -> Bool = { false }
     ) -> CleanupInventory {
-        let rootInventories = roots.map { inventory(root: $0) }
+        var rootInventories: [CleanupRootInventory] = []
+        for root in roots {
+            let rootInventory = inventory(
+                root: root,
+                maxItems: maxItemsPerRoot,
+                shouldCancel: shouldCancel
+            )
+            rootInventories.append(rootInventory)
+            if !rootInventory.isComplete,
+               rootInventory.skippedByReason[.scanCancelled] != nil {
+                break
+            }
+        }
         let candidates = rootInventories.flatMap(\.candidates)
         let scannedItemCount = rootInventories.reduce(0) { $0 + $1.scannedItemCount }
+        let isComplete = rootInventories.allSatisfy(\.isComplete)
         let skippedByReason = rootInventories.reduce(into: [CleanupSkipReason: Int]()) { partial, result in
             for (reason, count) in result.skippedByReason {
                 partial[reason, default: 0] += count
@@ -41,33 +65,74 @@ struct SafeCleanupEngine {
             skipped: skipped,
             roots: roots,
             distribution: distribution,
-            scannedAt: now
+            scannedAt: now,
+            isComplete: isComplete
         )
     }
 
-    private func inventory(root: CleanupRoot) -> CleanupRootInventory {
+    private func inventory(
+        root: CleanupRoot,
+        maxItems: Int,
+        shouldCancel: () -> Bool
+    ) -> CleanupRootInventory {
         let standardizedRoot = root.url.standardizedFileURL
         guard !standardizedRoot.path.isEmpty,
               standardizedRoot.resolvingSymlinksInPath().standardizedFileURL.path == standardizedRoot.path
         else {
-            return CleanupRootInventory(skippedByReason: [.outsideApprovedScope: 1])
+            return CleanupRootInventory(skippedByReason: [.outsideApprovedScope: 1], isComplete: false)
         }
         guard storage.exists(at: root.url) else { return CleanupRootInventory() }
-        if root.scope == .xcodeDerivedData,
-           !activeDevelopmentProcessNames().isEmpty {
-            return CleanupRootInventory(skippedByReason: [.activeDevelopmentProcess: 1])
+        guard let rootMetadata = try? storage.metadata(for: root.url),
+              rootMetadata.isDirectory,
+              !rootMetadata.isSymbolicLink,
+              let rootResourceIdentifier = rootMetadata.resourceIdentifier
+        else {
+            return CleanupRootInventory(skippedByReason: [.metadataUnavailable: 1], isComplete: false)
+        }
+        if root.scope == .xcodeDerivedData {
+            let processSnapshot = developmentProcessSnapshot()
+            guard processSnapshot.isComplete else {
+                return CleanupRootInventory(
+                    skippedByReason: [.processDetectionUnavailable: 1],
+                    isComplete: false
+                )
+            }
+            guard processSnapshot.names.isEmpty else {
+                return CleanupRootInventory(skippedByReason: [.activeDevelopmentProcess: 1])
+            }
         }
 
-        let items: [URL]
+        let enumeration: CleanupEnumerationResult
         do {
-            items = try storage.enumerateItems(at: root.url)
+            enumeration = try storage.enumerateItems(
+                at: root.url,
+                limit: maxItems,
+                shouldCancel: shouldCancel
+            )
         } catch {
-            return CleanupRootInventory(skippedByReason: [.metadataUnavailable: 1])
+            return CleanupRootInventory(skippedByReason: [.metadataUnavailable: 1], isComplete: false)
         }
-        return inventory(items: items, root: root)
+        var result = inventory(
+            items: enumeration.items,
+            root: root,
+            rootResourceIdentifier: rootResourceIdentifier
+        )
+        if enumeration.reachedLimit {
+            result.skippedByReason[.inventoryLimitReached, default: 0] += 1
+            result.isComplete = false
+        }
+        if enumeration.wasCancelled {
+            result.skippedByReason[.scanCancelled, default: 0] += 1
+            result.isComplete = false
+        }
+        return result
     }
 
-    private func inventory(items: [URL], root: CleanupRoot) -> CleanupRootInventory {
+    private func inventory(
+        items: [URL],
+        root: CleanupRoot,
+        rootResourceIdentifier: String
+    ) -> CleanupRootInventory {
         var result = CleanupRootInventory()
         for item in items {
             result.scannedItemCount += 1
@@ -79,7 +144,16 @@ struct SafeCleanupEngine {
                 result.skippedByReason[.metadataUnavailable, default: 0] += 1
                 continue
             }
-            switch decision(for: item, metadata: metadata, root: root) {
+            guard sameFileSystem(metadata.resourceIdentifier, rootResourceIdentifier) else {
+                result.skippedByReason[.outsideApprovedScope, default: 0] += 1
+                continue
+            }
+            switch decision(
+                for: item,
+                metadata: metadata,
+                root: root,
+                rootResourceIdentifier: rootResourceIdentifier
+            ) {
             case let .candidate(candidate):
                 result.candidates.append(candidate)
             case let .skip(reason):
@@ -91,7 +165,7 @@ struct SafeCleanupEngine {
 
     func delete(
         candidates: [CleanupCandidate],
-        roots: [CleanupRoot] = [],
+        roots: [CleanupRoot],
         beforeEachDelete: ((CleanupCandidate) -> Void)? = nil,
         now: Date = .now
     ) -> CleanupDeletionResult {
@@ -99,51 +173,59 @@ struct SafeCleanupEngine {
         let referenceURL = URL(fileURLWithPath: selected.first?.path ?? NSTemporaryDirectory())
         let availableBefore = storage.availableBytes(at: referenceURL)
         let rootsByID = Dictionary(uniqueKeysWithValues: roots.map { ($0.id, $0) })
-        var deletedCount = 0
-        var staleCount = 0
-        var failedCount = 0
-        var diagnostics: [CleanupDiagnostic] = []
-
-        for candidate in selected {
-            switch delete(
-                candidate: candidate,
-                root: rootsByID[candidate.rootID],
-                beforeEachDelete: beforeEachDelete
-            ) {
-            case .deleted:
-                deletedCount += 1
-            case let .stale(reason):
-                staleCount += 1
-                diagnostics.append(CleanupDiagnostic(category: candidate.category, reason: reason, count: 1))
-            case let .failed(reason):
-                failedCount += 1
-                diagnostics.append(CleanupDiagnostic(category: candidate.category, reason: reason, count: 1))
-            }
-        }
+        let accounting = deleteSelectedCandidates(
+            selected,
+            rootsByID: rootsByID,
+            beforeEachDelete: beforeEachDelete
+        )
 
         let availableAfter = storage.availableBytes(at: referenceURL)
-        let observedReclaimed: UInt64?
-        if let availableBefore, let availableAfter, availableAfter > availableBefore {
-            observedReclaimed = availableAfter - availableBefore
-        } else if availableBefore != nil, availableAfter != nil {
-            observedReclaimed = 0
-        } else {
-            observedReclaimed = nil
-        }
 
         return CleanupDeletionResult(
             scannedItemCount: selected.count,
             attemptedCount: selected.count,
-            deletedCount: deletedCount,
-            staleCount: staleCount,
-            failedCount: failedCount,
+            deletedCount: accounting.deletedCount,
+            staleCount: accounting.staleCount,
+            failedCount: accounting.failedCount,
             estimatedAllocatedBytes: selected.reduce(0) { $0 + $1.allocatedBytes },
-            observedSpaceReclaimedBytes: observedReclaimed,
+            observedSpaceReclaimedBytes: observedSpaceReclaimed(before: availableBefore, after: availableAfter),
             availableBytesBefore: availableBefore,
             availableBytesAfter: availableAfter,
-            diagnostics: diagnostics,
+            diagnostics: accounting.diagnostics,
             completedAt: now
         )
+    }
+
+    private func deleteSelectedCandidates(
+        _ candidates: [CleanupCandidate],
+        rootsByID: [String: CleanupRoot],
+        beforeEachDelete: ((CleanupCandidate) -> Void)?
+    ) -> CleanupDeletionAccounting {
+        var accounting = CleanupDeletionAccounting()
+        for candidate in candidates {
+            guard let root = rootsByID[candidate.rootID] else {
+                accounting.staleCount += 1
+                accounting.diagnostics.append(
+                    CleanupDiagnostic(category: candidate.category, reason: "Approved root unavailable", count: 1)
+                )
+                continue
+            }
+            switch delete(candidate: candidate, root: root, beforeEachDelete: beforeEachDelete) {
+            case .deleted:
+                accounting.deletedCount += 1
+            case let .stale(reason):
+                accounting.staleCount += 1
+                accounting.diagnostics.append(
+                    CleanupDiagnostic(category: candidate.category, reason: reason, count: 1)
+                )
+            case let .failed(reason):
+                accounting.failedCount += 1
+                accounting.diagnostics.append(
+                    CleanupDiagnostic(category: candidate.category, reason: reason, count: 1)
+                )
+            }
+        }
+        return accounting
     }
 
     private enum InventoryDecision {
@@ -151,16 +233,11 @@ struct SafeCleanupEngine {
         case skip(CleanupSkipReason)
     }
 
-    private enum CandidateDeletionOutcome {
-        case deleted
-        case stale(String)
-        case failed(String)
-    }
-
     private func decision(
         for item: URL,
         metadata: CleanupFileMetadata,
-        root: CleanupRoot
+        root: CleanupRoot,
+        rootResourceIdentifier: String
     ) -> InventoryDecision {
         if metadata.isSymbolicLink {
             return .skip(.symbolicLink)
@@ -190,70 +267,11 @@ struct SafeCleanupEngine {
                 logicalBytes: metadata.logicalBytes,
                 allocatedBytes: metadata.allocatedBytes,
                 evidence: root.explanation,
+                approvedRootResourceIdentifier: rootResourceIdentifier,
                 access: .eligible,
                 exclusionReason: nil,
                 fingerprint: metadata.fingerprint
             )
         )
-    }
-
-    private func delete(
-        candidate: CleanupCandidate,
-        root: CleanupRoot?,
-        beforeEachDelete: ((CleanupCandidate) -> Void)?
-    ) -> CandidateDeletionOutcome {
-        let url = URL(fileURLWithPath: candidate.path)
-        guard storage.exists(at: url) else { return .stale("No longer present") }
-        if let root {
-            guard isCanonicalDescendant(url, of: root) else {
-                return .stale("Path changed outside approved scope")
-            }
-            if root.scope == .xcodeDerivedData,
-               !activeDevelopmentProcessNames().isEmpty {
-                return .stale("Active development process detected")
-            }
-        }
-        guard let current = try? storage.metadata(for: url),
-              current.fingerprint == candidate.fingerprint
-        else { return .stale("Changed after scan") }
-
-        beforeEachDelete?(candidate)
-        if let root {
-            guard isCanonicalDescendant(url, of: root) else {
-                return .stale("Path changed outside approved scope")
-            }
-            if root.scope == .xcodeDerivedData,
-               !activeDevelopmentProcessNames().isEmpty {
-                return .stale("Active development process detected")
-            }
-        }
-        guard let revalidated = try? storage.metadata(for: url),
-              revalidated.fingerprint == candidate.fingerprint
-        else { return .stale("Changed before deletion") }
-
-        do {
-            try storage.deleteItem(at: url)
-            return storage.exists(at: url)
-                ? .failed("Deletion could not be verified")
-                : .deleted
-        } catch {
-            return .failed("Permission or filesystem failure")
-        }
-    }
-
-    private func isDescendant(_ item: URL, of root: URL) -> Bool {
-        let rootPath = root.standardizedFileURL.path
-        let itemPath = item.standardizedFileURL.path
-        return itemPath.hasPrefix(rootPath + "/")
-    }
-
-    private func isCanonicalDescendant(_ item: URL, of root: CleanupRoot) -> Bool {
-        let standardizedRoot = root.url.standardizedFileURL
-        let standardizedItem = item.standardizedFileURL
-        guard standardizedRoot.resolvingSymlinksInPath().standardizedFileURL.path == standardizedRoot.path,
-              isDescendant(standardizedItem, of: standardizedRoot),
-              standardizedItem.resolvingSymlinksInPath().standardizedFileURL.path == standardizedItem.path
-        else { return false }
-        return true
     }
 }

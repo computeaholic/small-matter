@@ -24,20 +24,29 @@ struct DiskToolView: View {
         }
         .navigationTitle("Cleanup")
         .confirmationDialog(
-            "Delete eligible files?",
+            deletionTitle,
             isPresented: $showingDeletionConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Delete Eligible Files", role: .destructive) {
+            Button("Delete Selected Files", role: .destructive) {
                 diskTool.deleteSelected()
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text(
-                "This permanently deletes the reviewed eligible files in the selected supported scope. " +
-                    "They are not placed in Quarantine and cannot be undone."
-            )
+            Text(deletionMessage)
         }
+    }
+
+    private var deletionTitle: String {
+        "Delete \(diskTool.selectedCandidateCount) selected file\(diskTool.selectedCandidateCount == 1 ? "" : "s")?"
+    }
+
+    private var deletionMessage: String {
+        let count = diskTool.selectedCandidateCount
+        let fileLabel = count == 1 ? "file" : "files"
+        return "This permanently deletes \(count) selected \(fileLabel) " +
+            "(\(formatter.string(fromByteCount: Int64(diskTool.selectedAllocatedBytes)))) from " +
+            "\(diskTool.selectedScopeDescription). They are not placed in Quarantine and cannot be undone."
     }
 
     @ViewBuilder
@@ -83,11 +92,11 @@ struct DiskToolView: View {
 
     private var controls: some View {
         HStack(spacing: 12) {
-            Button(diskTool.isScanning ? "Scanning…" : scanLabel) {
+            Button(diskTool.isScanning ? "Cancel Scan" : scanLabel) {
                 diskTool.scan()
             }
             .buttonStyle(.borderedProminent)
-            .disabled(diskTool.isScanning || diskTool.isDeleting)
+            .disabled(diskTool.isDeleting)
             .accessibilityIdentifier("cleanup-scan")
 
             Button("Review Xcode Derived Data…") {
@@ -102,7 +111,7 @@ struct DiskToolView: View {
             }
             .buttonStyle(.bordered)
             .disabled(
-                diskTool.isScanning || diskTool.isDeleting || diskTool.inventory == nil
+                diskTool.isScanning || diskTool.isDeleting || diskTool.inventory?.isComplete != true
                     || diskTool.selectedCandidateIDs.isEmpty
             )
             .accessibilityIdentifier("cleanup-delete-selected")
@@ -127,6 +136,14 @@ struct DiskToolView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            if diskTool.selectedCandidateCount > 0 {
+                Text(
+                    "Selected: \(diskTool.selectedCandidateCount) · " +
+                        formatter.string(fromByteCount: Int64(diskTool.selectedAllocatedBytes))
+                )
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            }
         }
     }
 
@@ -145,6 +162,7 @@ struct DiskToolView: View {
                 HStack(spacing: 16) {
                     CleanupSummaryMetric("Scanned", value: "\(inventory.scannedItemCount)")
                     CleanupSummaryMetric("Eligible", value: "\(inventory.candidates.count)")
+                    CleanupSummaryMetric("Selected", value: "\(diskTool.selectedCandidateCount)")
                     CleanupSummaryMetric(
                         "Estimated",
                         value: formatter.string(fromByteCount: Int64(inventory.estimatedAllocatedBytes))
@@ -155,9 +173,25 @@ struct DiskToolView: View {
                 if inventory.candidates.isEmpty {
                     emptyOpportunities
                 } else {
+                    Text(
+                        "Nothing is selected by default. Select individual files after reviewing their category " +
+                            "and estimated allocated size."
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                     ForEach(inventory.candidates) { candidate in
                         CleanupCandidateRow(diskTool: diskTool, candidate: candidate, formatter: formatter)
                     }
+                }
+
+                if !inventory.isComplete {
+                    Text(
+                        "Deletion is disabled because this inventory is incomplete. " +
+                            "Scan again after the safety condition clears."
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
                 }
 
                 if !inventory.skipped.isEmpty {

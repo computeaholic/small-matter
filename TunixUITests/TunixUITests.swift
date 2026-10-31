@@ -61,13 +61,14 @@ final class TunixUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["cleanup-not-scanned"].exists)
 
         scan.click()
+        let notScanned = app.descendants(matching: .any)["cleanup-not-scanned"]
         let deadline = Date().addingTimeInterval(5)
-        while scan.label == "Scanning…", Date() < deadline {
+        while notScanned.exists, Date() < deadline {
             RunLoop.current.run(until: Date().addingTimeInterval(0.05))
         }
 
-        XCTAssertNotEqual(scan.label, "Scanning…", "Cleanup scan did not finish")
-        XCTAssertFalse(app.descendants(matching: .any)["cleanup-not-scanned"].exists)
+        XCTAssertFalse(notScanned.exists, "Cleanup scan did not finish")
+        XCTAssertNotEqual(scan.label, "Cancel Scan", "Cleanup scan remained in progress")
         XCTAssertTrue(
             app.descendants(matching: .any)["cleanup-empty-state"].exists
                 || app.descendants(matching: .any).matching(

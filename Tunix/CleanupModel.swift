@@ -42,6 +42,9 @@ enum CleanupSkipReason: String, Codable, Equatable, CaseIterable {
     case outsideApprovedScope = "Outside approved scope"
     case hidden = "Hidden file"
     case activeDevelopmentProcess = "Active development process"
+    case processDetectionUnavailable = "Development-process detection unavailable"
+    case inventoryLimitReached = "Inventory limit reached; scan incomplete"
+    case scanCancelled = "Scan cancelled"
 
     var label: String {
         rawValue
@@ -111,6 +114,7 @@ struct CleanupCandidate: Identifiable, Codable, Equatable {
     let logicalBytes: UInt64
     let allocatedBytes: UInt64
     let evidence: String
+    let approvedRootResourceIdentifier: String?
     let access: CleanupAccessState
     let exclusionReason: String?
     let fingerprint: CleanupFileFingerprint
@@ -132,13 +136,10 @@ struct CleanupInventory: Equatable {
     let roots: [CleanupRoot]
     let distribution: CleanupDistributionContext
     let scannedAt: Date
+    let isComplete: Bool
 
     var estimatedAllocatedBytes: UInt64 {
         candidates.reduce(0) { $0 + $1.allocatedBytes }
-    }
-
-    var selectedCandidateCount: Int {
-        candidates.count
     }
 }
 
