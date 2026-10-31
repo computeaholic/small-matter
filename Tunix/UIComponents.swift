@@ -184,14 +184,16 @@ struct TunixMetricRow: View {
 
 struct TunixChartFrame<Content: View>: View {
     private let content: () -> Content
+    private let height: CGFloat
 
-    init(@ViewBuilder content: @escaping () -> Content) {
+    init(height: CGFloat = TunixDesign.chartHeight, @ViewBuilder content: @escaping () -> Content) {
+        self.height = height
         self.content = content
     }
 
     var body: some View {
         content()
-            .frame(height: TunixDesign.chartHeight)
+            .frame(height: height)
             .accessibilityHidden(true)
     }
 }

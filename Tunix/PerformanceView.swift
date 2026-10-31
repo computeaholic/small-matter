@@ -61,33 +61,7 @@ struct PerformanceView: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
-                TunixChartFrame {
-                    Chart(stats.cpuHistory) { sample in
-                        AreaMark(x: .value("Time", sample.timestamp), y: .value("CPU", sample.value))
-                            .foregroundStyle(TunixBrand.accent.opacity(0.12))
-                        LineMark(x: .value("Time", sample.timestamp), y: .value("CPU", sample.value))
-                            .foregroundStyle(TunixBrand.accent)
-                    }
-                    .chartYScale(domain: 0 ... 100)
-                    .chartYAxis {
-                        AxisMarks(values: [0, 25, 50, 75, 100]) { value in
-                            AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
-                                .foregroundStyle(TunixDesign.chartGrid)
-                            AxisValueLabel {
-                                if let percent = value.as(Double.self) {
-                                    Text("\(Int(percent))%")
-                                }
-                            }
-                        }
-                    }
-                    .chartXAxis {
-                        AxisMarks(values: .automatic(desiredCount: 4)) { _ in
-                            AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
-                                .foregroundStyle(TunixDesign.chartGrid)
-                            AxisValueLabel(format: .dateTime.hour().minute())
-                        }
-                    }
-                }
+                PerformanceHistoryChart(stats: stats, kind: .cpu)
                 detailGrid([
                     ("User", stats.cpuUserText),
                     ("System", stats.cpuSystemText),
@@ -117,33 +91,7 @@ struct PerformanceView: View {
                         .font(.subheadline.weight(.semibold).monospacedDigit())
                         .foregroundStyle(.secondary)
                 }
-                TunixChartFrame {
-                    Chart(stats.memoryHistory) { sample in
-                        AreaMark(x: .value("Time", sample.timestamp), y: .value("Memory", sample.value))
-                            .foregroundStyle(TunixBrand.accent.opacity(0.10))
-                        LineMark(x: .value("Time", sample.timestamp), y: .value("Memory", sample.value))
-                            .foregroundStyle(TunixBrand.accent)
-                    }
-                    .chartYScale(domain: 0 ... max(Double(stats.memoryTelemetry.physicalBytes), 1))
-                    .chartYAxis {
-                        AxisMarks(values: .automatic(desiredCount: 4)) { value in
-                            AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
-                                .foregroundStyle(TunixDesign.chartGrid)
-                            AxisValueLabel {
-                                if let bytes = value.as(Double.self) {
-                                    Text(memoryAxisLabel(bytes))
-                                }
-                            }
-                        }
-                    }
-                    .chartXAxis {
-                        AxisMarks(values: .automatic(desiredCount: 4)) { _ in
-                            AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
-                                .foregroundStyle(TunixDesign.chartGrid)
-                            AxisValueLabel(format: .dateTime.hour().minute())
-                        }
-                    }
-                }
+                PerformanceHistoryChart(stats: stats, kind: .memory)
                 detailGrid([
                     ("App", stats.memoryAppText),
                     ("Wired", stats.memoryWiredText),
@@ -170,51 +118,13 @@ struct PerformanceView: View {
                     TunixValueBlock(label: "Download", value: stats.networkDownloadRateText, emphasis: .title2)
                     TunixValueBlock(label: "Upload", value: stats.networkUploadRateText, emphasis: .title2)
                 }
-                TunixChartFrame {
-                    Chart(stats.networkHistory) { sample in
-                        LineMark(
-                            x: .value("Time", sample.timestamp),
-                            y: .value("Download", sample.downloadBytesPerSecond)
-                        )
-                        .foregroundStyle(TunixBrand.accent)
-                        LineMark(
-                            x: .value("Time", sample.timestamp),
-                            y: .value("Upload", sample.uploadBytesPerSecond)
-                        )
-                        .foregroundStyle(.secondary)
-                    }
-                    .chartYScale(domain: 0 ... max(networkMaximum, 1))
-                    .chartYAxis {
-                        AxisMarks(values: .automatic(desiredCount: 4)) { value in
-                            AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
-                                .foregroundStyle(TunixDesign.chartGrid)
-                            AxisValueLabel {
-                                if let rate = value.as(Double.self) {
-                                    Text(rateAxisLabel(rate))
-                                }
-                            }
-                        }
-                    }
-                    .chartXAxis {
-                        AxisMarks(values: .automatic(desiredCount: 4)) { _ in
-                            AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
-                                .foregroundStyle(TunixDesign.chartGrid)
-                            AxisValueLabel(format: .dateTime.hour().minute())
-                        }
-                    }
-                }
+                PerformanceHistoryChart(stats: stats, kind: .network)
                 HStack(spacing: 16) {
-                    legendItem("Download", color: TunixBrand.accent)
-                    legendItem("Upload", color: TunixBrand.secondary)
+                    legendItem("Download", systemImage: "arrow.down")
+                    legendItem("Upload", systemImage: "arrow.up")
                 }
             }
         }
-    }
-
-    private var networkMaximum: Double {
-        stats.networkHistory
-            .flatMap { [$0.downloadBytesPerSecond, $0.uploadBytesPerSecond] }
-            .max() ?? 1
     }
 
     private var memoryColor: Color {
@@ -234,10 +144,177 @@ struct PerformanceView: View {
         }
     }
 
-    private func legendItem(_ title: String, color: Color) -> some View {
-        Label(title, systemImage: "circle.fill")
+    private func legendItem(_ title: String, systemImage: String) -> some View {
+        Label(title, systemImage: systemImage)
             .font(.caption)
-            .foregroundStyle(color)
+            .foregroundStyle(title == "Download" ? TunixBrand.accent : TunixBrand.secondary)
+    }
+}
+
+enum PerformanceChartKind {
+    case cpu
+    case memory
+    case network
+
+    var title: String {
+        switch self {
+        case .cpu: return "CPU"
+        case .memory: return "Memory"
+        case .network: return "Network"
+        }
+    }
+}
+
+struct PerformanceHistoryChart: View {
+    @ObservedObject var stats: SystemStatsModel
+    let kind: PerformanceChartKind
+    var height: CGFloat = TunixDesign.chartHeight
+
+    var body: some View {
+        historyContent
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(kind.title) history")
+            .accessibilityValue(accessibilityValue)
+    }
+
+    @ViewBuilder
+    private var historyContent: some View {
+        switch kind {
+        case .cpu:
+            historyChart(
+                freshness: stats.cpuSnapshot.freshness,
+                isEmpty: stats.cpuHistory.isEmpty
+            ) {
+                Chart(stats.cpuHistory) { sample in
+                    AreaMark(x: .value("Time", sample.timestamp), y: .value("CPU", sample.value))
+                        .foregroundStyle(TunixBrand.accent.opacity(0.12))
+                    LineMark(x: .value("Time", sample.timestamp), y: .value("CPU", sample.value))
+                        .foregroundStyle(TunixBrand.accent)
+                }
+                .chartYScale(domain: 0 ... 100)
+                .chartYAxis {
+                    AxisMarks(values: [0, 25, 50, 75, 100]) { value in
+                        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
+                            .foregroundStyle(TunixDesign.chartGrid)
+                        AxisValueLabel {
+                            if let percent = value.as(Double.self) {
+                                Text("\(Int(percent))%")
+                            }
+                        }
+                    }
+                }
+                .chartXAxis { timeAxis }
+            }
+        case .memory:
+            historyChart(
+                freshness: stats.telemetrySnapshot.memory.freshness,
+                isEmpty: stats.memoryHistory.isEmpty
+            ) {
+                Chart(stats.memoryHistory) { sample in
+                    AreaMark(x: .value("Time", sample.timestamp), y: .value("Memory", sample.value))
+                        .foregroundStyle(TunixBrand.accent.opacity(0.10))
+                    LineMark(x: .value("Time", sample.timestamp), y: .value("Memory", sample.value))
+                        .foregroundStyle(TunixBrand.accent)
+                }
+                .chartYScale(domain: 0 ... max(Double(stats.memoryTelemetry.physicalBytes), 1))
+                .chartYAxis {
+                    AxisMarks(values: .automatic(desiredCount: 4)) { value in
+                        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
+                            .foregroundStyle(TunixDesign.chartGrid)
+                        AxisValueLabel {
+                            if let bytes = value.as(Double.self) {
+                                Text(memoryAxisLabel(bytes))
+                            }
+                        }
+                    }
+                }
+                .chartXAxis { timeAxis }
+            }
+        case .network:
+            historyChart(
+                freshness: stats.networkSnapshot.freshness,
+                isEmpty: stats.networkHistory.isEmpty
+            ) {
+                Chart(stats.networkHistory) { sample in
+                    LineMark(
+                        x: .value("Time", sample.timestamp),
+                        y: .value("Download", sample.downloadBytesPerSecond)
+                    )
+                    .foregroundStyle(TunixBrand.accent)
+                    .lineStyle(StrokeStyle(lineWidth: 2))
+                    LineMark(
+                        x: .value("Time", sample.timestamp),
+                        y: .value("Upload", sample.uploadBytesPerSecond)
+                    )
+                    .foregroundStyle(TunixBrand.secondary)
+                    .lineStyle(StrokeStyle(lineWidth: 2, dash: [5, 4]))
+                }
+                .chartYScale(domain: 0 ... networkMaximum)
+                .chartYAxis {
+                    AxisMarks(values: .automatic(desiredCount: 4)) { value in
+                        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
+                            .foregroundStyle(TunixDesign.chartGrid)
+                        AxisValueLabel {
+                            if let rate = value.as(Double.self) {
+                                Text(rateAxisLabel(rate))
+                            }
+                        }
+                    }
+                }
+                .chartXAxis { timeAxis }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func historyChart<Content: View>(
+        freshness: TelemetryFreshness,
+        isEmpty: Bool,
+        @ViewBuilder content: @escaping () -> Content
+    ) -> some View {
+        if freshness == .unavailable {
+            historyState("Telemetry unavailable")
+        } else if freshness == .stale {
+            historyState("Telemetry stale")
+        } else if isEmpty {
+            historyState("Waiting for bounded history")
+        } else {
+            TunixChartFrame(height: height) { content() }
+        }
+    }
+
+    private func historyState(_ message: String) -> some View {
+        Text(message)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, minHeight: height, alignment: .center)
+    }
+
+    @AxisContentBuilder
+    private var timeAxis: some AxisContent {
+        AxisMarks(values: .automatic(desiredCount: 4)) { _ in
+            AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
+                .foregroundStyle(TunixDesign.chartGrid)
+            AxisValueLabel(format: .dateTime.hour().minute())
+        }
+    }
+
+    private var accessibilityValue: String {
+        switch kind {
+        case .cpu: return "Current \(stats.cpuUsageText); bounded history"
+        case .memory: return "Current \(stats.memoryUsagePercentText); bounded history"
+        case .network:
+            return "Download \(stats.networkDownloadRateText), upload \(stats.networkUploadRateText); bounded history"
+        }
+    }
+
+    private var networkMaximum: Double {
+        max(
+            stats.networkHistory
+                .flatMap { [$0.downloadBytesPerSecond, $0.uploadBytesPerSecond] }
+                .max() ?? 0,
+            1
+        )
     }
 
     private func memoryAxisLabel(_ bytes: Double) -> String {

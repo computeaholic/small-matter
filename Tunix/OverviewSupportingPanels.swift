@@ -10,6 +10,8 @@ struct OverviewSupportingPanels: View {
         ViewThatFits(in: .horizontal) {
             HStack(alignment: .top, spacing: TunixDesign.groupSpacing) {
                 batterySummary
+                Divider()
+                    .frame(height: 44)
                 storageSummary
             }
             VStack(spacing: TunixDesign.groupSpacing) {
@@ -17,69 +19,70 @@ struct OverviewSupportingPanels: View {
                 storageSummary
             }
         }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 10)
+        .background(
+            TunixDesign.subtleFill,
+            in: RoundedRectangle(cornerRadius: TunixDesign.panelRadius, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: TunixDesign.panelRadius, style: .continuous)
+                .stroke(TunixDesign.panelStroke, lineWidth: 0.75)
+        }
+        .accessibilityIdentifier("overview-supporting-details")
     }
 
     private var batterySummary: some View {
-        TunixPanel {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Label(
-                        "Battery & power",
-                        systemImage: battery.isCharging ? "bolt.battery.100percent" : "battery.100percent"
-                    )
-                    .font(.headline)
-                    Spacer()
-                    Button("Details") { navigate(.battery) }
-                        .buttonStyle(.borderless)
-                        .accessibilityIdentifier("overview-open-battery")
-                }
-                HStack(alignment: .firstTextBaseline, spacing: 12) {
-                    Text(battery.chargePercentString)
-                        .font(.system(size: 32, weight: .semibold, design: .rounded))
-                        .monospacedDigit()
-                    Text(battery.powerStateLabel)
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.secondary)
-                }
-                Text(battery.powerDisplay)
-                    .font(.subheadline.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                Text(
-                    battery.snapshot.availability == .unavailable
-                        ? "Battery readings are unavailable."
-                        : "Charging policy remains managed by macOS."
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Label(
+                    "Battery & power",
+                    systemImage: battery.isCharging ? "bolt.battery.100percent" : "battery.100percent"
                 )
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.subheadline.weight(.semibold))
+                Spacer()
+                Button("Details") { navigate(.battery) }
+                    .buttonStyle(.borderless)
+                    .accessibilityIdentifier("overview-open-battery")
             }
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(battery.chargePercentString)
+                    .font(.title3.weight(.semibold).monospacedDigit())
+                Text(battery.powerStateLabel)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
+            }
+            Text(battery.powerDisplay)
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityIdentifier("overview-battery-summary")
     }
 
     private var storageSummary: some View {
-        TunixPanel {
-            VStack(alignment: .leading, spacing: 12) {
-                Label("Storage", systemImage: "internaldrive")
-                    .font(.headline)
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(stats.storageHasSample ? stats.diskFreeText : "Unavailable")
-                        .font(.title2.weight(.semibold).monospacedDigit())
-                    if let freePercent {
-                        Text("free")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Text("\(freePercent)%")
-                            .font(.subheadline.weight(.semibold).monospacedDigit())
-                            .foregroundStyle(storageColor)
-                    }
+        VStack(alignment: .leading, spacing: 6) {
+            Label("Storage", systemImage: "internaldrive")
+                .font(.subheadline.weight(.semibold))
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(stats.storageHasSample ? stats.diskFreeText : "Unavailable")
+                    .font(.title3.weight(.semibold).monospacedDigit())
+                if let freePercent {
+                    Text("free")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text("\(freePercent)%")
+                        .font(.caption.weight(.semibold).monospacedDigit())
+                        .foregroundStyle(storageColor)
                 }
-                Text(stats.storageHasSample ? "of \(stats.diskTotalText) on the startup volume" :
-                    "Storage capacity is unavailable.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
             }
+            Text(stats.storageHasSample ? "of \(stats.diskTotalText) on the startup volume" :
+                "Storage capacity is unavailable.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityIdentifier("overview-storage-summary")
     }
 

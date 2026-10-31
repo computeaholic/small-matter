@@ -19,7 +19,7 @@ struct OverviewHeader: View {
                         tint: .orange
                     )
                 }
-                Text("Updated \(stats.lastUpdated.formatted(date: .omitted, time: .shortened))")
+                Text("Telemetry updated \(stats.lastTelemetryUpdatedText)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Text(stats.systemTelemetryStatusLabel)
@@ -30,7 +30,7 @@ struct OverviewHeader: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
             "Overview. \(stats.systemTelemetryStatusLabel). " +
-                "Updated \(stats.lastUpdated.formatted(date: .omitted, time: .shortened))"
+                "Telemetry updated \(stats.lastTelemetryUpdatedText)"
         )
     }
 }
