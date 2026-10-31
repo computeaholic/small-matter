@@ -11,7 +11,7 @@ SWIFT_ACTIVE_COMPILATION_CONDITIONS = MAC_APP_STORE
 DEBUG_INFORMATION_FORMAT = dwarf-with-dsym
 GCC_GENERATE_DEBUGGING_SYMBOLS = YES
 MARKETING_VERSION = 1.1.0
-CURRENT_PROJECT_VERSION = 11
+CURRENT_PROJECT_VERSION = 12
 PRODUCT_BUNDLE_IDENTIFIER = Tunix-LLC.Tunix
 // CryptoKit is used only for hashing/redaction; the App Store binary does not
 // implement non-exempt encryption.
