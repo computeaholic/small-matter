@@ -503,6 +503,80 @@ final class Horizon2SQLiteJournalTests: XCTestCase {
         XCTAssertEqual(recoveredStatus.availability, .available)
     }
 
+    func testCapacityFailureDoesNotPermanentlyBlockLaterCapture() async throws {
+        let root = try makeTemporaryRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let journal = try SQLiteEvidenceJournal(databaseURL: root.appendingPathComponent("horizon2.sqlite"))
+        let existing = makeObservation(id: UUID())
+        try await journal.append(existing)
+
+        await journal.setTestMaximumJournalBytes(1)
+        do {
+            try await journal.append(makeObservation(id: UUID()))
+            XCTFail("The injected cap must reject the append")
+        } catch {
+            XCTAssertEqual(error as? EvidenceJournalError, .capacityUnavailable)
+        }
+
+        let recovered = makeObservation(id: UUID())
+        let currentBytes = await journal.retentionStatus().bytes
+        await journal.setTestMaximumJournalBytes(currentBytes + 1_000_000)
+        try await journal.append(recovered)
+
+        let recoveredObservation = await journal.observation(id: recovered.id)
+        let recoveredStatus = await journal.retentionStatus()
+        XCTAssertEqual(recoveredObservation?.id, recovered.id)
+        XCTAssertEqual(recoveredStatus.availability, .available)
+
+        let reopened = try SQLiteEvidenceJournal(databaseURL: root.appendingPathComponent("horizon2.sqlite"))
+        let reopenedObservation = await reopened.observation(id: recovered.id)
+        let reopenedStatus = await reopened.retentionStatus()
+        XCTAssertEqual(reopenedObservation?.id, recovered.id)
+        XCTAssertEqual(reopenedStatus.availability, .available)
+    }
+
+    func testRetentionRemovesOnlyUnreferencedSubjectAndProvenanceMetadata() async throws {
+        let root = try makeTemporaryRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let journal = try SQLiteEvidenceJournal(databaseURL: root.appendingPathComponent("horizon2.sqlite"))
+        let expired = (0 ..< 3).map { offset in
+            makeObservation(
+                observedAt: Date(timeIntervalSinceNow: -8 * 86400 - Double(offset)),
+                id: UUID(),
+                subjectIdentityDigest: nil,
+                provenanceAPIName: "Fixture API \(offset)"
+            )
+        }
+        let retained = makeObservation(
+            observedAt: Date(timeIntervalSinceNow: -86400),
+            id: UUID(),
+            subjectIdentityDigest: "retained-subject",
+            provenanceAPIName: "Retained Fixture API"
+        )
+        for observation in expired + [retained] {
+            try await journal.append(observation)
+        }
+
+        _ = try await journal.performRetention(now: Date())
+
+        for observation in expired {
+            let deletedObservation = await journal.observation(id: observation.id)
+            XCTAssertNil(deletedObservation)
+        }
+        let retainedObservation = await journal.observation(id: retained.id)
+        XCTAssertNotNil(retainedObservation)
+        XCTAssertEqual(try scalarFromDatabase(
+            root.appendingPathComponent("horizon2.sqlite"),
+            sql: "SELECT COUNT(*) FROM subjects"
+        ), "1")
+        XCTAssertEqual(try scalarFromDatabase(
+            root.appendingPathComponent("horizon2.sqlite"),
+            sql: "SELECT COUNT(*) FROM provenance"
+        ), "1")
+        let foreignKeyViolations = await journal.foreignKeyViolationsForTesting()
+        XCTAssertTrue(foreignKeyViolations.isEmpty)
+    }
+
     func testExplicitCapacityRecoveryCompactsUnprotectedHistoryAndPreservesProtectedEvidence() async throws {
         let root = try makeTemporaryRoot()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -1064,20 +1138,22 @@ final class Horizon2SQLiteJournalTests: XCTestCase {
         observedAt: Date = Date(timeIntervalSince1970: 1_700_000_000),
         id: UUID = UUID(uuidString: "20000000-0000-0000-0000-000000000001")!,
         extraAttribute: EvidenceValue? = nil,
-        rawReferenceDigest: String? = nil
+        rawReferenceDigest: String? = nil,
+        subjectIdentityDigest: String? = "fixture-digest",
+        provenanceAPIName: String = "Fixture API"
     ) -> Observation {
         let runID = UUID(uuidString: "10000000-0000-0000-0000-000000000001")!
         let epochID = UUID(uuidString: "40000000-0000-0000-0000-000000000001")!
         let date = observedAt
         let subject = EvidenceSubject(
             type: .storageDisk,
-            identityDigest: "fixture-digest",
+            identityDigest: subjectIdentityDigest,
             quality: .qualified,
             safeDisplayLabel: "External storage disk"
         )
         let provenance = EvidenceProvenance(
             sourceID: .storage,
-            apiName: "Fixture API",
+            apiName: provenanceAPIName,
             apiVersion: "1",
             captureChannel: "I3_FIXTURE",
             sourceTimestampQuality: .exact,

@@ -170,6 +170,7 @@ extension SQLiteEvidenceJournal {
                     break
                 }
             }
+            try deleteUnreferencedMetadata()
             try connection.exec("COMMIT"); try checkpoint(force: true)
             return EvidenceDeletionResult(
                 observationsDeleted: deleted,
@@ -185,17 +186,22 @@ extension SQLiteEvidenceJournal {
         let ordinaryCutoff = Self.dateString(now.addingTimeInterval(-Double(retentionDays) * 86400))
         let incidentCutoff = Self
             .dateString(now.addingTimeInterval(-Double(Horizon2EvidenceConfiguration.maximumRetentionDays) * 86400))
-        try deleteExpiredObservations(before: ordinaryCutoff)
-        try deleteExpiredIncidents(before: incidentCutoff)
-        try deleteExpiredObservations(before: ordinaryCutoff)
-        if stableFootprintBytes() > maximumJournalBytes {
+        let firstObservationDeletes = try deleteExpiredObservations(before: ordinaryCutoff)
+        let incidentDeletes = try deleteExpiredIncidents(before: incidentCutoff)
+        let secondObservationDeletes = try deleteExpiredObservations(before: ordinaryCutoff)
+        let metadataDeletes = try deleteUnreferencedMetadata()
+        let retentionDeletedRows = firstObservationDeletes + incidentDeletes + secondObservationDeletes +
+            metadataDeletes
+        if stableFootprintBytes() > maximumJournalBytes,
+           !capacityRecoveryBlocked || retentionDeletedRows > 0 {
             try connection.exec("VACUUM")
             try checkpoint(force: true)
         }
         while stableFootprintBytes() > maximumJournalBytes {
             guard let incidentID = try oldestEvictableIncident() else { break }
             try deleteIncident(id: incidentID)
-            try deleteExpiredObservations(before: ordinaryCutoff)
+            _ = try deleteExpiredObservations(before: ordinaryCutoff)
+            try deleteUnreferencedMetadata()
             if stableFootprintBytes() > maximumJournalBytes {
                 try connection.exec("VACUUM")
                 try checkpoint(force: true)
