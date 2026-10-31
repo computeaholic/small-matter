@@ -2,6 +2,89 @@
 import XCTest
 
 final class SafeCleanupTests: XCTestCase {
+    func testDefaultProductionRootIsSmallMatterOwnedAndDoesNotInventCandidates() {
+        let roots = SafeCleanupEngine.defaultRoots(fileManager: FileManager.default)
+
+        XCTAssertEqual(roots.count, 1)
+        XCTAssertEqual(roots[0].scope, .appOwned)
+        XCTAssertTrue(roots[0].url.path.hasSuffix("/Library/Caches/Tunix-LLC.Tunix"))
+        XCTAssertEqual(
+            SafeCleanupEngine().inventory(roots: roots).candidates.count,
+            0,
+            "An empty ordinary installation must not invent production cleanup data."
+        )
+    }
+
+    func testXcodeDerivedDataRootRequiresDocumentedLocation() throws {
+        let fixture = try DerivedDataFixture()
+        defer { fixture.remove() }
+
+        XCTAssertNotNil(SafeCleanupEngine.xcodeDerivedDataRoot(at: fixture.root))
+        XCTAssertNil(SafeCleanupEngine.xcodeDerivedDataRoot(at: fixture.root.deletingLastPathComponent()))
+    }
+
+    func testUserSelectedDerivedDataIsUsefulOnlyWhenNoDevelopmentProcessIsActive() throws {
+        let fixture = try DerivedDataFixture()
+        defer { fixture.remove() }
+        try Data(repeating: 1, count: 4096).write(to: fixture.root.appendingPathComponent("project-build.bin"))
+
+        let root = try XCTUnwrap(SafeCleanupEngine.xcodeDerivedDataRoot(at: fixture.root))
+        let idleEngine = SafeCleanupEngine(activeDevelopmentProcessNames: { [] })
+        let idleInventory = idleEngine.inventory(roots: [root])
+        XCTAssertEqual(idleInventory.candidates.map(\.displayName), ["project-build.bin"])
+        XCTAssertGreaterThan(idleInventory.estimatedAllocatedBytes, 0)
+
+        let activeInventory = SafeCleanupEngine(activeDevelopmentProcessNames: { ["Xcode"] })
+            .inventory(roots: [root])
+        XCTAssertTrue(activeInventory.candidates.isEmpty)
+        XCTAssertEqual(
+            activeInventory.skipped.first(where: { $0.reason == .activeDevelopmentProcess })?.count,
+            1
+        )
+    }
+
+    func testUserSelectedDerivedDataDeletionUsesIsolatedFixtureAndVerifiesOutcome() throws {
+        let fixture = try DerivedDataFixture()
+        defer { fixture.remove() }
+        let file = fixture.root.appendingPathComponent("regenerable.bin")
+        try Data(repeating: 7, count: 4096).write(to: file)
+        let root = try XCTUnwrap(SafeCleanupEngine.xcodeDerivedDataRoot(at: fixture.root))
+        let engine = SafeCleanupEngine(activeDevelopmentProcessNames: { [] })
+        let candidate = try XCTUnwrap(engine.inventory(roots: [root]).candidates.first)
+
+        let result = engine.delete(candidates: [candidate], roots: [root])
+
+        XCTAssertEqual(result.deletedCount, 1)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: file.path))
+    }
+
+    func testDeletionRefusesParentSymlinkSwapAfterInventory() throws {
+        let fixture = try DerivedDataFixture()
+        defer { fixture.remove() }
+        let file = fixture.root.appendingPathComponent("race.bin")
+        try Data("safe".utf8).write(to: file)
+        let outside = fixture.root.deletingLastPathComponent().appendingPathComponent("outside-(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: outside, withIntermediateDirectories: true)
+        let outsideFile = outside.appendingPathComponent("race.bin")
+        try Data("outside".utf8).write(to: outsideFile)
+        let root = try XCTUnwrap(SafeCleanupEngine.xcodeDerivedDataRoot(at: fixture.root))
+        let engine = SafeCleanupEngine(activeDevelopmentProcessNames: { [] })
+        let candidate = try XCTUnwrap(engine.inventory(roots: [root]).candidates.first)
+
+        let result = engine.delete(candidates: [candidate], roots: [root]) { _ in
+            try? FileManager.default.moveItem(at: fixture.root, to: fixture.renamedRoot)
+            try? FileManager.default.createSymbolicLink(at: fixture.root, withDestinationURL: outside)
+        }
+
+        XCTAssertEqual(result.deletedCount, 0)
+        XCTAssertEqual(result.staleCount, 1)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: outsideFile.path))
+        XCTAssertTrue(FileManager.default
+            .fileExists(atPath: fixture.renamedRoot.appendingPathComponent("race.bin").path))
+        try? FileManager.default.removeItem(at: fixture.root)
+        try? FileManager.default.moveItem(at: fixture.renamedRoot, to: fixture.root)
+    }
+
     func testInventoryOnlyOffersSingleLinkRegularFilesInApprovedScope() throws {
         let fixture = try Fixture()
         defer { fixture.remove() }
@@ -185,5 +268,30 @@ private final class Fixture {
 
     func remove() {
         try? FileManager.default.removeItem(at: root)
+    }
+}
+
+private final class DerivedDataFixture {
+    let root: URL
+    let renamedRoot: URL
+
+    init() throws {
+        let base = FileManager.default.temporaryDirectory
+            .appendingPathComponent("small-matter-derived-data-(UUID().uuidString)", isDirectory: true)
+        root = base
+            .appendingPathComponent("Library/Developer/Xcode/DerivedData", isDirectory: true)
+        renamedRoot = base
+            .appendingPathComponent("Library/Developer/Xcode/DerivedData-renamed", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    }
+
+    func remove() {
+        try? FileManager.default.removeItem(at: root)
+        try? FileManager.default.removeItem(at: renamedRoot)
+        let base = root
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        try? FileManager.default.removeItem(at: base)
     }
 }

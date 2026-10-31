@@ -83,17 +83,22 @@ struct CleanupCapabilityNote: View {
             TunixSectionHeader(title: "Access and safety")
             Text(
                 CleanupDistributionContext.current == .appStore
-                    ? "The Mac App Store sandbox limits cleanup to Small Matter-owned disposable data. " +
-                    "Other locations require an explicit supported access grant and are not scanned here."
-                    : "Direct distribution uses the same conservative app-owned scope. Small Matter does not request " +
-                    "Full Disk Access, elevate privileges, or bypass macOS protections."
+                    ? "The Mac App Store scans Small Matter-owned disposable data by default. You may also grant " +
+                    "access to the standard Xcode Derived Data folder; the grant does not make arbitrary folders " +
+                    "safe."
+                    : "Direct distribution uses the same conservative app-owned scope and supports the standard " +
+                    "Xcode Derived Data folder after explicit selection. Small Matter does not request Full Disk " +
+                    "Access, elevate privileges, or bypass macOS protections."
             )
             .font(.subheadline)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
-            Text("Quarantined files are reversible; permanently deleted files are not.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            Text(
+                "Xcode cleanup is blocked while known Xcode/build processes are active. " +
+                    "Quarantined files are reversible; permanently deleted files are not."
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
         .accessibilityIdentifier("cleanup-capability-note")
     }

@@ -27,6 +27,11 @@ enum CleanupAccessState: String, Codable, Equatable {
     }
 }
 
+enum CleanupRootScope: String, Codable, Equatable {
+    case appOwned
+    case xcodeDerivedData
+}
+
 enum CleanupSkipReason: String, Codable, Equatable, CaseIterable {
     case directory = "Directory not deleted recursively"
     case symbolicLink = "Symbolic link"
@@ -36,6 +41,7 @@ enum CleanupSkipReason: String, Codable, Equatable, CaseIterable {
     case metadataUnavailable = "Metadata unavailable"
     case outsideApprovedScope = "Outside approved scope"
     case hidden = "Hidden file"
+    case activeDevelopmentProcess = "Active development process"
 
     var label: String {
         rawValue
@@ -47,6 +53,21 @@ struct CleanupRoot: Identifiable, Equatable {
     let name: String
     let url: URL
     let explanation: String
+    let scope: CleanupRootScope
+
+    init(
+        id: String,
+        name: String,
+        url: URL,
+        explanation: String,
+        scope: CleanupRootScope = .appOwned
+    ) {
+        self.id = id
+        self.name = name
+        self.url = url
+        self.explanation = explanation
+        self.scope = scope
+    }
 }
 
 struct CleanupFileMetadata: Equatable {

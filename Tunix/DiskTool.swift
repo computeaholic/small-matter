@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import SwiftUI
 
@@ -9,11 +10,13 @@ final class DiskTool: ObservableObject {
     @Published private(set) var lastScan: Date?
     @Published private(set) var lastResult: CleanupDeletionResult?
     @Published private(set) var lastAction: CleanupAction?
+    @Published private(set) var selectedSupportedScope: String?
     @Published var lastError: String?
     @Published private(set) var hasInterruptedDeletion = false
 
     private let engine: SafeCleanupEngine
-    private let roots: [CleanupRoot]
+    private var roots: [CleanupRoot]
+    private var securityScopedAccess: [String: SecurityScopedAccess] = [:]
     private let ledger: ActionLedger
     private let history: CleanupHistoryLog
     private let deletionIntentLog: CleanupDeletionIntentLog
@@ -47,7 +50,7 @@ final class DiskTool: ObservableObject {
         guard !isScanning, !isDeleting else { return }
         isScanning = true
         lastError = nil
-        let roots = roots
+        let roots = self.roots
         let engine = engine
         DispatchQueue.global(qos: .utility).async {
             let result = engine.inventory(roots: roots)
@@ -56,6 +59,47 @@ final class DiskTool: ObservableObject {
                 self.selectedCandidateIDs = Set(result.candidates.map(\.id))
                 self.lastScan = result.scannedAt
                 self.isScanning = false
+            }
+        }
+    }
+
+    func chooseXcodeDerivedDataLocation() {
+        guard !isScanning, !isDeleting else { return }
+
+        let panel = NSOpenPanel()
+        panel.title = "Choose Xcode Derived Data"
+        panel.prompt = "Review Derived Data"
+        panel.message = "Choose the standard Xcode Derived Data folder. Arbitrary folders are not supported."
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        let suggestedLocation = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Developer/Xcode/DerivedData", isDirectory: true)
+        if FileManager.default.fileExists(atPath: suggestedLocation.path) {
+            panel.directoryURL = suggestedLocation
+        }
+
+        panel.begin { [weak self] response in
+            guard response == .OK, let url = panel.url else { return }
+            guard let root = SafeCleanupEngine.xcodeDerivedDataRoot(at: url) else {
+                self?.lastError =
+                    "Only the standard Library/Developer/Xcode/DerivedData folder is supported. No files were changed."
+                return
+            }
+
+            let access = SecurityScopedAccess(url: root.url)
+            if CleanupDistributionContext.current == .appStore, !access.granted {
+                self?.lastError =
+                    "macOS did not grant access to the selected Derived Data folder. No files were changed."
+                return
+            }
+
+            DispatchQueue.main.async {
+                self?.securityScopedAccess[root.id] = access
+                self?.roots.removeAll { $0.id == root.id }
+                self?.roots.append(root)
+                self?.selectedSupportedScope = root.name
+                self?.lastError = nil
             }
         }
     }
@@ -97,8 +141,9 @@ final class DiskTool: ObservableObject {
         }
 
         let engine = engine
+        let roots = self.roots
         DispatchQueue.global(qos: .utility).async {
-            let result = engine.delete(candidates: selected)
+            let result = engine.delete(candidates: selected, roots: roots)
             self.history.append(result)
             self.deletionIntentLog.clear()
             DispatchQueue.main.async {
@@ -140,6 +185,22 @@ final class DiskTool: ObservableObject {
                 }
                 self.scan()
             }
+        }
+    }
+}
+
+private final class SecurityScopedAccess {
+    let granted: Bool
+    private let url: URL
+
+    init(url: URL) {
+        self.url = url
+        granted = url.startAccessingSecurityScopedResource()
+    }
+
+    deinit {
+        if granted {
+            url.stopAccessingSecurityScopedResource()
         }
     }
 }

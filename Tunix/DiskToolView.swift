@@ -14,8 +14,10 @@ struct DiskToolView: View {
         TunixAdaptivePage { layout in
             VStack(alignment: .leading, spacing: TunixDesign.sectionSpacing) {
                 TunixPageHeader(
-                    title: "App-Owned Cleanup",
-                    subtitle: "Review only Small Matter-owned disposable data, then delete it deliberately."
+                    title: "Cleanup",
+                    subtitle:
+                    "Review only verified Small Matter-owned or supported user-selected data, then delete it " +
+                        "deliberately."
                 )
                 cleanupContent(for: layout)
             }
@@ -32,7 +34,7 @@ struct DiskToolView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(
-                "This permanently deletes the reviewed Small Matter-owned files. " +
+                "This permanently deletes the reviewed eligible files in the selected supported scope. " +
                     "They are not placed in Quarantine and cannot be undone."
             )
         }
@@ -81,12 +83,19 @@ struct DiskToolView: View {
 
     private var controls: some View {
         HStack(spacing: 12) {
-            Button(diskTool.isScanning ? "Scanning…" : "Scan App-Owned Data") {
+            Button(diskTool.isScanning ? "Scanning…" : scanLabel) {
                 diskTool.scan()
             }
             .buttonStyle(.borderedProminent)
             .disabled(diskTool.isScanning || diskTool.isDeleting)
             .accessibilityIdentifier("cleanup-scan")
+
+            Button("Review Xcode Derived Data…") {
+                diskTool.chooseXcodeDerivedDataLocation()
+            }
+            .buttonStyle(.bordered)
+            .disabled(diskTool.isScanning || diskTool.isDeleting)
+            .accessibilityIdentifier("cleanup-choose-derived-data")
 
             Button(diskTool.isDeleting ? "Deleting…" : "Delete Selected…") {
                 showingDeletionConfirmation = true
@@ -113,14 +122,23 @@ struct DiskToolView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            if let selectedSupportedScope = diskTool.selectedSupportedScope {
+                Text("Selected scope: \(selectedSupportedScope)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
+    }
+
+    private var scanLabel: String {
+        diskTool.selectedSupportedScope == nil ? "Scan App-Owned Data" : "Scan Supported Data"
     }
 
     private var opportunityList: some View {
         VStack(alignment: .leading, spacing: 12) {
             TunixSectionHeader(
-                title: "Verified app-owned cleanup opportunities",
-                subtitle: "Only explicitly approved Small Matter-owned disposable files appear here"
+                title: "Verified cleanup opportunities",
+                subtitle: "Only Small Matter-owned or explicitly supported user-selected data appears here"
             )
 
             if let inventory = diskTool.inventory {
@@ -162,7 +180,8 @@ struct DiskToolView: View {
                         .font(.headline)
                     Text(
                         "Small Matter will not sweep system folders, other applications, Quarantine, evidence, " +
-                            "or user documents."
+                            "or user documents. Choose the standard Xcode Derived Data folder to review that " +
+                            "specific regenerable category; arbitrary folders are not supported."
                     )
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -176,10 +195,10 @@ struct DiskToolView: View {
 
     private var emptyOpportunities: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("No verified app-owned cleanup opportunities.", systemImage: "checkmark.circle")
+            Label("No verified cleanup opportunities.", systemImage: "checkmark.circle")
                 .font(.headline)
             Text(
-                "Nothing in the approved Small Matter-owned disposable scope is " +
+                "Nothing in the approved cleanup scopes is " +
                     "currently eligible for permanent deletion. " +
                     "This does not mean other locations are empty; they are " +
                     "intentionally not treated as safe cleanup targets."
