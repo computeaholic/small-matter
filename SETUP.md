@@ -4,7 +4,8 @@
 
 - macOS 15.5 or newer
 - Xcode 16.4 or newer
-- SwiftFormat and SwiftLint for local quality checks
+- Pinned SwiftFormat and SwiftLint are downloaded and hash-verified by
+  `scripts/quality_tools.sh`
 - An Apple Developer ID Application identity only for signed distribution
 
 ## Local development
@@ -33,8 +34,8 @@ group requirement.
 ## Validation
 
 ```bash
-swiftformat Tunix TunixTests TunixUITests --lint
-swiftlint lint Tunix TunixTests TunixUITests --reporter json
+./scripts/quality_tools.sh format Tunix TunixTests TunixUITests --lint
+./scripts/quality_tools.sh lint lint Tunix TunixTests TunixUITests --reporter json
 ./scripts/run_tunix_app_unit_tests.sh --fresh-derived-data
 ./scripts/run_tunix_ui_tests.sh --fresh-derived-data
 ./scripts/build_release.sh --prepare-only

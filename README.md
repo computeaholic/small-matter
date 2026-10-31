@@ -57,8 +57,8 @@ For deterministic local validation:
 ```bash
 ./scripts/run_tunix_app_unit_tests.sh --fresh-derived-data
 ./scripts/run_tunix_ui_tests.sh --fresh-derived-data
-swiftformat Tunix TunixTests TunixUITests --lint
-swiftlint lint Tunix TunixTests TunixUITests --reporter json
+./scripts/quality_tools.sh format Tunix TunixTests TunixUITests --lint
+./scripts/quality_tools.sh lint lint Tunix TunixTests TunixUITests --reporter json
 zsh -n scripts/*.sh
 ./scripts/build_release.sh --prepare-only
 ./scripts/verify_release_artifact.sh --allow-unsigned \

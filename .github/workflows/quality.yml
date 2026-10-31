@@ -13,17 +13,16 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v5
-      - name: Install format and lint tools
-        run: brew install swiftformat swiftlint
+      - name: Install pinned format and lint tools
+        run: ./scripts/quality_tools.sh install
       - name: Print tool versions
         run: |
-          swiftformat --version
-          swiftlint version
+          ./scripts/quality_tools.sh versions
           xcodebuild -version
       - name: Format check
-        run: swiftformat Tunix TunixTests TunixUITests --lint
+        run: ./scripts/quality_tools.sh format Tunix TunixTests TunixUITests --lint
       - name: Lint
-        run: swiftlint lint --strict Tunix TunixTests TunixUITests --reporter json
+        run: ./scripts/quality_tools.sh lint lint --strict Tunix TunixTests TunixUITests --reporter json
 
   quality-unit:
     runs-on: macos-15
