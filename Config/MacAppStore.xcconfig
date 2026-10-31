@@ -13,3 +13,6 @@ GCC_GENERATE_DEBUGGING_SYMBOLS = YES
 MARKETING_VERSION = 1.1.0
 CURRENT_PROJECT_VERSION = 11
 PRODUCT_BUNDLE_IDENTIFIER = Tunix-LLC.Tunix
+// CryptoKit is used only for hashing/redaction; the App Store binary does not
+// implement non-exempt encryption.
+INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO

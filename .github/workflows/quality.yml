@@ -39,6 +39,8 @@ jobs:
         run: ./scripts/build_release.sh --prepare-only
       - name: Structural artifact verification
         run: ./scripts/verify_release_artifact.sh --allow-unsigned --app '.deriveddata/release/Build/Products/Release/Small Matter.app'
+      - name: App Store export compliance declaration
+        run: ./scripts/verify_app_store_export_compliance.sh
 
   # macOS UI tests require interactive Automation permissions that are not
   # available deterministically on GitHub-hosted runners. They remain a

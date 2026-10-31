@@ -19,6 +19,10 @@ arbitrary SMC writes.
       identity.
 - [ ] Confirm Release uses hardened runtime and no development entitlements.
 - [ ] Run `scripts/verify_release_artifact.sh --app 'path/to/Small Matter.app'`.
+- [ ] Confirm `scripts/verify_app_store_export_compliance.sh` reports
+      `APP_STORE_NONEXEMPT_ENCRYPTION=NO` for Mac App Store builds. This
+      declaration covers the current CryptoKit SHA-256 hashing/redaction use;
+      re-audit before adding any encryption or cryptographic transport.
 - [ ] Confirm no LaunchDaemon plist or privileged Mach-service payload is embedded.
 
 For local validation without release credentials, use
