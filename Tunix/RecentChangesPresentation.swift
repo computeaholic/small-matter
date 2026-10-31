@@ -42,6 +42,21 @@ struct RecentChangeField: Identifiable, Equatable, Sendable {
     }
 }
 
+enum IncidentCapturePresentation {
+    static let incompleteDetail =
+        "The package was saved, but one or more evidence sources or the requested time window had gaps. " +
+        "Missing evidence is not proof that an event did not occur."
+    static let zeroObservationDetail =
+        "No qualifying change observation was captured in this window. This does not establish that nothing changed."
+
+    static func status(for status: IncidentCaptureStatus) -> String {
+        switch status {
+        case .complete: return "Captured successfully"
+        case .incomplete: return "Captured with limitations"
+        }
+    }
+}
+
 @MainActor
 // Why: canonical contract owner.
 // swiftlint:disable:next type_body_length

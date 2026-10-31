@@ -110,6 +110,24 @@ struct SecurityView: View {
                         .buttonStyle(.borderedProminent)
                         .accessibilityIdentifier("system-health-preview-latest-evidence")
                     }
+
+                    if cooling.telemetryState != .unavailable {
+                        Button("Cooling Details") {
+                            NotificationCenter.default.post(name: .tunixNavigate, object: "Cooling")
+                        }
+                        .buttonStyle(.bordered)
+                        .accessibilityIdentifier("system-health-open-cooling")
+                    }
+                }
+
+                if cooling.telemetryState == .unavailable {
+                    Text(
+                        "Raw fan and temperature readings are unavailable here; that does not establish that the Mac " +
+                            "has no functioning cooling hardware. macOS thermal state is reported separately."
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("system-health-cooling-unavailable")
                 }
 
                 if evidenceLoading {
@@ -163,7 +181,7 @@ struct SecurityView: View {
 
     private var latestCaptureLabel: String {
         guard let latestCapture else { return "No capture" }
-        return latestCapture.status == .complete ? "Complete" : "Incomplete"
+        return IncidentCapturePresentation.status(for: latestCapture.status)
     }
 
     private var latestCapture: IncidentPackage? {

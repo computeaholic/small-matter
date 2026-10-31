@@ -32,11 +32,47 @@ final class TunixUITests: XCTestCase {
         XCTAssertEqual(app.windows.firstMatch.title, "Overview")
     }
 
+    func testOverviewRendersValuesAndDynamicIdentifiers() {
+        let performanceHeading = app.staticTexts["Current performance"]
+        XCTAssertTrue(performanceHeading.waitForExistence(timeout: 5), app.debugDescription)
+
+        let hierarchy = app.debugDescription
+        for literalExpression in [
+            "(stats.memoryPressureLabel)",
+            "(freePercent)",
+            "(stats.diskTotalText)",
+            "(destination.rawValue)",
+            "(title), (value), (detail)",
+            "(stats.cpuUsageText)",
+            "(row.timeText) · (row.sourceText)",
+            "(row.title), (row.summary), (row.timeText)"
+        ] {
+            XCTAssertFalse(
+                hierarchy.contains(literalExpression),
+                "Overview exposed source-code text: \(literalExpression)\n\(hierarchy)"
+            )
+        }
+
+        XCTAssertTrue(hierarchy.contains("Current performance"), hierarchy)
+        XCTAssertTrue(hierarchy.contains("Total ut"), hierarchy)
+        XCTAssertTrue(hierarchy.contains("Memory,"), hierarchy)
+
+        for identifier in [
+            "overview-open-recent-changes",
+            "overview-open-system-health",
+            "overview-open-performance",
+            "overview-open-battery"
+        ] {
+            let button = app.buttons[identifier]
+            XCTAssertTrue(button.waitForExistence(timeout: 5), "Missing contextual identifier \(identifier)")
+            XCTAssertEqual(button.identifier, identifier)
+        }
+    }
+
     func testNavigationShowsMonitoringDestinations() {
         // swiftformat:disable trailingCommas
         let destinations = [
             ("Performance", "Performance"),
-            ("Cooling", "Cooling"),
             ("Battery", "Battery"),
             ("Cleanup", "Cleanup"),
             ("System Health", "System Health")
@@ -54,7 +90,8 @@ final class TunixUITests: XCTestCase {
     }
 
     func testCoolingTemperatureGroupsHaveStableAccessibilityIdentifiers() {
-        app.staticTexts["navigation-Cooling"].click()
+        app.staticTexts["navigation-System Health"].click()
+        app.buttons["system-health-open-cooling"].click()
 
         let cpuTemperature = app.descendants(matching: .any)["cooling-temperature-cpu"]
         let batteryTemperature = app.descendants(matching: .any)["cooling-temperature-battery"]
@@ -182,7 +219,7 @@ final class TunixUITests: XCTestCase {
         row.click()
 
         XCTAssertTrue(app.descendants(matching: .any)["incident-summary"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Complete"].exists)
+        XCTAssertTrue(app.staticTexts["Captured successfully"].exists)
         XCTAssertTrue(app.staticTexts["CHANGES OBSERVED"].exists)
         XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] 'digest'")).firstMatch.exists)
         XCTAssertTrue(app.buttons["incident-delete"].exists)
@@ -196,7 +233,7 @@ final class TunixUITests: XCTestCase {
         XCTAssertTrue(row.waitForExistence(timeout: 5))
         row.click()
         XCTAssertTrue(app.descendants(matching: .any)["incident-summary"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Incomplete"].exists)
+        XCTAssertTrue(app.staticTexts["Captured with limitations"].exists)
         XCTAssertTrue(app.staticTexts["Small Matter was closed before this capture finished."].exists)
     }
 
@@ -210,8 +247,9 @@ final class TunixUITests: XCTestCase {
 
         XCTAssertTrue(app.staticTexts["WHAT WAS HAPPENING"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["CHANGES OBSERVED"].exists)
-        XCTAssertTrue(app.staticTexts["No supported system transitions were observed during this capture window."]
-            .exists)
+        let noObservation = "No qualifying change observation was captured in this window. " +
+            "This does not establish that nothing changed."
+        XCTAssertTrue(app.staticTexts[noObservation].exists)
         XCTAssertTrue(app
             .staticTexts["No interpretation was generated because no qualifying change observation was captured."]
             .exists)
@@ -368,7 +406,7 @@ final class TunixUITests: XCTestCase {
         app.buttons["incident-history-row-00000000-0000-0000-0000-000000000305"].click()
         app.buttons["incident-preview-evidence-export"].click()
         XCTAssertTrue(app.descendants(matching: .any)["evidence-export-status"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["INCOMPLETE"].exists)
+        XCTAssertTrue(app.staticTexts["Captured with limitations"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["evidence-export-incomplete-warning"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["evidence-export-membership"].exists)
         XCTAssertTrue(app.staticTexts["Network capture ended before the incident was complete."].exists)
@@ -488,12 +526,12 @@ extension TunixUITests {
 
         let latest = app.descendants(matching: .any)["system-health-latest-capture"]
         XCTAssertTrue(latest.waitForExistence(timeout: 5))
-        XCTAssertTrue(waitForLabel(latest, containing: "Incomplete"))
+        XCTAssertTrue(waitForLabel(latest, containing: "Captured with limitations"))
         let preview = app.buttons["system-health-preview-latest-evidence"]
         XCTAssertTrue(preview.waitForExistence(timeout: 5))
         preview.click()
         XCTAssertTrue(app.descendants(matching: .any)["evidence-export-preview"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["INCOMPLETE"].exists)
+        XCTAssertTrue(app.staticTexts["Captured with limitations"].exists)
         XCTAssertTrue(app.staticTexts["Small Matter was closed before this capture finished."].exists)
     }
 
@@ -507,7 +545,10 @@ extension TunixUITests {
             "status=\(completeStatus.label) value=\(completeStatus.value ?? "")\n\(app.debugDescription)"
         )
         XCTAssertTrue(
-            waitForLabel(app.descendants(matching: .any)["system-health-latest-capture"], containing: "Complete"),
+            waitForLabel(
+                app.descendants(matching: .any)["system-health-latest-capture"],
+                containing: "Captured successfully"
+            ),
             app.debugDescription
         )
         XCTAssertTrue(app.buttons["system-health-preview-latest-evidence"].exists)
@@ -521,7 +562,10 @@ extension TunixUITests {
             "status=\(incompleteStatus.label) value=\(incompleteStatus.value ?? "")\n\(app.debugDescription)"
         )
         XCTAssertTrue(
-            waitForLabel(app.descendants(matching: .any)["system-health-latest-capture"], containing: "Incomplete"),
+            waitForLabel(
+                app.descendants(matching: .any)["system-health-latest-capture"],
+                containing: "Captured with limitations"
+            ),
             app.debugDescription
         )
         XCTAssertTrue(app.buttons["system-health-preview-latest-evidence"].exists)
@@ -532,7 +576,10 @@ extension TunixUITests {
         app.staticTexts["navigation-System Health"].click()
         XCTAssertTrue(app.descendants(matching: .any)["system-health-latest-capture"].waitForExistence(timeout: 5))
         XCTAssertTrue(
-            waitForLabel(app.descendants(matching: .any)["system-health-latest-capture"], containing: "Complete"),
+            waitForLabel(
+                app.descendants(matching: .any)["system-health-latest-capture"],
+                containing: "Captured successfully"
+            ),
             app.debugDescription
         )
         app.buttons["system-health-preview-latest-evidence"].click()

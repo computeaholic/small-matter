@@ -155,7 +155,7 @@ struct Sidebar: View {
     var body: some View {
         List(selection: $selection) {
             Section("Core") {
-                ForEach([AppSection.overview, .recentChanges, .performance, .fan, .battery]) { section in
+                ForEach([AppSection.overview, .recentChanges, .performance, .battery]) { section in
                     Label(section.rawValue, systemImage: section.systemImage)
                         .tag(section)
                         .accessibilityIdentifier("navigation-\(section.rawValue)")
@@ -208,7 +208,7 @@ struct DetailView: View {
         Group {
             switch selection {
             case .overview:
-                OverviewView()
+                OverviewView(journal: journal)
             case .recentChanges:
                 RecentChangesView(journal: journal)
             case .fan:
