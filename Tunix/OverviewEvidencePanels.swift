@@ -5,18 +5,40 @@ struct OverviewEvidencePanels: View {
     @ObservedObject var stats: SystemStatsModel
     @ObservedObject var cooling: CoolingService
     @ObservedObject var recentChanges: RecentChangesViewModel
+    let layout: TunixLayoutClass
     let navigate: (AppSection) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: TunixDesign.sectionSpacing) {
-            conditionPanel
-            changesPanel
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Monitoring and evidence")
+                .font(.headline)
+                .foregroundStyle(.secondary)
+                .accessibilityAddTraits(.isHeader)
+
+            if layout == .compact {
+                VStack(alignment: .leading, spacing: TunixDesign.groupSpacing) {
+                    conditionPanel
+                    changesPanel
+                }
+            } else {
+                HStack(alignment: .top, spacing: TunixDesign.groupSpacing) {
+                    conditionPanel
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                    changesPanel
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                }
+            }
         }
     }
 
     private var conditionPanel: some View {
         TunixPanel {
             VStack(alignment: .leading, spacing: 18) {
+                TunixSectionHeader(
+                    title: "System monitoring",
+                    subtitle: "Thermal pressure, telemetry freshness, and sensor coverage"
+                )
+
                 HStack(alignment: .top, spacing: 14) {
                     Image(systemName: conditionIcon)
                         .font(.system(size: 26, weight: .semibold))
@@ -74,7 +96,7 @@ struct OverviewEvidencePanels: View {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(alignment: .firstTextBaseline) {
                     TunixSectionHeader(
-                        title: "What changed?",
+                        title: "Recent Changes",
                         subtitle: "Recent observations with a known evidence basis"
                     )
                     Spacer(minLength: 12)
@@ -89,16 +111,16 @@ struct OverviewEvidencePanels: View {
                         .foregroundStyle(.secondary)
                         .accessibilityIdentifier("overview-changes-loading")
                 case .journalUnavailable:
-                    changeState(
-                        "Evidence history is unavailable.",
+                    evidenceWarning(
+                        "Evidence journal unavailable",
                         detail: "Small Matter could not open its local evidence journal.",
                         identifier: "overview-changes-unavailable"
                     )
                 case .journalCapacityUnavailable:
-                    changeState(
-                        "Evidence history may not be saving.",
-                        detail: "Local evidence storage is full or unavailable. Existing history has not been " +
-                            "reported as lost.",
+                    evidenceWarning(
+                        "Evidence journal is full",
+                        detail: "Capture is unavailable until safe unprotected evidence is removed. Existing history " +
+                            "has not been reported as lost.",
                         identifier: "overview-changes-capacity"
                     )
                 case .availableEmpty:
@@ -134,60 +156,6 @@ struct OverviewEvidencePanels: View {
             }
         }
         .accessibilityIdentifier("overview-what-changed")
-    }
-
-    private func conditionFact(_ label: String, value: String, detail: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.subheadline.weight(.semibold))
-            Text(detail)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .lineLimit(2)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func changeState(_ title: String, detail: String, identifier: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.subheadline.weight(.semibold))
-            Text(detail)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier(identifier)
-    }
-
-    private func overviewChangeRow(_ row: RecentChangeRow) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: row.isSupplemental ? "network" : "arrow.triangle.2.circlepath")
-                .foregroundStyle(row.isSupplemental ? TunixBrand.secondary : TunixBrand.accent)
-                .frame(width: 22)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(row.title)
-                    .font(.subheadline.weight(.semibold))
-                Text(row.summary)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text("\(row.timeText) · \(row.sourceText)")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-            }
-            Spacer(minLength: 8)
-            Text(row.statusText)
-                .font(.caption.weight(.medium))
-                .foregroundStyle(.secondary)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(
-            "\(row.title), \(row.summary), \(row.timeText), source \(row.sourceText), \(row.statusText)"
-        )
     }
 
     private var conditionTitle: String {
@@ -251,5 +219,78 @@ struct OverviewEvidencePanels: View {
         case .stale: return "Last reading is old"
         case .unavailable: return "macOS thermal state remains separate"
         }
+    }
+}
+
+private extension OverviewEvidencePanels {
+    func conditionFact(_ label: String, value: String, detail: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.subheadline.weight(.semibold))
+            Text(detail)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    func changeState(_ title: String, detail: String, identifier: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+            Text(detail)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(identifier)
+    }
+
+    func evidenceWarning(_ title: String, detail: String, identifier: String) -> some View {
+        Label {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        } icon: {
+            Image(systemName: "externaldrive.badge.exclamationmark")
+                .foregroundStyle(TunixBrand.warning)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(identifier)
+    }
+
+    func overviewChangeRow(_ row: RecentChangeRow) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: row.isSupplemental ? "network" : "arrow.triangle.2.circlepath")
+                .foregroundStyle(row.isSupplemental ? TunixBrand.secondary : TunixBrand.accent)
+                .frame(width: 22)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(row.title)
+                    .font(.subheadline.weight(.semibold))
+                Text(row.summary)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text("\(row.timeText) · \(row.sourceText)")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+            Spacer(minLength: 8)
+            Text(row.statusText)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "\(row.title), \(row.summary), \(row.timeText), source \(row.sourceText), \(row.statusText)"
+        )
     }
 }

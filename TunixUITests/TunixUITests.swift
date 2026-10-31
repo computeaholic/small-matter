@@ -33,7 +33,7 @@ final class TunixUITests: XCTestCase {
     }
 
     func testOverviewRendersValuesAndDynamicIdentifiers() {
-        let performanceHeading = app.staticTexts["Current performance"]
+        let performanceHeading = app.staticTexts["Live performance"]
         XCTAssertTrue(performanceHeading.waitForExistence(timeout: 5), app.debugDescription)
 
         let hierarchy = app.debugDescription
@@ -44,6 +44,9 @@ final class TunixUITests: XCTestCase {
             "(destination.rawValue)",
             "(title), (value), (detail)",
             "(stats.cpuUsageText)",
+            "(stats.lastTelemetryUpdatedText)",
+            "(stats.logicalCPUText)",
+            "(stats.memoryHeadline)",
             "(row.timeText) · (row.sourceText)",
             "(row.title), (row.summary), (row.timeText)"
         ] {
@@ -53,9 +56,21 @@ final class TunixUITests: XCTestCase {
             )
         }
 
-        XCTAssertTrue(hierarchy.contains("Current performance"), hierarchy)
-        XCTAssertTrue(hierarchy.contains("Total ut"), hierarchy)
+        XCTAssertTrue(hierarchy.contains("Live performance"), hierarchy)
+        XCTAssertTrue(hierarchy.contains("Total utilization"), hierarchy)
         XCTAssertTrue(hierarchy.contains("Memory,"), hierarchy)
+
+        for identifier in [
+            "overview-performance-hero",
+            "overview-performance-cpu",
+            "overview-performance-memory",
+            "overview-performance-network"
+        ] {
+            XCTAssertTrue(
+                app.descendants(matching: .any)[identifier].waitForExistence(timeout: 5),
+                "Missing performance identifier \(identifier)"
+            )
+        }
 
         for identifier in [
             "overview-open-recent-changes",

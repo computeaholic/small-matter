@@ -229,7 +229,7 @@ struct DetailView: View {
 
     private var contentWidth: CGFloat {
         switch selection {
-        case .overview: return 1180
+        case .overview: return 1480
         case .recentChanges: return 980
         case .performance: return 1240
         case .fan: return 980
