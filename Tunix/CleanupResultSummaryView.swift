@@ -83,9 +83,9 @@ struct CleanupCapabilityNote: View {
             TunixSectionHeader(title: "Access and safety")
             Text(
                 CleanupDistributionContext.current == .appStore
-                    ? "The Mac App Store scans Small Matter-owned disposable data by default. You may also grant " +
-                    "access to the standard Xcode Derived Data folder; the grant does not make arbitrary folders " +
-                    "safe."
+                    ? "The Mac App Store scans Small Matter-owned disposable data only. Permanent deletion of " +
+                    "user-selected folders is disabled until the sandbox runtime path is qualified; no arbitrary " +
+                    "folders are treated as safe."
                     : "Direct distribution uses the same conservative app-owned scope and supports the standard " +
                     "Xcode Derived Data folder after explicit selection. Small Matter does not request Full Disk " +
                     "Access, elevate privileges, or bypass macOS protections."

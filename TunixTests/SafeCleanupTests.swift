@@ -2,6 +2,11 @@
 import XCTest
 
 final class SafeCleanupTests: XCTestCase {
+    func testAppStoreDisablesUnqualifiedUserSelectedPermanentDeletion() {
+        XCTAssertFalse(CleanupDistributionContext.appStore.allowsUserSelectedPermanentDeletion)
+        XCTAssertTrue(CleanupDistributionContext.direct.allowsUserSelectedPermanentDeletion)
+    }
+
     func testDefaultProductionRootIsSmallMatterOwnedAndDoesNotInventCandidates() {
         let roots = SafeCleanupEngine.defaultRoots(fileManager: FileManager.default)
 

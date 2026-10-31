@@ -103,7 +103,10 @@ struct DiskToolView: View {
                 diskTool.chooseXcodeDerivedDataLocation()
             }
             .buttonStyle(.bordered)
-            .disabled(diskTool.isScanning || diskTool.isDeleting)
+            .disabled(
+                diskTool.isScanning || diskTool.isDeleting
+                    || !CleanupDistributionContext.current.allowsUserSelectedPermanentDeletion
+            )
             .accessibilityIdentifier("cleanup-choose-derived-data")
 
             Button(diskTool.isDeleting ? "Deleting…" : "Delete Selected…") {

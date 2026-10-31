@@ -78,6 +78,12 @@ final class DiskTool: ObservableObject {
 
     func chooseXcodeDerivedDataLocation() {
         guard !isScanning, !isDeleting else { return }
+        guard CleanupDistributionContext.current.allowsUserSelectedPermanentDeletion else {
+            lastError =
+                "The Mac App Store build does not enable permanent deletion of user-selected data. " +
+                "No files were changed."
+            return
+        }
 
         let panel = NSOpenPanel()
         panel.title = "Choose Xcode Derived Data"
@@ -138,6 +144,15 @@ final class DiskTool: ObservableObject {
 
         let selected = inventory.candidates.filter { selectedCandidateIDs.contains($0.id) }
         guard !selected.isEmpty else { return }
+        if CleanupDistributionContext.current == .appStore,
+           selected.contains(where: { candidate in
+               roots.first(where: { $0.id == candidate.rootID })?.scope == .xcodeDerivedData
+           }) {
+            lastError =
+                "The Mac App Store build does not enable permanent deletion of user-selected data. " +
+                "No files were changed."
+            return
+        }
         isDeleting = true
         lastError = nil
         let intent = CleanupDeletionIntent(

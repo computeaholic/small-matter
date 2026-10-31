@@ -4,6 +4,10 @@ enum CleanupDistributionContext: String, Codable {
     case appStore = "Mac App Store"
     case direct = "Direct distribution"
 
+    var allowsUserSelectedPermanentDeletion: Bool {
+        self == .direct
+    }
+
     static var current: Self {
         #if MAC_APP_STORE
             return .appStore
