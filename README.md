@@ -1,114 +1,79 @@
 # Small Matter
 
-Small Matter is a native macOS system-monitoring and utility app built around
-precise observation, least privilege, and minimal interference.
+<img src="Tunix/Brand/SmallMatterIcon.svg" width="112" height="112" alt="Small Matter app icon">
 
-The app provides local CPU, memory, network, storage, battery, cooling, and
-thermal telemetry; readable System Health diagnostics; a privacy-preserving
-support snapshot; explicit Keep Awake; and conservative app-owned cleanup with
-legacy quarantine and undo support.
+**See what your Mac is doing. Understand what changed. Keep your data yours.**
 
-Small Matter runs as the logged-in user. It has no privileged helper, root
-daemon, cloud service, analytics, tracking, or AI integration. Hardware
-telemetry is read-only: macOS remains responsible for fan speed, thermal
-response, charging, and battery-protection policy.
+Small Matter is a native macOS performance and system-observation app. It makes the activity behind your Mac easier to understand: a clear, live view of CPU, memory, and network performance, with useful history and evidence when something catches your attention.
 
-## Product principles
+No account. No advertising, analytics, tracking, or cloud telemetry. Your observations stay on your Mac unless you choose to export them.
 
-- Observe precisely.
-- Interfere as little as possible.
-- Present the machine clearly.
+**[Get Small Matter free on the Mac App Store](https://apps.apple.com/us/app/small-matter/id6819082403)** · [Support and troubleshooting](https://computeaholic.github.io/small-matter/) · [Report an issue](https://github.com/computeaholic/small-matter/issues)
 
-Unknown, unavailable, and valid zero values remain distinct. When a native
-source cannot prove a capability or produce a valid sample, Small Matter shows
-that state rather than inventing a plausible value.
+## See your Mac at a glance
 
-## Current capabilities
+The performance-first Overview makes the important information easy to find:
 
-- CPU utilization and bounded history
-- memory use, pressure, compression, cache, and swap
-- native interface network throughput
-- battery charge, health, cycles, voltage, current, and power from public
-  battery sources; temperature is conditional on the distribution boundary
-- read-only AppleSMC fan RPM and supported temperature readings in the direct
-  Developer ID configuration when the hardware and service permit them
-- macOS thermal pressure
-- storage capacity telemetry
-- System Health diagnostics and support snapshot
-- conservative app-owned cleanup; legacy Quarantine and Undo remain available
-- app-scoped Keep Awake using a native power-management assertion
+- **CPU:** current utilization and a short, bounded activity history.
+- **Memory:** current use, pressure, compression, cache, and swap.
+- **Network:** live download and upload rates with recent throughput history.
+- **Battery and power:** charge, health, cycle count, capacity, and available electrical readings.
+- **Storage and thermals:** available disk space, macOS thermal pressure, and supported cooling observations.
 
-Raw AppleSMC sensor availability is hardware- and distribution-dependent. The
-Mac App Store build reports macOS thermal state independently and explains when
-raw fan or temperature sensors are unavailable. Fan write support is
-intentionally unproven and absent from the product. Battery-policy control and
-arbitrary SMC writes are also absent.
+All readings are sourced from the Mac. **Unavailable, stale, and actual zero readings are different states**—Small Matter does not invent measurements to fill gaps.
 
-## Build and validation
+## Understand what changed
 
-Small Matter requires macOS 15.5 or newer and Xcode 16.4 or newer. Open
-`Tunix.xcodeproj` in Xcode and run the internal `Tunix` scheme. The built
-application and public product name are **Small Matter**; the project, target,
-Swift module, bundle identifier, and persistence paths retain their Tunix-era
-identifiers for compatibility.
+A snapshot tells you what is happening now. Small Matter also helps you investigate what happened around it.
 
-For deterministic local validation:
+**Recent Changes** presents supported observations about storage, power, and network transitions, including the evidence behind them and any known gaps. **Incident Capture** saves a bounded window around a moment you want to examine. Reopen the capture, inspect its context, and export your own text or JSON evidence package.
 
-```bash
-./scripts/run_tunix_app_unit_tests.sh --fresh-derived-data
-./scripts/run_tunix_ui_tests.sh --fresh-derived-data
-./scripts/quality_tools.sh format Tunix TunixTests TunixUITests --lint
-./scripts/quality_tools.sh lint lint Tunix TunixTests TunixUITests --reporter json
-zsh -n scripts/*.sh
-./scripts/build_release.sh --prepare-only
-./scripts/verify_release_artifact.sh --allow-unsigned \
-  --app '.deriveddata/release/Build/Products/Release/Small Matter.app'
-git diff --check
-```
+Evidence is stored locally with bounded retention and safeguards for protected captures. If storage capacity limits collection, the app explains that limitation rather than implying everything was recorded.
 
-For authorized direct distribution, use the same build path with a Developer
-ID Application identity, then submit the resulting ZIP through a Keychain-only
-`notarytool` profile:
+## Private by design
 
-```bash
-./scripts/build_release.sh --signed
-TUNIX_NOTARYTOOL_PROFILE=<keychain-profile> \
-  ./scripts/notarize_release.sh \
-  --app '.deriveddata/release/Build/Products/Release/Small Matter.app'
-```
+- **Local-first:** no Small Matter account, analytics SDK, advertising, tracking, or background cloud upload.
+- **Read-only hardware observation:** macOS retains control of fans, thermal response, charging, and battery-protection policy.
+- **User-directed exports:** evidence files are created only when you choose to save them. Review files before sharing.
+- **Honest sensor limitations:** some hardware readings are unavailable on certain Macs or within App Sandbox.
 
-The notarization script staples the accepted ticket, recreates the final ZIP
-and SHA-256 checksum, and validates the extracted archive with Gatekeeper.
+### A note on Cleanup
 
-See `ARCHITECTURE.md`, `SECURITY.md`, `PRIVACY.md`, and
-`docs/RELEASE_CHECKLIST.md` for current technical and release truth.
+The **Mac App Store build** deliberately limits Cleanup to qualified Small Matter-owned disposable data; it does **not** offer broad system-cache sweeping, Xcode Derived Data deletion, or unqualified user-selected permanent deletion. This is not a general-purpose disk cleaner.
 
-Small Matter was developed under the codename Tunix.
+The separately configured **Developer ID** build has different qualified capabilities. Do not assume that a capability documented for one distribution exists in the other.
 
-The stable project, module, bundle, and persistence identifiers intentionally
-retain that internal codename for compatibility. They are not the public
-product name.
+## Install and support
 
-## Release status
+- [Download on the Mac App Store](https://apps.apple.com/us/app/small-matter/id6819082403) (Free)
+- [Support, setup, and common questions](https://computeaholic.github.io/small-matter/)
+- [Issues and feature requests](https://github.com/computeaholic/small-matter/issues)
+- [Privacy](PRIVACY.md) · [Security](SECURITY.md) · [App Store capability matrix](docs/APP_STORE_TELEMETRY_MATRIX.md)
 
-Small Matter `0.9.1` is the published direct-distribution release. The
-repository contains separate Developer ID and Mac App Store build
-configurations; the latter uses App Sandbox and has its own publishing state.
-Historical release tags and assets are immutable. Local unsigned Release
-builds and artifact verification remain reproducible. Developer ID signing and
-notarization require the authorized Apple credentials and are reported only
-when the actual artifact has been accepted by Apple and Gatekeeper.
+Requires **macOS 15.5 or newer**. Native universal build for Apple Silicon and Intel Macs. The App Store controls which app version is currently available in each territory; this repository's source and release work may be newer than the public listing.
 
-The full UI test command remains a mandatory local release gate because
-GitHub-hosted runners do not provide deterministic interactive Automation
-permissions:
+## Development
 
-```sh
-./scripts/run_tunix_ui_tests.sh --fresh-derived-data
-```
+Small Matter was developed under the codename **Tunix**. Its Xcode project, Swift module, bundle identifier, and existing persistence paths intentionally retain those identifiers for compatibility.
+
+Open **Tunix.xcodeproj** in Xcode. The source tree contains separate **Mac App Store** and **Developer ID** configurations.
+
+Quality and release verification:
+
+    ./scripts/run_tunix_app_unit_tests.sh --fresh-derived-data
+    ./scripts/run_tunix_ui_tests.sh --fresh-derived-data
+    swiftformat Tunix TunixTests TunixUITests --lint
+    swiftlint lint Tunix TunixTests TunixUITests --reporter json
+    zsh -n scripts/*.sh
+    ./scripts/build_release.sh --prepare-only
+    ./scripts/verify_release_artifact.sh --allow-unsigned \
+      --app '.deriveddata/release/Build/Products/Release/Small Matter.app'
+    git diff --check
+
+Full macOS UI testing is a local release gate because hosted CI does not provide deterministic interactive Automation permissions. Build 12's source qualified with **35 passing UI tests**. Signed uploads, notarization, and App Store review require the corresponding Apple distribution credentials and approvals.
+
+For deeper technical detail, see [Architecture](ARCHITECTURE.md), [Release checklist](docs/RELEASE_CHECKLIST.md), and [Source provenance](PUBLIC_SOURCE_PROVENANCE.md). App Store merchandising drafts and claim boundaries are tracked in [App Store product-page copy](docs/APP_STORE_PRODUCT_PAGE.md).
 
 ## License
 
-Small Matter is licensed under the PolyForm Noncommercial License 1.0.0.
-This is a source-available noncommercial license, not an OSI-approved
-open-source license. See `LICENSE` for the complete terms.
+Small Matter is **source-available**, licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE). This is not an OSI-approved open-source license.

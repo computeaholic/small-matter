@@ -1,34 +1,32 @@
 # Small Matter Privacy
 
-Small Matter is a local macOS application. It does not send telemetry or
-support data to a company service.
+**Small Matter keeps system observations local.** There is no Small Matter account, cloud telemetry service, advertising, analytics, or tracking SDK. The app does not send your measurements or evidence to a company service.
 
-## What stays local
+## Information that stays on your Mac
 
-- CPU, memory, network, storage, battery, cooling, and thermal observations
-- local application settings and compatibility state
-- user-scoped Cleanup quarantine and undo state
-- Keep Awake assertion state while the app is running
-- diagnostic and System Health information
+- CPU, memory, network, storage, battery, cooling, and thermal observations.
+- Recent Changes history, incident captures, and their bounded evidence journal.
+- App settings, compatibility state, and Keep Awake state while running.
+- User-directed evidence and support exports stored at destinations you choose.
 
-The app contains no analytics SDK, tracking identifier, cloud synchronization,
-AI processing service, or advertising integration.
+Small Matter may retain a bounded local history to support investigation. If that journal becomes full, collection can be limited. Historical captures are not automatically uploaded.
 
-## Support snapshots
+## Exports and sharing
 
-Support snapshots are created only when the user requests an export. They are
-structured summaries of application identity, telemetry status, capabilities,
-timestamps, and relevant diagnostic state. They are not automatic uploads.
+Small Matter creates support and evidence files only when you request them. Exported files may contain time stamps, system measurements, and evidence context. The export process applies privacy-conscious redaction, but **review the contents before sharing** them with anyone.
 
-Snapshots intentionally avoid passwords, tokens, private file contents, and
-unnecessary personal identifiers. Review an exported snapshot before sharing
-it.
+The app does not automatically send those files to its developer or to third parties.
 
-## Hardware and files
+## Hardware and permissions
 
-Hardware observation is read-only. macOS remains responsible for fan behavior,
-thermal response, charging, and battery-protection policy. Cleanup operates
-only on user-scoped paths and uses quarantine/undo rather than silent
-destructive deletion.
+Hardware telemetry is read-only. macOS retains control over fans, thermal response, charging, and battery-protection policy. Hardware readings may be unavailable on some Macs or in App Sandbox; Small Matter labels unsupported or missing readings accordingly.
 
-For questions about a local export, remove the file if it is no longer needed.
+The Mac App Store distribution uses App Sandbox and user-selected file access for exports. Cleanup in that distribution is conservatively limited to qualified Small Matter-owned disposable data; it does not perform broad system-cache deletion, arbitrary selected-folder permanent deletion, or Xcode Derived Data cleanup.
+
+Separate direct-distribution builds may have different capabilities. They should not be confused with those of the Mac App Store app.
+
+## Support
+
+For documentation and questions, visit the [Small Matter support page](https://computeaholic.github.io/small-matter/). If you report an issue publicly, **do not include passwords, access tokens, unredacted exports, serial numbers, or private file contents**.
+
+[Get Small Matter on the Mac App Store](https://apps.apple.com/us/app/small-matter/id6819082403).
