@@ -1,7 +1,7 @@
 # Small Matter — App Store product-page copy
 
 **Product:** Small Matter · **App Store ID:** 6819082403 · **Platform:** macOS
-**Last editorial update:** October 31, 2026
+**Last editorial update:** November 2, 2026
 
 This document is a versioned **marketing source of truth**, not evidence that every field is live in App Store Connect. Check the authenticated Apple record before claiming publication. Preserve pricing, territories, privacy, and manual-release settings unless separately authorized.
 
@@ -13,9 +13,9 @@ This document is a versioned **marketing source of truth**, not evidence that ev
 
 **Differentiation:** Performance at a glance; trustworthy, evidence-backed changes; a privacy-first local experience; explicit limits rather than pretend sensor readings.
 
-## Subtitle (26 characters)
+## Subtitle (29 characters) — corrected for Apple Guideline 5.2.5
 
-See what your Mac is doing
+Performance without guesswork
 
 ## Promotional text (159 characters)
 
@@ -51,9 +51,9 @@ Small Matter is deliberately honest about its limits. Some hardware sensor readi
 
 Less noise. More context. A clearer understanding of your Mac.
 
-## Search keywords (94 ASCII bytes)
+## Search keywords (96 ASCII bytes)
 
-mac monitor,cpu,memory,network activity,battery health,thermal,performance,diagnostics,storage
+cpu monitor,memory usage,network activity,battery health,thermal,performance,diagnostics,storage
 
 ## What's New — for version 1.1.0 (12), where appropriate
 
@@ -74,6 +74,17 @@ Small Matter stays local-first, read-only, and transparent about unavailable har
 4. **Capture the moment. Keep the evidence.** — authentic Capture / export flow with personal identifiers and private paths omitted.
 
 Respect Apple's required dimensions. Do not invent, composite, or fabricate readings, sensors, incidents, or application states. Recheck every screenshot against the actual distribution build.
+
+## App Review rejection and metadata correction (November 2, 2026)
+
+- **Submission:** `1a8dd09e-26cb-4400-a83e-63aebbfc2ac2`; reviewed build `1.1.0 (12)` on MacBook Air (15-inch, M3, 2024).
+- **Guideline:** Apple cited **5.2.5**, explicitly identifying use of **Mac in the app subtitle** as inappropriate. The earlier proposed subtitle was `See what your Mac is doing`.
+- **Remedy:** Replace the App Store Connect subtitle with **Performance without guesswork** (29 characters); no Apple product name in the subtitle. Keep the app name, bundle identity, binary, review screenshots, and release configuration unchanged unless Apple requires a separate correction.
+- **Follow-up:** Save the new subtitle in authenticated App Store Connect and reply to the original App Review message requesting review of the existing 1.1.0 (12) binary. Use `Resolve` / `Edit` / `Resubmit` only if the live Apple submission workflow requires it; do not cancel, upload again, or create Build 13 for a subtitle-only issue.
+- **Prevent recurrence:** The above suggested keyword list also deliberately omits Apple product trademarks. Product-compatibility references in long descriptions are subject to Apple’s trademark-use rules; avoid using Apple marks as attention-grabbing names, slogans, subtitles, or keyword stuffing.
+- **Status:** This Git documentation change is **not** proof that the App Store Connect subtitle has been edited or that Apple resumed review. Record the actual field value and review status after applying the fix.
+
+Apple sources: [App Review Guidelines](https://developer.apple.com/app-store/review/guidelines/), [Apple trademark guidelines](https://www.apple.com/legal/intellectual-property/guidelinesfor3rdparties.html), [App and submission statuses](https://developer.apple.com/help/app-store-connect/reference/app-information/app-and-submission-statuses).
 
 ## Claim boundaries and publication steps
 
