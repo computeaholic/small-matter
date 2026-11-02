@@ -1,0 +1,4 @@
+SCREENSHOT_CAPTURE_PENDING
+
+Authentic Mac App Store screenshots for Small Matter 1.1.0 (12) are not committed in this repository.
+Use `/home/runner/work/small-matter/small-matter/scripts/prepare_app_store_screenshots.sh` on a local macOS host with real app captures to generate a validated upload packet and manifest.

@@ -1,0 +1,33 @@
+{
+  "manifest_version": 1,
+  "generated_at_utc": "YYYY-MM-DDTHH:MM:SSZ",
+  "status": "pending_capture",
+  "app": {
+    "name": "Small Matter",
+    "bundle_id": "Tunix-LLC.Tunix",
+    "version": "1.1.0",
+    "build": "12"
+  },
+  "source": {
+    "origin": "local-macos-capture",
+    "git_commit": "<git sha>",
+    "source_dir_basename": "<capture folder name>"
+  },
+  "required_slots": [
+    "01-overview-performance.png",
+    "02-performance-details.png",
+    "03-recent-changes.png",
+    "04-incident-capture-export.png",
+    "05-battery-thermal.png"
+  ],
+  "optional_slots": [
+    "06-dark-mode-overview.png"
+  ],
+  "accepted_dimensions": [
+    "1280x800",
+    "1440x900",
+    "2560x1600",
+    "2880x1800"
+  ],
+  "spec_reference": "https://developer.apple.com/help/app-store-connect/reference/screenshot-specifications"
+}
