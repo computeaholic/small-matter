@@ -144,6 +144,10 @@ run_dir="$output_root/$run_id"
 mkdir "$run_dir"
 
 manifest_path="$run_dir/manifest.json"
+
+json_quote() {
+    python3 -c 'import json,sys; print(json.dumps(sys.argv[1], ensure_ascii=False))' "$1"
+}
 status_path="$run_dir/SCREENSHOT_CAPTURE_PENDING"
 
 if $pending; then
@@ -151,8 +155,9 @@ if $pending; then
 SCREENSHOT_CAPTURE_PENDING
 
 No authentic source screenshots were available in this repository or runner.
-Run this script on the owner's macOS capture host with real Small Matter 1.1.0 (12)
-application screenshots before App Store Connect upload.
+From the repository root, run ./scripts/prepare_app_store_screenshots.sh
+with --source-dir /ABSOLUTE/PATH/TO/CAPTURES on an authorized Mac.
+Review real app captures for private data before any App Store upload.
 PENDING
 
     cat > "$manifest_path" <<MANIFEST
@@ -163,12 +168,12 @@ PENDING
   "app": {
     "name": "Small Matter",
     "bundle_id": "Tunix-LLC.Tunix",
-    "version": "$version",
-    "build": "$build"
+    "version": $(json_quote "$version"),
+    "build": $(json_quote "$build")
   },
   "source": {
-    "origin": "$origin",
-    "git_commit": "$commit",
+    "origin": $(json_quote "$origin"),
+    "git_commit": $(json_quote "$commit"),
     "source_dir_basename": ""
   },
   "required_slots": [
@@ -251,22 +256,22 @@ source_basename="${source_dir:t}"
 {
     echo "{"
     echo "  \"manifest_version\": 1,"
-    echo "  \"generated_at_utc\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"," 
-    echo "  \"status\": \"ready_for_manual_review\"," 
+    echo "  \"generated_at_utc\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\","
+    echo "  \"status\": \"ready_for_manual_review\","
     echo "  \"app\": {"
-    echo "    \"name\": \"Small Matter\"," 
-    echo "    \"bundle_id\": \"Tunix-LLC.Tunix\"," 
-    echo "    \"version\": \"$version\"," 
-    echo "    \"build\": \"$build\""
+    echo "    \"name\": \"Small Matter\","
+    echo "    \"bundle_id\": \"Tunix-LLC.Tunix\","
+    echo "    \"version\": $(json_quote "$version"),"
+    echo "    \"build\": $(json_quote "$build")"
     echo "  },"
     echo "  \"source\": {"
-    echo "    \"origin\": \"$origin\"," 
-    echo "    \"git_commit\": \"$commit\"," 
-    echo "    \"source_dir_basename\": \"$source_basename\""
+    echo "    \"origin\": $(json_quote "$origin"),"
+    echo "    \"git_commit\": $(json_quote "$commit"),"
+    echo "    \"source_dir_basename\": $(json_quote "$source_basename")"
     echo "  },"
-    echo "  \"spec_reference\": \"https://developer.apple.com/help/app-store-connect/reference/screenshot-specifications\"," 
+    echo "  \"spec_reference\": \"https://developer.apple.com/help/app-store-connect/reference/screenshot-specifications\","
     echo "  \"screenshots\": ["
-    for i in "${(@i)slot_lines}"; do
+    for (( i = 1; i <= ${#slot_lines[@]}; i++ )); do
         line="${slot_lines[$i]}"
         if (( i < ${#slot_lines[@]} )); then
             echo "$line,"

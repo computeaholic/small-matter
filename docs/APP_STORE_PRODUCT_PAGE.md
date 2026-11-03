@@ -74,8 +74,8 @@ Preferred upload size: **2560×1600 PNG** where accepted by Apple upload validat
 1. **Your Mac, at a glance** — performance-first Overview (CPU, memory, network hero cards).
 2. **Live activity, clear trends** — Performance details with CPU/memory/network charts.
 3. **See what changed** — Recent Changes with supported observations and visible evidence boundaries.
-4. **Capture the moment** — bounded incident capture state.
-5. **Keep your evidence** — text/JSON export view with no personal identifiers.
+4. **Capture the moment; keep the evidence** — bounded incident capture and user-directed text/JSON export, without personal identifiers.
+5. **Battery and thermal context** — real battery/thermal screen, honestly labeling unavailable hardware sensors.
 6. *(Optional)* **Dark mode overview** — authentic dark appearance capture if available.
 
 Rules:
@@ -90,9 +90,7 @@ The cloud runner cannot capture owner GUI/TestFlight screens. Screenshot creatio
 ### 1) Generate pending packet (current repository state)
 
 ```bash
-/home/runner/work/small-matter/small-matter/scripts/prepare_app_store_screenshots.sh \
-  --pending \
-  --output-root /home/runner/work/small-matter/small-matter/docs/app_store_assets/runs
+./scripts/prepare_app_store_screenshots.sh --pending
 ```
 
 ### 2) Generate validated packet on local macOS capture host
@@ -109,12 +107,11 @@ Capture authentic PNGs into a local folder using these exact filenames:
 Then run:
 
 ```bash
-/home/runner/work/small-matter/small-matter/scripts/prepare_app_store_screenshots.sh \
+./scripts/prepare_app_store_screenshots.sh \
   --source-dir /ABSOLUTE/PATH/TO/CAPTURES \
   --origin "small-matter-1.1.0(12)-local-capture" \
   --version 1.1.0 \
-  --build 12 \
-  --output-root /home/runner/work/small-matter/small-matter/docs/app_store_assets/runs
+  --build 12
 ```
 
 Script guarantees:
@@ -124,7 +121,7 @@ Script guarantees:
 - per-run folder creation without overwriting prior runs
 - SHA-256 manifest (`manifest.json`) plus manual review checklist
 
-Current repository marker: `/home/runner/work/small-matter/small-matter/docs/app_store_assets/SCREENSHOT_CAPTURE_PENDING`
+Current repository marker: `docs/app_store_assets/SCREENSHOT_CAPTURE_PENDING`. Generated packets default to ignored `docs/app_store_assets/runs/`; review locally and upload manually rather than committing private captures.
 
 ## Claim boundaries and compliance notes
 

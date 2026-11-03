@@ -41,3 +41,6 @@ venv/
 .aider.*
 *.bak.*
 tree.txt
+
+### Local App Store screenshot packets (may contain private evidence) ###
+docs/app_store_assets/runs/
