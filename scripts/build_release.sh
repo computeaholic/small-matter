@@ -102,7 +102,9 @@ app_identifier=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app_pa
 [[ "$app_identifier" == "Tunix-LLC.Tunix" ]] || { echo "Unexpected bundle identifier: $app_identifier" >&2; exit 1; }
 
 zip_path="$artifact_dir/Small-Matter-$app_version-$app_build-macos.zip"
-/bin/rm -f "$zip_path" "$zip_path.sha256"
+# Historical release ZIPs and checksums are immutable. Never remove or
+# replace a previously generated artifact with the same version/build name.
+/bin/zsh "$repo_root/scripts/guard_release_artifact_paths.sh" "$zip_path" "$zip_path.sha256"
 /usr/bin/ditto -c -k --keepParent "$app_path" "$zip_path"
 /usr/bin/shasum -a 256 "$zip_path" > "$zip_path.sha256"
 
