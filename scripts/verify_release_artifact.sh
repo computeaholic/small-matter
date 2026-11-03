@@ -38,12 +38,28 @@ bundle_identifier=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$inf
 bundle_version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$info_plist")
 bundle_build=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$info_plist")
 bundle_executable=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$info_plist")
+bundle_icon_name=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconName' "$info_plist")
 [[ "$bundle_identifier" == "Tunix-LLC.Tunix" ]] || { echo "Unexpected bundle identifier: $bundle_identifier" >&2; exit 1; }
 [[ "$bundle_executable" == "Small Matter" ]] || { echo "Unexpected executable name: $bundle_executable" >&2; exit 1; }
+[[ "$bundle_icon_name" == "AppIcon" ]] || { echo "Unexpected app icon name: $bundle_icon_name" >&2; exit 1; }
 echo "BUNDLE_IDENTIFIER=$bundle_identifier"
 echo "VERSION=$bundle_version"
 echo "BUILD=$bundle_build"
-echo "ARCHITECTURE=$(/usr/bin/file "$executable")"
+echo "APP_ICON=$bundle_icon_name"
+architectures=$(/usr/bin/lipo -archs "$executable")
+echo "ARCHITECTURES=$architectures"
+apple_silicon_slice=0
+for architecture in ${(z)architectures}; do
+    case "$architecture" in
+        arm64|arm64e|arm64e.*)
+            apple_silicon_slice=1
+            ;;
+    esac
+done
+[[ "$apple_silicon_slice" == "1" && " $architectures " == *" x86_64 "* ]] || {
+    echo "Release executable must contain an Apple Silicon slice and x86_64" >&2
+    exit 1
+}
 
 for forbidden_path in \
     "$app_path/Contents/MacOS/TunixHelper" \
@@ -82,6 +98,13 @@ entitlements_dump="$(mktemp -t small-matter-release-entitlements.XXXXXX)"
 binary_strings="$(mktemp -t small-matter-release-strings.XXXXXX)"
 trap 'rm -f "$entitlements_dump" "$binary_strings"' EXIT
 /usr/bin/codesign -d --entitlements :- "$app_path" > "$entitlements_dump" 2>/dev/null || true
+if [[ "$signature_verified" == "1" ]] && /usr/bin/grep -q '<key>' "$entitlements_dump"; then
+    echo "Unexpected direct-distribution entitlement present; expected an empty entitlement dictionary" >&2
+    exit 1
+fi
+if [[ "$signature_verified" == "1" ]]; then
+    echo "ENTITLEMENTS=EMPTY"
+fi
 for forbidden in \
     com.apple.security.get-task-allow \
     com.apple.security.cs.disable-library-validation \

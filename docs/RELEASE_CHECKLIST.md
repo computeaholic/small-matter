@@ -31,14 +31,31 @@ preparation only. It is not a shippable artifact.
 
 ## Notarization and packaging
 
+- [ ] Run `scripts/build_release.sh --signed --direct-dmg` from a clean review
+      checkout. This creates a new DMG only; it does not publish or install it.
+- [ ] Confirm the DMG contains only `Small Matter.app` and `Applications ->
+      /Applications` (plus Finder metadata), and that the checked-in app icon
+      is present in the app bundle.
+- [ ] Confirm the DMG manifest records `FORMAT=UDZO`, zlib level 9, the
+      symlink target, app file hashes, and the Finder layout result.
+- [ ] Confirm the DMG checksum and manifest checksum validate.
+- [ ] Run `scripts/verify_direct_dmg.sh --dmg 'path/to/Small-Matter.dmg'`.
 - [ ] Store notarization credentials only in Keychain via `notarytool`.
-- [ ] Run `TUNIX_NOTARYTOOL_PROFILE=name scripts/notarize_release.sh
-      --app 'path/to/Small Matter.app'`.
-- [ ] Confirm stapler validation and Gatekeeper assessment succeed. The
-      notarization script checks the extracted final ZIP, not only the build
-      directory copy.
-- [ ] Publish the notarized ZIP and its SHA-256 file together.
-- [ ] Test the exact ZIP on a clean macOS user account or clean machine.
+- [ ] Run `TUNIX_NOTARYTOOL_PROFILE=name scripts/notarize_direct_dmg.sh
+      --dmg 'path/to/Small-Matter.dmg'`.
+- [ ] Confirm stapler validation and Gatekeeper assessment succeed against the
+      app mounted from the stapled DMG.
+- [ ] Record `NOTARIZATION_UNAVAILABLE` if the safe Keychain profile is absent;
+      do not call the DMG notarized.
+- [ ] Test the exact DMG on a clean macOS user account or clean machine.
+- [ ] Run `scripts/test_direct_dmg.sh` and retain its pass/failure receipt.
+
+The DMG workflow promises repeatable logical volume contents and explicit
+checksums. `hdiutil` filesystem/container metadata and Finder `.DS_Store` can
+introduce byte-level variation, so bitwise determinism is not claimed.
+
+The older ZIP/notarization scripts remain for their existing artifact contract;
+they do not qualify a direct-distribution DMG.
 
 ## Runtime and safety gates
 

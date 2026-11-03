@@ -6,7 +6,9 @@ derived_data_path="${TUNIX_RELEASE_DERIVED_DATA_PATH:-$repo_root/.deriveddata/re
 artifact_dir="${TUNIX_RELEASE_ARTIFACT_DIR:-$repo_root/.release-artifacts}"
 mode="signed"
 signing_identity="${TUNIX_RELEASE_SIGNING_IDENTITY:-Developer ID Application}"
-destination="platform=macOS,arch=$(uname -m)"
+destination="generic/platform=macOS"
+build_dmg=0
+skip_finder_layout=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -25,6 +27,14 @@ while [[ $# -gt 0 ]]; do
         --artifact-dir)
             artifact_dir="$2"
             shift 2
+            ;;
+        --direct-dmg)
+            build_dmg=1
+            shift
+            ;;
+        --skip-finder-layout)
+            skip_finder_layout=1
+            shift
             ;;
         *)
             echo "Unknown argument: $1" >&2
@@ -53,6 +63,8 @@ build_args=(
     -configuration Release
     -destination "$destination"
     -derivedDataPath "$derived_data_path"
+    ARCHS="arm64 x86_64"
+    ONLY_ACTIVE_ARCH=NO
     clean
     build
 )
@@ -104,3 +116,17 @@ fi
 echo "RELEASE_APP=$app_path"
 echo "RELEASE_ARCHIVE=$zip_path"
 echo "RELEASE_CHECKSUM=$zip_path.sha256"
+
+if [[ "$build_dmg" == "1" ]]; then
+    dmg_path="$artifact_dir/Small-Matter-$app_version-$app_build-macos.dmg"
+    dmg_args=(--app "$app_path" --output "$dmg_path")
+    if [[ "$mode" == "prepare" ]]; then
+        dmg_args+=(--allow-unsigned)
+    fi
+    if [[ "$skip_finder_layout" == "1" ]]; then
+        dmg_args+=(--skip-finder-layout)
+    fi
+    /bin/zsh "$repo_root/scripts/build_direct_dmg.sh" "${dmg_args[@]}"
+    echo "RELEASE_DMG=$dmg_path"
+    echo "RELEASE_DMG_CHECKSUM=$dmg_path.sha256"
+fi
