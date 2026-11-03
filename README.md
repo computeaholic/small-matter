@@ -68,9 +68,15 @@ Quality and release verification:
     ./scripts/build_release.sh --prepare-only
     ./scripts/verify_release_artifact.sh --allow-unsigned \
       --app '.deriveddata/release/Build/Products/Release/Small Matter.app'
+    ./scripts/test_direct_dmg.sh
     git diff --check
 
 Full macOS UI testing is a local release gate because hosted CI does not provide deterministic interactive Automation permissions. Build 12's source qualified with **35 passing UI tests**. Signed uploads, notarization, and App Store review require the corresponding Apple distribution credentials and approvals.
+
+For the future Developer ID direct-distribution workflow, see
+[Direct distribution](docs/DIRECT_DISTRIBUTION.md). It creates a new DMG with a
+real Applications alias and validates the mounted image; it is separate from
+the Mac App Store, TestFlight, and App Review workflows.
 
 For deeper technical detail, see [Architecture](ARCHITECTURE.md), [Release checklist](docs/RELEASE_CHECKLIST.md), and [Source provenance](PUBLIC_SOURCE_PROVENANCE.md). App Store merchandising drafts and claim boundaries are tracked in [App Store product-page copy](docs/APP_STORE_PRODUCT_PAGE.md), with screenshot packet assembly in [`scripts/prepare_app_store_screenshots.sh`](scripts/prepare_app_store_screenshots.sh) and pending status tracked at [`docs/app_store_assets/SCREENSHOT_CAPTURE_PENDING`](docs/app_store_assets/SCREENSHOT_CAPTURE_PENDING).
 

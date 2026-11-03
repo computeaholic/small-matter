@@ -44,6 +44,13 @@ jobs:
       - name: Storefront screenshot packet validation
         run: ./scripts/test_app_store_screenshot_packet.sh
 
+  quality-direct-dmg:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build and inspect disposable direct-distribution DMG
+        run: ./scripts/test_direct_dmg.sh
+
   # macOS UI tests require interactive Automation permissions that are not
   # available deterministically on GitHub-hosted runners. They remain a
   # mandatory local release gate; see README.md for the exact command.
