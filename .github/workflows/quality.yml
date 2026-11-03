@@ -41,6 +41,8 @@ jobs:
         run: ./scripts/verify_release_artifact.sh --allow-unsigned --app '.deriveddata/release/Build/Products/Release/Small Matter.app'
       - name: App Store export compliance declaration
         run: ./scripts/verify_app_store_export_compliance.sh
+      - name: Direct release archive immutability check
+        run: ./scripts/test_direct_archive_guards.sh
       - name: Storefront screenshot packet validation
         run: ./scripts/test_app_store_screenshot_packet.sh
 

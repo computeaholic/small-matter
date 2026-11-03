@@ -13,6 +13,12 @@ From a clean review checkout, use the Developer ID Release configuration:
 ./scripts/build_release.sh --signed --direct-dmg
 ```
 
+Before building a version that shares a historical version/build number,
+use a separate, new artifact directory. The release script **refuses to
+overwrite existing ZIP/checksum pairs** for the version/build it produces;
+historical `v0.9.1` artifacts must remain immutable. An existing output
+collision is an error, never an invitation to delete or replace it.
+
 The script uses a generic macOS destination with `ARCHS=arm64 x86_64` and
 `ONLY_ACTIVE_ARCH=NO`. It rejects a missing `Developer ID Application`
 identity, validates the app before packaging, accepts arm64/arm64e Apple
