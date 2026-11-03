@@ -1,99 +1,135 @@
-# Small Matter — App Store product-page copy
+# Small Matter — App Store product-page copy and screenshot handoff
 
-**Product:** Small Matter · **App Store ID:** 6819082403 · **Platform:** macOS
+**Product:** Small Matter
+**App Store ID:** 6819082403
+**Platform:** macOS
+**Target binary:** 1.1.0 (12)
 **Last editorial update:** November 2, 2026
 
-This document is a versioned **marketing source of truth**, not evidence that every field is live in App Store Connect. Check the authenticated Apple record before claiming publication. Preserve pricing, territories, privacy, and manual-release settings unless separately authorized.
+This file is the repository source of truth for App Store metadata and screenshot assembly prep. It does **not** change App Store Connect state by itself.
 
-## Positioning
+## Hard publishing gate (do not disturb active review)
 
-**Promise:** See what your Mac is doing. Understand what changed. Keep your data yours.
+Build `1.1.0 (12)` was resubmitted after subtitle correction. While a version is `Waiting for Review` or `In Review`, Apple blocks screenshot and preview edits for that version. Do not cancel or withdraw this submission only to adjust merchandising text or images.
 
-**Audience:** Mac owners and developers who want clear system performance, meaningful changes, and local evidence—without an account or analytics.
+Apple status reference: <https://developer.apple.com/help/app-store-connect/reference/app-information/app-and-submission-statuses>
 
-**Differentiation:** Performance at a glance; trustworthy, evidence-backed changes; a privacy-first local experience; explicit limits rather than pretend sensor readings.
+## Copy/paste fields for App Store Connect (production-ready)
 
-## Subtitle (29 characters) — corrected for Apple Guideline 5.2.5
+Use this block exactly when App Store Connect allows editing for the intended version.
 
-Performance without guesswork
+### Product name (unchanged)
 
-## Promotional text (159 characters)
+`Small Matter`
 
-See what your Mac is doing—and what changed. Live CPU, memory, and network activity, observed system changes, and evidence you control. No account or tracking.
+### Subtitle (fixed per Guideline 5.2.5; 29/30 chars)
 
-## Description
+`Performance without guesswork`
 
-Your Mac does a lot behind the scenes. Small Matter makes it easier to see what's happening now—and understand what actually changed.
+### Promotional text (168/170 chars)
 
-Get a clean, live look at CPU, memory, and network activity, alongside battery, storage, and thermal status. When something catches your attention, go beyond a snapshot: review observed changes, capture a moment worth investigating, and export evidence you can keep or share.
+`See live CPU, memory, and network activity, understand meaningful system changes, and keep local evidence you can export—without accounts, tracking, or cloud telemetry.`
 
-SEE YOUR MAC AT A GLANCE
-- CPU usage and short-term trends
-- Memory use, pressure, compression, cache, and swap
-- Network download and upload activity
-- Battery charge, health, cycles, and power state
-- Storage capacity and available space
-- macOS thermal state and supported cooling readings
+### Keywords (96/100 bytes, ASCII)
 
-UNDERSTAND WHAT CHANGED
-- Review observed storage, network, and power transitions
-- Capture a bounded before-and-after window around a moment you want to investigate
-- See where evidence is incomplete instead of mistaking missing data for certainty
-- Export your evidence in readable text or structured JSON
+`cpu monitor,memory usage,network activity,battery health,thermal,performance,diagnostics,storage`
+
+### Full description
+
+Small Matter helps you understand your Mac without guesswork.
+
+See live CPU, memory, and network activity in a performance-first overview, then drill into details when something looks off. Follow storage, power, and network transitions in Recent Changes, capture a bounded incident window, and export your own evidence in readable text or structured JSON.
 
 PRIVATE BY DESIGN
 - No account required
 - No advertising, analytics, tracking, or cloud telemetry
-- Your observations stay on your Mac unless you choose to export them
-- Read-only hardware monitoring: macOS remains in charge of fans, charging, and thermal policy
+- Observations stay on your Mac unless you choose to export
 
-Small Matter is deliberately honest about its limits. Some hardware sensor readings are unavailable on certain Macs or in the App Sandbox. When the system cannot provide a reliable value, you'll see that it's unavailable—not a guess.
+HONEST ABOUT LIMITS
+- Read-only hardware monitoring; macOS remains in control of fans, charging, and thermal policy
+- Some readings are unavailable on certain Macs or in the App Sandbox
+- When a reliable value is unavailable, Small Matter labels it as unavailable instead of guessing
+
+APP STORE CLEANUP SCOPE
+- The Mac App Store build limits Cleanup to qualified Small Matter-owned disposable data
+- It does not claim broad quarantine/undo workflows, arbitrary selected-folder permanent deletion, or Xcode Derived Data cleanup
 
 Less noise. More context. A clearer understanding of your Mac.
 
-## Search keywords (96 ASCII bytes)
-
-cpu monitor,memory usage,network activity,battery health,thermal,performance,diagnostics,storage
-
-## What's New — for version 1.1.0 (12), where appropriate
+### What's New in 1.1.0
 
 A clearer look at your Mac.
 
-- A redesigned, performance-first Overview puts CPU, memory, and network activity front and center.
-- More useful context around observed system changes and captured incidents.
-- Improved local evidence-storage recovery to help capture keep working within its bounded storage limit.
-- Refinements to evidence exports, responsive layouts, and accessibility.
+- Redesigned performance-first Overview puts CPU, memory, and network front and center.
+- Expanded context in Recent Changes and incident evidence summaries.
+- Improved local evidence-storage recovery so bounded capture remains reliable.
+- Refinements to evidence export, responsive layouts, and accessibility.
 
-Small Matter stays local-first, read-only, and transparent about unavailable hardware readings.
+Small Matter remains local-first, read-only, and explicit about unavailable sensor states.
 
-## Screenshot plan — use real shipping-app captures only
+## Screenshot storyboard (Mac App Store)
 
-1. **Your Mac, at a glance** — authentic wide performance-first Overview with CPU, Memory, and Network together.
-2. **Live activity. Clear trends.** — authentic Performance page with CPU, memory, and network graphs.
-3. **See what actually changed** — authentic Recent Changes with supported observations and accurate evidence coverage.
-4. **Capture the moment. Keep the evidence.** — authentic Capture / export flow with personal identifiers and private paths omitted.
+Preferred upload size: **2560×1600 PNG** where accepted by Apple upload validation. Alternate accepted sizes are validated by script output against Apple's current screenshot specification.
 
-Respect Apple's required dimensions. Do not invent, composite, or fabricate readings, sensors, incidents, or application states. Recheck every screenshot against the actual distribution build.
+1. **Your Mac, at a glance** — performance-first Overview (CPU, memory, network hero cards).
+2. **Live activity, clear trends** — Performance details with CPU/memory/network charts.
+3. **See what changed** — Recent Changes with supported observations and visible evidence boundaries.
+4. **Capture the moment; keep the evidence** — bounded incident capture and user-directed text/JSON export, without personal identifiers.
+5. **Battery and thermal context** — real battery/thermal screen, honestly labeling unavailable hardware sensors.
+6. *(Optional)* **Dark mode overview** — authentic dark appearance capture if available.
 
-## App Review rejection and metadata correction (November 2, 2026)
+Rules:
+- Use only authentic application screenshots from the shipping app build.
+- Do not fabricate readings, unsupported sensors, fan control, charging control, or cleanup breadth.
+- Do not include private user paths, serial numbers, tokens, or unredacted personal evidence.
 
-- **Submission:** `1a8dd09e-26cb-4400-a83e-63aebbfc2ac2`; reviewed build `1.1.0 (12)` on MacBook Air (15-inch, M3, 2024).
-- **Guideline:** Apple cited **5.2.5**, explicitly identifying use of **Mac in the app subtitle** as inappropriate. The earlier proposed subtitle was `See what your Mac is doing`.
-- **Remedy:** Replace the App Store Connect subtitle with **Performance without guesswork** (29 characters); no Apple product name in the subtitle. Keep the app name, bundle identity, binary, review screenshots, and release configuration unchanged unless Apple requires a separate correction.
-- **Follow-up:** Save the new subtitle in authenticated App Store Connect and reply to the original App Review message requesting review of the existing 1.1.0 (12) binary. Use `Resolve` / `Edit` / `Resubmit` only if the live Apple submission workflow requires it; do not cancel, upload again, or create Build 13 for a subtitle-only issue.
-- **Prevent recurrence:** The above suggested keyword list also deliberately omits Apple product trademarks. Product-compatibility references in long descriptions are subject to Apple’s trademark-use rules; avoid using Apple marks as attention-grabbing names, slogans, subtitles, or keyword stuffing.
-- **Status:** This Git documentation change is **not** proof that the App Store Connect subtitle has been edited or that Apple resumed review. Record the actual field value and review status after applying the fix.
+## Reproducible screenshot production path (macOS only)
 
-Apple sources: [App Review Guidelines](https://developer.apple.com/app-store/review/guidelines/), [Apple trademark guidelines](https://www.apple.com/legal/intellectual-property/guidelinesfor3rdparties.html), [App and submission statuses](https://developer.apple.com/help/app-store-connect/reference/app-information/app-and-submission-statuses).
+The cloud runner cannot capture owner GUI/TestFlight screens. Screenshot creation is therefore marked pending in-repo until local macOS capture is run.
 
-## Claim boundaries and publication steps
+### 1) Generate pending packet (current repository state)
 
-- **Cleanup:** Do not advertise broad user-scoped Cleanup with quarantine/undo as a Mac App Store capability. The App Store build supports conservative qualified app-owned disposable-data handling; permanent deletion of arbitrary selected data and Xcode Derived Data deletion are disabled pending additional qualification.
-- **Hardware:** Do not imply fan control, charging control, full AppleSMC sensor access, or complete coverage on every Mac.
-- **Evidence:** Capture is bounded and may complete with limitations. Missing evidence does not prove that nothing happened. Retention is bounded, not unlimited.
-- **Privacy:** The app has no account, advertising, analytics, tracking, or cloud telemetry; user-directed export is separate.
-- **Editing:** Promotional text may be independently editable in App Store Connect; subtitle, description, keywords, and screenshots can require an editable app version. Verify Apple's live workflow rather than changing an approved or released version merely to update copy.
-- **Release:** No source-only documentation commit changes an uploaded binary, an App Review result, or a public App Store listing. Use authenticated App Store Connect to apply and verify metadata.
-- **Readiness:** This is editorial copy to apply at the next Apple-supported opportunity; record exact saved field values and Apple status before marking it published.
+```bash
+./scripts/prepare_app_store_screenshots.sh --pending
+```
 
-Public product page: https://apps.apple.com/us/app/small-matter/id6819082403
+### 2) Generate validated packet on local macOS capture host
+
+Capture authentic PNGs into a local folder using these exact filenames:
+
+- `01-overview-performance.png`
+- `02-performance-details.png`
+- `03-recent-changes.png`
+- `04-incident-capture-export.png`
+- `05-battery-thermal.png`
+- optional `06-dark-mode-overview.png`
+
+Then run:
+
+```bash
+./scripts/prepare_app_store_screenshots.sh \
+  --source-dir /ABSOLUTE/PATH/TO/CAPTURES \
+  --origin "small-matter-1.1.0(12)-local-capture" \
+  --version 1.1.0 \
+  --build 12
+```
+
+Script guarantees:
+- macOS-only validation (`sips`) and PNG MIME checks
+- accepted-dimension checks (`1280x800`, `1440x900`, `2560x1600`, `2880x1800`)
+- no upscaling step (copy-only), deterministic slot ordering, and dimension consistency
+- per-run folder creation without overwriting prior runs
+- SHA-256 manifest (`manifest.json`) plus manual review checklist
+
+Current repository marker: `docs/app_store_assets/SCREENSHOT_CAPTURE_PENDING`. Generated packets default to ignored `docs/app_store_assets/runs/`; review locally and upload manually rather than committing private captures.
+
+## Claim boundaries and compliance notes
+
+- Keep subtitle exactly `Performance without guesswork` unless legal review approves a replacement.
+- Do not use Apple trademarks in subtitle/keywords for attention-grabbing placement.
+- Do not claim broad Cleanup/quarantine/undo functionality in Mac App Store metadata.
+- Do not state or imply fan control, charging control, or universal sensor coverage.
+- Promotional text may be editable independently; description/keywords/screenshots may require an editable version depending on Apple workflow.
+- Repository edits do not publish metadata or screenshots; App Store Connect actions remain manual.
+
+Public listing: <https://apps.apple.com/us/app/small-matter/id6819082403>

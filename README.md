@@ -72,7 +72,7 @@ Quality and release verification:
 
 Full macOS UI testing is a local release gate because hosted CI does not provide deterministic interactive Automation permissions. Build 12's source qualified with **35 passing UI tests**. Signed uploads, notarization, and App Store review require the corresponding Apple distribution credentials and approvals.
 
-For deeper technical detail, see [Architecture](ARCHITECTURE.md), [Release checklist](docs/RELEASE_CHECKLIST.md), and [Source provenance](PUBLIC_SOURCE_PROVENANCE.md). App Store merchandising drafts and claim boundaries are tracked in [App Store product-page copy](docs/APP_STORE_PRODUCT_PAGE.md).
+For deeper technical detail, see [Architecture](ARCHITECTURE.md), [Release checklist](docs/RELEASE_CHECKLIST.md), and [Source provenance](PUBLIC_SOURCE_PROVENANCE.md). App Store merchandising drafts and claim boundaries are tracked in [App Store product-page copy](docs/APP_STORE_PRODUCT_PAGE.md), with screenshot packet assembly in [`scripts/prepare_app_store_screenshots.sh`](scripts/prepare_app_store_screenshots.sh) and pending status tracked at [`docs/app_store_assets/SCREENSHOT_CAPTURE_PENDING`](docs/app_store_assets/SCREENSHOT_CAPTURE_PENDING).
 
 ## License
 

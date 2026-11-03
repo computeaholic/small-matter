@@ -54,6 +54,23 @@ preparation only. It is not a shippable artifact.
 - [ ] Confirm the security review finds no fan write, battery-policy write, or
       arbitrary SMC write path.
 
+## App Store storefront metadata and assets
+
+- [ ] Confirm subtitle is exactly `Performance without guesswork` to avoid a
+      repeat of Guideline 5.2.5 rejection.
+- [ ] Confirm App Store metadata edits are attempted only in an Apple-allowed
+      state (do not disrupt a `Waiting for Review` / `In Review` submission).
+- [ ] Confirm promotional text length (`<=170`) and keyword bytes (`<=100`) for
+      the final copy in `docs/APP_STORE_PRODUCT_PAGE.md`.
+- [ ] Generate screenshot packet via
+      `scripts/prepare_app_store_screenshots.sh` and keep `manifest.json` with
+      SHA-256 values for every uploaded screenshot.
+- [ ] Confirm screenshot provenance is authentic Small Matter app UI from the
+      intended version/build (no mockups, fabricated values, or unsupported
+      capability claims).
+- [ ] Complete manual visual review on macOS for private-data exposure
+      (serials, usernames, paths, tokens) before upload.
+
 ## Quality gates
 
 - [ ] `swiftformat Tunix TunixTests --lint`
