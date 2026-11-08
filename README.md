@@ -71,7 +71,7 @@ Quality and release verification:
     ./scripts/test_direct_dmg.sh
     git diff --check
 
-The GitHub **Small Matter quality** workflow runs format/lint, unit tests, unsigned release verification, and direct-DMG checks only on the repository-scoped `small-matter-m4` self-hosted Mac runner. It has **no GitHub-hosted runner fallback**: if the local runner is offline, checks queue rather than spend hosted runner minutes. Pull requests from forks are intentionally skipped to keep untrusted code off the persistent local Mac; owner-repository pull requests use the trusted main-branch workflow definition. A manual `workflow_dispatch` run can verify the default branch. The repository's GitHub Pages deployment is separately managed by GitHub.
+The GitHub **Small Matter quality** workflow runs format/lint, unit tests, unsigned release verification, and direct-DMG checks only on the repository-scoped `small-matter-m4` self-hosted Mac runner. It has **no GitHub-hosted runner fallback**: if the local runner is offline, checks queue rather than spend hosted runner minutes. Quality checks run on pushes to branches within this repository; fork pull requests do not trigger the persistent Mac runner. Rapid repeated pushes to one branch cancel stale runs. A manual `workflow_dispatch` run can verify the default branch. The repository's GitHub Pages deployment is separately managed by GitHub.
 
 Full macOS UI testing remains an interactive local release gate because a background CI service cannot provide deterministic interactive Automation permissions. Build 12's source qualified with **35 passing UI tests**. Signed uploads, notarization, and App Store review require the corresponding Apple distribution credentials and approvals.
 
