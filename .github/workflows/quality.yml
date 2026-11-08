@@ -1,18 +1,32 @@
 name: Small Matter quality
 
+# All automatic quality jobs run only on the dedicated owner-controlled Mac.
+# pull_request_target reads this workflow from main, so fork authors cannot
+# rewrite the trust guard before GitHub schedules a persistent local runner.
 on:
   push:
     branches: [main]
-  pull_request:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
   quality-style:
-    runs-on: macos-15
+    # Never execute a fork's code on an owner-persistent self-hosted runner.
+    if: >-
+      github.event_name != 'pull_request_target' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, macOS, ARM64, smallmatter]
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
+        with:
+          # Use the validated same-repository PR head; otherwise the push SHA.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - name: Install pinned format and lint tools
         run: ./scripts/quality_tools.sh install
       - name: Print tool versions
@@ -25,16 +39,34 @@ jobs:
         run: ./scripts/quality_tools.sh lint lint --strict Tunix TunixTests TunixUITests --reporter json
 
   quality-unit:
-    runs-on: macos-15
+    # Never execute a fork's code on an owner-persistent self-hosted runner.
+    if: >-
+      github.event_name != 'pull_request_target' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, macOS, ARM64, smallmatter]
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
+        with:
+          # Use the validated same-repository PR head; otherwise the push SHA.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - name: App unit tests
         run: ./scripts/run_tunix_app_unit_tests.sh --fresh-derived-data
 
   quality-release:
-    runs-on: macos-15
+    # Never execute a fork's code on an owner-persistent self-hosted runner.
+    if: >-
+      github.event_name != 'pull_request_target' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, macOS, ARM64, smallmatter]
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
+        with:
+          # Use the validated same-repository PR head; otherwise the push SHA.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - name: Unsigned Release build
         run: ./scripts/build_release.sh --prepare-only
       - name: Structural artifact verification
@@ -47,12 +79,21 @@ jobs:
         run: ./scripts/test_app_store_screenshot_packet.sh
 
   quality-direct-dmg:
-    runs-on: macos-15
+    # Never execute a fork's code on an owner-persistent self-hosted runner.
+    if: >-
+      github.event_name != 'pull_request_target' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, macOS, ARM64, smallmatter]
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
+        with:
+          # Use the validated same-repository PR head; otherwise the push SHA.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - name: Build and inspect disposable direct-distribution DMG
         run: ./scripts/test_direct_dmg.sh
 
   # macOS UI tests require interactive Automation permissions that are not
-  # available deterministically on GitHub-hosted runners. They remain a
+  # available deterministically on a noninteractive local runner. They remain a
   # mandatory local release gate; see README.md for the exact command.
