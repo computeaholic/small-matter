@@ -17,7 +17,7 @@ nav { display: flex; flex-wrap: wrap; gap: .25rem 1.25rem; margin-top: .5rem; }
 nav a { display: inline-flex; align-items: center; min-height: 2.75rem; }
 a { color: var(--link); text-underline-offset: .2em; overflow-wrap: anywhere; }
 a:focus-visible { outline: 3px solid var(--link); outline-offset: 4px; border-radius: 2px; }
-main { font-size: 1.0625rem; line-height: 1.7; }
+main { font-size: 1.0625rem; line-height: 1.7; overflow-wrap: anywhere; }
 h1 { font-size: clamp(2rem, 6vw, 2.75rem); line-height: 1.15; letter-spacing: -.035em; margin: .5rem 0 1.5rem; overflow-wrap: anywhere; }
 h2 { font-size: 1.3rem; line-height: 1.4; margin: 2rem 0 .5rem; overflow-wrap: anywhere; }
 p { margin: 0 0 1.1rem; }
